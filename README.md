@@ -10,6 +10,12 @@ A lesson and tuition ledger for independent teachers, supporting individual less
 
 Repository documentation defaults to English. The application interface is currently in Vietnamese, with VND amounts and Vietnam business dates.
 
+## Preview
+
+![LessonBrook dashboard in Playful Retro Neo-Brutalism, showing pastel tuition summary cards and a sample lesson.](docs/images/dashboard-playful-retro.png)
+
+Playful Retro Neo-Brutalism · Desktop view · Fictional sample data captured locally with Firebase Emulator.
+
 ## Features
 
 - Google sign-in; HttpOnly server sessions, revocation checks, CSRF and Origin protection.

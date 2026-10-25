@@ -8,6 +8,12 @@
 
 Sổ buổi dạy và học phí tiếng Việt cho giáo viên tự do: cá nhân, nhóm hoặc lớp học; tính theo buổi và thu sau. Bạn có thể chạy trên máy, tự triển khai hoặc fork để phát triển theo nhu cầu của mình. Phát hành theo [MIT](LICENSE).
 
+## Xem trước
+
+![Màn hình tổng quan LessonBrook với giao diện Playful Retro Neo-Brutalism, các thẻ học phí pastel và một buổi dạy mẫu.](docs/images/dashboard-playful-retro.png)
+
+Playful Retro Neo-Brutalism · Bản desktop · Chụp local bằng Firebase Emulator, chỉ dùng dữ liệu giả.
+
 ## Tính năng
 
 - Đăng nhập Google; phiên server HttpOnly, kiểm tra thu hồi, CSRF và Origin.
