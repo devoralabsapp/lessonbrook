@@ -185,6 +185,15 @@ test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tạ
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/app/settings");
   const backgrounds = new Set<string>();
+  let savedTheme = "natura";
+  let appearanceWrites = 0;
+  page.on("request", (request) => {
+    if (
+      new URL(request.url()).pathname === "/api/appearance" &&
+      request.method() === "PATCH"
+    )
+      appearanceWrites++;
+  });
   for (const [name, id] of [
     ["Modern", "modern"],
     ["Vintage", "vintage"],
@@ -194,12 +203,21 @@ test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tạ
     ["Command Line", "command-line"],
     ["Visual Code", "visual-code"],
   ]) {
+    const writesBeforePreview = appearanceWrites;
     await page.getByRole("radio", { name, exact: false }).check();
+    const shell = page.locator(`[data-theme="${id}"]`);
+    await expect(shell).toBeVisible();
+    expect(appearanceWrites).toBe(writesBeforePreview);
+    expect(
+      (await (await context.request.get("/api/appearance")).json()).theme,
+    ).toBe(savedTheme);
     await page
       .getByRole("button", { name: "Lưu giao diện", exact: true })
       .click();
-    const shell = page.locator(`[data-theme="${id}"]`);
-    await expect(shell).toBeVisible();
+    await expect(
+      page.getByRole("status").filter({ hasText: "Đã lưu giao diện." }),
+    ).toBeVisible();
+    savedTheme = id;
     backgrounds.add(
       await shell.evaluate((el) => getComputedStyle(el).backgroundColor),
     );
@@ -256,7 +274,12 @@ test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tạ
           font: style.fontFamily,
         };
       });
-      for (const [sample, value] of Object.entries({body:contrast.body, muted:contrast.muted, input:contrast.input, action:contrast.action}))
+      for (const [sample, value] of Object.entries({
+        body: contrast.body,
+        muted: contrast.muted,
+        input: contrast.input,
+        action: contrast.action,
+      }))
         expect(value, `${id}: ${sample} contrast`).toBeGreaterThanOrEqual(4.5);
       if (id === "command-line") expect(contrast.font).toContain("monospace");
     }
@@ -280,4 +303,94 @@ test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tạ
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("theme preview is local until Save, resets on cancel/navigation/reload, and survives a failed save", async ({
+  page,
+  context,
+}) => {
+  await login(context);
+  let writes = 0;
+  page.on("request", (request) => {
+    if (
+      new URL(request.url()).pathname === "/api/appearance" &&
+      request.method() === "PATCH"
+    )
+      writes++;
+  });
+  const stored = async () =>
+    (await (await context.request.get("/api/appearance")).json()).theme;
+  const shell = (theme: string) => page.locator(`[data-theme="${theme}"]`);
+  const save = page.getByRole("button", { name: "Lưu giao diện", exact: true });
+  await page.goto("/app/settings");
+  await expect(save).toBeDisabled();
+  await page.getByRole("radio", { name: "Command Line", exact: false }).check();
+  await expect(shell("command-line")).toBeVisible();
+  await expect(shell("command-line")).toHaveCSS(
+    "background-color",
+    "rgb(0, 0, 0)",
+  );
+  await expect(
+    page.getByRole("status").filter({ hasText: "Đang xem trước, chưa lưu." }),
+  ).toBeVisible();
+  expect(await stored()).toBe("natura");
+  expect(writes).toBe(0);
+  await page.screenshot({ path: "/tmp/lessonbrook-public-command-line-preview.png", fullPage: true, animations: "disabled" });
+  await page
+    .getByRole("button", { name: "Hủy xem trước", exact: true })
+    .click();
+  await expect(shell("natura")).toBeVisible();
+  await expect(save).toBeDisabled();
+  await page.getByRole("radio", { name: "Visual Code", exact: false }).check();
+  await expect(shell("visual-code")).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Điều hướng chính", exact: true })
+    .getByRole("link", { name: "Tổng quan", exact: true })
+    .click();
+  await page.waitForURL("**/app");
+  await expect(shell("natura")).toBeVisible();
+  await page
+    .getByRole("link", { name: "Cài đặt tài khoản", exact: true })
+    .click();
+  await page.waitForURL("**/app/settings");
+  await expect(
+    page.getByRole("radio", { name: "Natura", exact: false }),
+  ).toBeChecked();
+  await page.getByRole("radio", { name: "Command Line", exact: false }).check();
+  await page.reload();
+  await expect(shell("natura")).toBeVisible();
+  expect(await stored()).toBe("natura");
+  expect(writes).toBe(0);
+  let fail = true;
+  const keys: string[] = [];
+  await page.route("**/api/appearance", async (route) => {
+    if (route.request().method() !== "PATCH") return route.continue();
+    keys.push(route.request().headers()["idempotency-key"]);
+    if (fail) {
+      fail = false;
+      return route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Chưa thể lưu giao diện." }),
+      });
+    }
+    return route.continue();
+  });
+  await page.getByRole("radio", { name: "Visual Code", exact: false }).check();
+  await save.click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Chưa thể lưu giao diện." }),
+  ).toBeVisible();
+  await expect(shell("visual-code")).toBeVisible();
+  expect(await stored()).toBe("natura");
+  await save.click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Đã lưu giao diện." }),
+  ).toBeVisible();
+  expect(await stored()).toBe("visual-code");
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+  await page.reload();
+  await expect(shell("visual-code")).toBeVisible();
+  await expect(save).toBeDisabled();
 });

@@ -124,25 +124,25 @@
 
 [data-theme="command-line"] {
   color-scheme: dark;
-  --background: #080e0a;
-  --foreground: #d7eadc;
-  --card: #101a13;
+  --background: #000000;
+  --foreground: #e5e5e5;
+  --card: #0d0d0d;
   --primary: #74e6a1;
   --primary-foreground: #092116;
-  --muted: #19271d;
-  --muted-foreground: #9bb6a4;
-  --border: #304b39;
-  --input: #557d63;
+  --muted: #1a1a1a;
+  --muted-foreground: #b3b3b3;
+  --border: #353535;
+  --input: #737373;
   --ring: #74e6a1;
-  --accent-soft: #183522;
-  --surface: #0b140e;
-  --label: #b8d9c1;
+  --accent-soft: #191919;
+  --surface: #080808;
+  --label: #cccccc;
   --destructive: #ffaaa0;
   --destructive-foreground: #301512;
   --warning-soft: #352d18;
   --warning-foreground: #f0d58a;
   --danger-soft: #3b2223;
-  --completed-background: #183522;
+  --completed-background: #191919;
   --completed-foreground: #9ce8b4;
   --planned-background: #352d18;
   --planned-foreground: #f0d58a;

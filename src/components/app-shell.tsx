@@ -17,6 +17,7 @@ import { Brand } from "./brand";
 import { Button } from "./ui/button";
 import { api } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
+import { useAppearancePreview } from "@/lib/use-appearance-preview";
 import { AppearanceContext } from "./appearance";
 import { DEFAULT_THEME, type Theme } from "@/domain/appearance";
 const links = [
@@ -36,7 +37,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const path = usePathname();
-  const [theme, setTheme] = useState(initialTheme);
+  const appearance = useAppearancePreview(initialTheme, path);
   const activeLink = (href: string) =>
     href === "/app"
       ? path === href
@@ -55,9 +56,9 @@ export function AppShell({
     }
   }
   return (
-    <AppearanceContext.Provider value={{ theme, setTheme }}>
+    <AppearanceContext.Provider value={appearance}>
       <div
-        data-theme={theme}
+        data-theme={appearance.theme}
         className="min-h-dvh bg-background text-foreground"
       >
         <a

@@ -35,6 +35,10 @@ Session cookies are HttpOnly/Lax, Secure on HTTPS, and last up to five days. Bro
 - Share links use random tokens in the `/s#token` fragment. The browser sends a POST body; the server stores only a hash. Sharing includes preview, expiry, rotation, revocation, and a public response allowlist. Never log tokens, cookies, or headers.
 - Export pages share a server readTime; ZIP/CSV exports are not Firestore backups. Account deletion is a state machine with leases/checkpoints and write/link locks. Never delete real accounts for testing.
 
+## Appearance preferences
+
+The application shell holds a settings-visit preview separately from the saved account preference. Selecting a theme only changes the local preview. Save commits it through the existing authenticated, idempotent appearance endpoint; a failed save retains the preview for retry. Cancel, route navigation and reload restore the saved preference. Shared statements keep an explicit light palette.
+
 ## Limits
 
 There are no automatic bank payments, recurring schedules, prepaid packages, or multi-staff center permissions. The manifest provides a launch shortcut, without a service worker or offline cache. Emulator tests do not prove cloud indexes, IAM, OAuth, or installation on real devices. Cloud checks need isolated staging and fake data.

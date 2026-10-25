@@ -1,17 +1,29 @@
 "use client";
 import { createContext, useContext, useState } from "react";
-import { DEFAULT_THEME, themes, type Theme } from "@/domain/appearance";
+import { DEFAULT_THEME, themes } from "@/domain/appearance";
 import { useStatementMutation } from "@/features/statements/shared";
+import type { useAppearancePreview } from "@/lib/use-appearance-preview";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 
-export const AppearanceContext = createContext<{
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-}>({ theme: DEFAULT_THEME, setTheme: () => undefined });
+export const AppearanceContext = createContext<
+  ReturnType<typeof useAppearancePreview>
+>({
+  theme: DEFAULT_THEME,
+  savedTheme: DEFAULT_THEME,
+  previewTheme: () => undefined,
+  commitTheme: () => undefined,
+  cancelPreview: () => undefined,
+});
 export function AppearancePicker() {
-  const { theme, setTheme } = useContext(AppearanceContext);
-  const [choice, setChoice] = useState(theme);
+  const {
+    theme: choice,
+    savedTheme,
+    previewTheme,
+    commitTheme,
+    cancelPreview,
+  } = useContext(AppearanceContext);
+  const dirty = choice !== savedTheme;
   const [message, setMessage] = useState("");
   const mutation = useStatementMutation();
   async function save() {
@@ -20,7 +32,7 @@ export function AppearancePicker() {
       theme: choice,
     });
     if (result) {
-      setTheme(choice);
+      commitTheme(choice);
       setMessage(
         "Đã lưu giao diện. Áp dụng cho tài khoản của bạn trên các thiết bị.",
       );
@@ -49,7 +61,8 @@ export function AppearancePicker() {
               value={item.id}
               checked={choice === item.id}
               onChange={() => {
-                setChoice(item.id);
+                previewTheme(item.id);
+                mutation.clearError();
                 setMessage("");
               }}
               className="mt-1 accent-primary"
@@ -72,17 +85,35 @@ export function AppearancePicker() {
           </label>
         ))}
       </fieldset>
-      <Button className="mt-4" disabled={mutation.busy} onClick={save}>
-        {mutation.busy ? "Đang lưu…" : "Lưu giao diện"}
-      </Button>
+      <p className="mt-4 text-xs leading-5 text-muted-foreground">
+        {"Bấm chọn để xem thử ngay. Chỉ lưu khi bạn bấm Lưu giao diện."}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button disabled={mutation.busy || !dirty} onClick={save}>
+          {mutation.busy ? "Đang lưu…" : "Lưu giao diện"}
+        </Button>
+        {dirty && (
+          <Button
+            variant="ghost"
+            disabled={mutation.busy}
+            onClick={() => {
+              cancelPreview();
+              setMessage("");
+              mutation.clearError();
+            }}
+          >
+            {"Hủy xem trước"}
+          </Button>
+        )}
+      </div>
       {mutation.error && (
         <p role="alert" className="mt-3 text-sm text-destructive">
           {mutation.error}
         </p>
       )}
-      {message && (
+      {(dirty || message) && (
         <p role="status" className="mt-3 text-sm text-primary">
-          {message}
+          {dirty ? "Đang xem trước, chưa lưu." : message}
         </p>
       )}
     </Card>

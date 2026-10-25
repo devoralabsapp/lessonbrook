@@ -49,8 +49,8 @@ export const themes: {
   {
     id: "command-line",
     name: "Command Line",
-    description: "Terminal tối, chữ xanh và font monospace",
-    colors: ["#080e0a", "#101a13", "#74e6a1"],
+    description: "Nền đen, điểm nhấn xanh và font monospace",
+    colors: ["#000000", "#0d0d0d", "#74e6a1"],
   },
   {
     id: "visual-code",

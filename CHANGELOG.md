@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preview themes instantly in settings; persist only after Save, with cancel and automatic reset on navigation/reload. Failed saves keep the preview for retry. Make Command Line panels neutral black.
+
 - Add Command Line and Visual Code dark themes, semantic action/status/form colours, and explicit light statement previews. Preferences use the existing account-scoped save flow; the default remains Natura.
 
 - Rebrand the application as LessonBrook and rename the repository to `devoralabsapp/lessonbrook`. Update clone instructions, badges and community/security links. Existing data identifiers and local guards remain compatible.
