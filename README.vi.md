@@ -10,9 +10,9 @@ Sổ buổi dạy và học phí tiếng Việt cho giáo viên tự do: cá nh�
 
 ## Xem trước
 
-![Màn hình tổng quan LessonBrook với giao diện Playful Retro Neo-Brutalism, các thẻ học phí pastel và một buổi dạy mẫu.](docs/images/dashboard-playful-retro.png)
+![Màn hình tổng quan LessonBrook bằng tiếng Anh với giao diện Playful Retro Neo-Brutalism, các thẻ học phí pastel và một buổi dạy mẫu.](docs/images/dashboard-playful-retro.png)
 
-Playful Retro Neo-Brutalism · Bản desktop · Chụp local bằng Firebase Emulator, chỉ dùng dữ liệu giả.
+Bản xem trước giao diện tiếng Anh · Playful Retro Neo-Brutalism · Chụp local bằng Firebase Emulator, chỉ dùng dữ liệu giả. Giao diện bản community hiện dùng tiếng Việt.
 
 ## Tính năng
 

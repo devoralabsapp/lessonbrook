@@ -12,9 +12,9 @@ Repository documentation defaults to English. The application interface is curre
 
 ## Preview
 
-![LessonBrook dashboard in Playful Retro Neo-Brutalism, showing pastel tuition summary cards and a sample lesson.](docs/images/dashboard-playful-retro.png)
+![English LessonBrook dashboard in Playful Retro Neo-Brutalism, showing pastel tuition summary cards and a sample lesson.](docs/images/dashboard-playful-retro.png)
 
-Playful Retro Neo-Brutalism · Desktop view · Fictional sample data captured locally with Firebase Emulator.
+English interface preview · Playful Retro Neo-Brutalism · Fictional sample data captured locally with Firebase Emulator. The community edition UI is currently Vietnamese.
 
 ## Features
 
