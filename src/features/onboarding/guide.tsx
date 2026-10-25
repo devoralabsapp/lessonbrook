@@ -19,7 +19,7 @@ export function GettingStartedCard({
 }) {
   if (!state || state.completed) return null;
   return (
-    <Card className="mb-6 border-border bg-accent-soft p-5">
+    <Card data-tone="mint" className="mb-6 border-border bg-accent-soft p-5">
       <p className="text-xs font-semibold text-primary">
         BẮT ĐẦU VỚI LESSONBROOK
       </p>

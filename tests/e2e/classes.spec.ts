@@ -151,7 +151,7 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   });
 });
 
-test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tại sau tải lại", async ({
+test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại sau tải lại", async ({
   page,
   context,
 }) => {
@@ -202,6 +202,7 @@ test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tạ
     ["Ocean", "ocean"],
     ["Command Line", "command-line"],
     ["Visual Code", "visual-code"],
+    ["Playful Retro Neo-Brutalism", "playful-retro"],
   ]) {
     const writesBeforePreview = appearanceWrites;
     await page.getByRole("radio", { name, exact: false }).check();
@@ -225,8 +226,15 @@ test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tạ
     await expect(page.locator(`[data-theme="${id}"]`)).toBeVisible();
     await expect(page.getByRole("radio", { name, exact: false })).toBeChecked();
     // Read persisted colours after reload, outside the save button transition.
-    if (id === "command-line" || id === "visual-code") {
-      await expect(shell).toHaveCSS("color-scheme", "dark");
+    if (
+      id === "command-line" ||
+      id === "visual-code" ||
+      id === "playful-retro"
+    ) {
+      await expect(shell).toHaveCSS(
+        "color-scheme",
+        id === "playful-retro" ? "light" : "dark",
+      );
       await expect(page.locator('input[name="displayName"]')).toBeVisible();
       const contrast = await shell.evaluate((element) => {
         const canvas = document.createElement("canvas");
@@ -289,7 +297,7 @@ test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tạ
       ),
     ).toBe(true);
   }
-  expect(backgrounds.size).toBe(7);
+  expect(backgrounds.size).toBe(8);
   await page.screenshot({
     path: "/tmp/chotcong-024-theme-mobile.png",
     fullPage: true,
@@ -335,7 +343,11 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   ).toBeVisible();
   expect(await stored()).toBe("natura");
   expect(writes).toBe(0);
-  await page.screenshot({ path: "/tmp/lessonbrook-public-command-line-preview.png", fullPage: true, animations: "disabled" });
+  await page.screenshot({
+    path: "/tmp/lessonbrook-public-command-line-preview.png",
+    fullPage: true,
+    animations: "disabled",
+  });
   await page
     .getByRole("button", { name: "Hủy xem trước", exact: true })
     .click();
@@ -393,4 +405,160 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   await page.reload();
   await expect(shell("visual-code")).toBeVisible();
   await expect(save).toBeDisabled();
+});
+
+test("Playful Retro: consistent panels, forms and navigation at phone/desktop widths, reduced motion and light statement boundary", async ({
+  page,
+  context,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const create = await login(context);
+  const student = await create("/api/students", {
+    displayName: "Retro Demo",
+    defaultRateVnd: 200000,
+  });
+  const session = await create("/api/sessions", {
+    studentId: student.id,
+    sessionDate: "2026-10-12",
+    status: "completed",
+    billable: true,
+  });
+  const statement = await create("/api/statements", {
+    studentId: student.id,
+    sessionIds: [session.id],
+    periodStart: "2026-10-01",
+    periodEnd: "2026-10-31",
+    dueDate: "2026-10-31",
+    includeBankDetails: false,
+  });
+  await create(`/api/statements/${statement.id}/issue`, { version: 1 });
+  await page.goto("/app/settings");
+  await page
+    .getByRole("radio", { name: "Playful Retro Neo-Brutalism", exact: false })
+    .check();
+  const shell = page.locator('[data-theme="playful-retro"]');
+  await expect(shell).toBeVisible();
+  expect(
+    (await (await context.request.get("/api/appearance")).json()).theme,
+  ).toBe("natura");
+  await page
+    .getByRole("button", { name: "Lưu giao diện", exact: true })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Đã lưu giao diện." }),
+  ).toBeVisible();
+  for (const width of [360, 1440]) {
+    await page.setViewportSize({ width, height: width === 360 ? 800 : 1000 });
+    for (const route of [
+      "/app",
+      "/app/students",
+      "/app/sessions",
+      "/app/classes",
+      "/app/lessons",
+      "/app/statements",
+      "/app/settings",
+      "/onboarding",
+    ]) {
+      await page.goto(route);
+      await expect(shell).toHaveCSS("background-color", "rgb(255, 246, 230)");
+      await page.evaluate(() => document.fonts.ready);
+      expect(
+        await shell.evaluate((el) =>
+          getComputedStyle(el).getPropertyValue("--font-playful").trim(),
+        ),
+      ).not.toBe("");
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        `${route} at ${width}px`,
+      ).toBe(true);
+    }
+    await page.goto("/app");
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(() => Array.from(document.fonts).some(face => face.family === "playfulFont" && face.status === "loaded"))).toBe(true);
+    // Only the four summary cards carry these tones; onboarding is a separate mint callout.
+    const summary = page.locator(
+      '[data-tone="yellow"], [data-tone="pink"], [data-tone="blue"]',
+    );
+    await expect(summary).toHaveCount(3);
+    for (const [tone, color] of [
+      ["yellow", "rgb(255, 219, 87)"],
+      ["pink", "rgb(255, 183, 206)"],
+      ["blue", "rgb(170, 215, 245)"],
+    ]) {
+      const card = page.locator(`[data-slot="card"][data-tone="${tone}"]`);
+      await expect(card).toHaveCSS("background-color", color);
+      await expect(card).toHaveCSS("border-top-width", "2px");
+      await expect(card).toHaveCSS(
+        "box-shadow",
+        "rgb(33, 31, 27) 4px 4px 0px 0px",
+      );
+    }
+    await page.screenshot({
+      path: `/tmp/lessonbrook-public-retro-${width}.png`,
+      fullPage: true,
+      animations: "disabled",
+    });
+    await page.goto("/app/students");
+    await page
+      .getByRole("button", { name: "Thêm học viên", exact: true })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toHaveCSS("border-top-width", "2px");
+    const dialogBox = (await dialog.boundingBox())!;
+    expect(Math.abs(dialogBox.x - (width - dialogBox.width) / 2)).toBeLessThanOrEqual(1);
+    expect(dialogBox.x).toBeGreaterThanOrEqual(12);
+    if (width === 1440) {
+      const action = dialog.getByRole("button", { name: "Lưu học viên", exact: true });
+      await action.hover();
+      await expect(action).toHaveCSS("transform", "matrix(1, 0, 0, 1, -1, -1)");
+    }
+    await expect(
+      dialog.getByLabel("Tên học viên *", { exact: true }),
+    ).toHaveCSS("border-top-width", "2px");
+    await page.screenshot({
+      path: `/tmp/lessonbrook-public-retro-form-${width}.png`,
+      fullPage: true,
+      animations: "disabled",
+    });
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/app/settings");
+  const cancel = page.getByRole("button", {
+    name: "Hủy xem trước",
+    exact: true,
+  });
+  const save = page.getByRole("button", { name: "Lưu giao diện", exact: true });
+  const profileSave = page.getByRole("button", { name: "Lưu hồ sơ", exact: true });
+  await profileSave.hover();
+  await expect(profileSave).toHaveCSS("transform", "none");
+  await expect(save).toHaveCSS("transform", "none");
+  expect(
+    await save.evaluate((el) => getComputedStyle(el).transitionProperty),
+  ).not.toContain("transform");
+  // Leaving the retro theme removes its outlines/shadows, and cancel restores the saved retro preference.
+  await page.getByRole("radio", { name: "Natura", exact: false }).check();
+  await expect(
+    page.locator('[data-theme="natura"] [data-slot="card"]').first(),
+  ).toHaveCSS("border-top-width", "1px");
+  await cancel.click();
+  await expect(shell).toBeVisible();
+  await page.goto(`/app/statements/${statement.id}`);
+  await page
+    .getByRole("button", { name: "Xem trước để tạo link", exact: true })
+    .click();
+  const publicStatement = page.getByTestId("public-statement");
+  await expect(publicStatement).toHaveCSS("color-scheme", "light");
+  await expect(publicStatement).toHaveCSS("color", "rgb(37, 58, 48)");
+  await expect(publicStatement.locator("h1")).not.toHaveCSS(
+    "font-weight",
+    "800",
+  );
+  await expect(publicStatement).toHaveCSS("box-shadow", "none");
+  expect(errors).toEqual([]);
 });

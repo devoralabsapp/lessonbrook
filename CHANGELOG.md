@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Playful Retro Neo-Brutalism as an eighth optional theme: warm cream, pastel summary panels, black outlines/offset shadows, pill buttons and bundled Nunito under SIL OFL 1.1. Reuse instant preview/explicit save; scope retro component styles to preserve all other themes and light shared statements. Respect reduced motion.
+
 - Preview themes instantly in settings; persist only after Save, with cancel and automatic reset on navigation/reload. Failed saves keep the preview for retry. Make Command Line panels neutral black.
 
 - Add Command Line and Visual Code dark themes, semantic action/status/form colours, and explicit light statement previews. Preferences use the existing account-scoped save flow; the default remains Natura.

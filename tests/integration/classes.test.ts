@@ -390,7 +390,7 @@ describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
     expect(text).not.toContain("requestId");
     expect(text).not.toContain("shareToken");
   });
-  it("bảy theme lưu server theo UID, retry và từ chối lựa chọn lạ", async () => {
+  it("tám theme lưu server theo UID, retry và từ chối lựa chọn lạ", async () => {
     for (const theme of [
       "modern",
       "vintage",
@@ -399,6 +399,7 @@ describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
       "ocean",
       "command-line",
       "visual-code",
+      "playful-retro",
     ]) {
       const key = randomUUID();
       expect(

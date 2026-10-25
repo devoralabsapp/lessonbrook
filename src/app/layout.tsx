@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import localFont from "next/font/local";
+const playfulFont = localFont({
+  src: "../assets/fonts/Nunito-Variable.ttf",
+  variable: "--font-playful",
+  weight: "200 1000",
+  display: "swap",
+  preload: false,
+});
 export const metadata: Metadata = {
   title: {
     default: "LessonBrook — Sổ buổi dạy & học phí",
@@ -26,7 +34,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body className={playfulFont.variable}>{children}</body>
     </html>
   );
 }

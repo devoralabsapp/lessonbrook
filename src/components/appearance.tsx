@@ -53,6 +53,7 @@ export function AppearancePicker() {
         {themes.map((item) => (
           <label
             key={item.id}
+            data-slot="theme-option"
             className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${choice === item.id ? "border-primary bg-accent-soft" : "border-border bg-card"}`}
           >
             <input

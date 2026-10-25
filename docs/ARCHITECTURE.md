@@ -4,16 +4,16 @@
 
 Next.js App Router, React, TypeScript, Tailwind 4, Firebase Authentication, and Cloud Firestore. Node 24; dependencies are pinned exactly in the lockfile. Keep bundler and dependency changes separate from unrelated business fixes.
 
-| Directory | Contents |
-|---|---|
-| `src/app` | Pages and Node APIs |
-| `src/domain` | Schemas, money, dates, statements, and export data |
-| `src/lib/firebase` | Client Auth, server Admin, and OIDC/WIF |
-| `src/lib/server` | Repositories, sessions, HTTP handling, and transactions |
-| `src/features` | Student, class, lesson, statement, payment, and sharing UI |
-| `firebase` | Rules, indexes, and independent Rules tests |
+| Directory           | Contents                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `src/app`           | Pages and Node APIs                                                    |
+| `src/domain`        | Schemas, money, dates, statements, and export data                     |
+| `src/lib/firebase`  | Client Auth, server Admin, and OIDC/WIF                                |
+| `src/lib/server`    | Repositories, sessions, HTTP handling, and transactions                |
+| `src/features`      | Student, class, lesson, statement, payment, and sharing UI             |
+| `firebase`          | Rules, indexes, and independent Rules tests                            |
 | `tests/integration` | HTTP/backend isolation with two UIDs, transactions, and data workflows |
-| `tests/e2e` | Chromium, real Auth Emulator popups, retries, and reloads |
+| `tests/e2e`         | Chromium, real Auth Emulator popups, retries, and reloads              |
 
 ## Product name and compatibility
 
@@ -38,6 +38,8 @@ Session cookies are HttpOnly/Lax, Secure on HTTPS, and last up to five days. Bro
 ## Appearance preferences
 
 The application shell holds a settings-visit preview separately from the saved account preference. Selecting a theme only changes the local preview. Save commits it through the existing authenticated, idempotent appearance endpoint; a failed save retains the preview for retry. Cancel, route navigation and reload restore the saved preference. Shared statements keep an explicit light palette.
+
+Retro component styles are scoped to `data-theme="playful-retro"` and exclude the `data-theme="statement"` boundary. Palette, border and shadow tokens live in globals.css; shared cards can opt into `data-tone="yellow|pink|blue|mint"`. Buttons expose their existing variant as data for theme styling. Nunito is bundled under SIL OFL 1.1 via next/font/local, with preloading disabled so unused themes do not preload it.
 
 ## Limits
 

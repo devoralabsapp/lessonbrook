@@ -7,6 +7,7 @@ export const themeSchema = z.enum([
   "ocean",
   "command-line",
   "visual-code",
+  "playful-retro",
 ]);
 export type Theme = z.infer<typeof themeSchema>;
 export const DEFAULT_THEME: Theme = "natura";
@@ -57,6 +58,12 @@ export const themes: {
     name: "Visual Code",
     description: "Trình soạn thảo tối với điểm nhấn xanh dương",
     colors: ["#1e1e1e", "#252526", "#75beff"],
+  },
+  {
+    id: "playful-retro",
+    name: "Playful Retro Neo-Brutalism",
+    description: "Nền kem, pastel rực rỡ, viền đen và bóng đổ retro",
+    colors: ["#fff6e6", "#ffdb57", "#ffb7ce", "#aad7f5", "#baf0d1"],
   },
 ];
 export const appearanceInputSchema = z.object({ theme: themeSchema }).strict();

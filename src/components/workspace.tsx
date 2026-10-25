@@ -310,6 +310,7 @@ export function Workspace({
               },
             ].map(({ label, value, unit, icon: Icon, href }, i) => (
               <Card
+                data-tone={["yellow", "pink", "blue", "mint"][i]}
                 key={label}
                 className={`p-5 ${i === 2 ? "bg-accent-soft border-border" : ""}`}
               >

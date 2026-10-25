@@ -102,11 +102,12 @@ export default function HelpPage() {
         <h2 className="serif text-2xl">Cuốn sổ theo màu bạn thích</h2>
         <p>
           Vào “Cài đặt tài khoản” → “Giao diện của bạn”, chọn Modern, Vintage,
-          Art, Natura, Ocean, Command Line hoặc Visual Code để xem thử ngay.
-          Command Line dùng nền đen với điểm nhấn xanh. Bấm “Lưu giao diện” để
-          lưu theo tài khoản và dùng trên các thiết bị. Nếu chưa lưu, bấm “Hủy
-          xem trước”, rời cài đặt hoặc tải lại trang để trở về lựa chọn đã lưu.
-          Trang bảng kê gửi cho người nhận giữ cách trình bày riêng.
+          Art, Natura, Ocean, Command Line, Visual Code hoặc Playful Retro
+          Neo-Brutalism để xem thử ngay. Command Line dùng nền đen với điểm nhấn
+          xanh. Bấm “Lưu giao diện” để lưu theo tài khoản và dùng trên các thiết
+          bị. Nếu chưa lưu, bấm “Hủy xem trước”, rời cài đặt hoặc tải lại trang
+          để trở về lựa chọn đã lưu. Trang bảng kê gửi cho người nhận giữ cách
+          trình bày riêng.
         </p>
       </section>
       <section id="payments" className="space-y-4">

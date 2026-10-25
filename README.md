@@ -16,7 +16,7 @@ Repository documentation defaults to English. The application interface is curre
 - Students, default rates, archiving/restoring, classes of up to 50 students, and group lessons with saved price snapshots.
 - Per-student statements, issue/void workflows, partial payments, and voiding incorrect payment records.
 - Expiring and revocable statement links; dashboard, search, filters, CSV/ZIP/JSON export, and account deletion.
-- Seven themes: Modern, Vintage, Art, Natura, Ocean, Command Line, and Visual Code, with mobile-friendly layouts. Command Line uses black panels and green accents. Select any theme in account settings for an instant preview; only Save appearance persists it. Cancel preview, leave settings or reload to discard an unsaved choice.
+- Eight themes: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code, and Playful Retro Neo-Brutalism, with mobile-friendly layouts. Command Line uses black panels and green accents. Playful Retro adds cream, yellow/pink/blue/mint cards, bold outlines, hard shadows, pill controls and self-hosted Nunito (SIL OFL 1.1). Select any theme in account settings for an instant preview; only Save appearance persists it. Cancel preview, leave settings or reload to discard an unsaved choice.
 
 All business reads and writes go through Node server APIs. The Firebase client is used only for Auth; Firestore Rules deny direct client access. Tuition data is not stored offline.
 

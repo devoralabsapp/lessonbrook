@@ -127,7 +127,10 @@ export function AppShell({
           </div>
         </aside>
         <div className="lg:ml-[242px]">
-          <header className="flex h-[82px] items-center justify-between border-b border-border bg-surface/80 px-5 sm:px-9">
+          <header
+            data-slot="workspace-header"
+            className="flex h-[82px] items-center justify-between border-b border-border bg-surface/80 px-5 sm:px-9"
+          >
             <div className="lg:hidden">
               <Brand compact />
             </div>
