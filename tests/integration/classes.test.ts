@@ -390,8 +390,16 @@ describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
     expect(text).not.toContain("requestId");
     expect(text).not.toContain("shareToken");
   });
-  it("năm theme lưu server theo UID, retry và từ chối lựa chọn lạ", async () => {
-    for (const theme of ["modern", "vintage", "art", "natura", "ocean"]) {
+  it("bảy theme lưu server theo UID, retry và từ chối lựa chọn lạ", async () => {
+    for (const theme of [
+      "modern",
+      "vintage",
+      "art",
+      "natura",
+      "ocean",
+      "command-line",
+      "visual-code",
+    ]) {
       const key = randomUUID();
       expect(
         (await a.call("/api/appearance", "PATCH", { theme }, key)).status,

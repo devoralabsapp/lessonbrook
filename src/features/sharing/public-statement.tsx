@@ -9,7 +9,8 @@ export function PublicStatementView({
   const overdue = s.remainingVnd > 0 && vietnamToday() > s.dueDate;
   return (
     <article
-      className="overflow-hidden rounded-2xl border border-border bg-white"
+      data-theme="statement"
+      className="overflow-hidden rounded-2xl border border-border bg-white text-foreground"
       data-testid="public-statement"
     >
       <header className="space-y-3 border-b border-border bg-[#f5f7ee] p-5 sm:p-7">

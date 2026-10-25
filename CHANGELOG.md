@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Command Line and Visual Code dark themes, semantic action/status/form colours, and explicit light statement previews. Preferences use the existing account-scoped save flow; the default remains Natura.
+
 - Rebrand the application as LessonBrook and rename the repository to `devoralabsapp/lessonbrook`. Update clone instructions, badges and community/security links. Existing data identifiers and local guards remain compatible.
 
 ## 0.1.0 — 2026-10-24

@@ -41,8 +41,8 @@ it("buổi nhóm không nhận số tiền tổng/session IDs, validate ngày v�
       false,
     );
 });
-it("chỉ chấp nhận năm theme đã khai báo", () => {
-  expect(new Set(themes.map((s) => s.id)).size).toBe(5);
+it("chỉ chấp nhận bảy theme đã khai báo", () => {
+  expect(new Set(themes.map((s) => s.id)).size).toBe(7);
   for (const theme of themes)
     expect(appearanceInputSchema.safeParse({ theme: theme.id }).success).toBe(
       true,

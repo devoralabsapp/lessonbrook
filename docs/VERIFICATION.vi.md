@@ -29,3 +29,7 @@ Gitleaks và rà soát định danh giúp giảm nguy cơ lộ dữ liệu, khô
 ## Đổi tên LessonBrook — 24/10/2026
 
 Đã chạy lại lint, typecheck, 60 unit tests, Webpack build, 53 backend/Rules tests và 12 E2E: **125 kiểm thử qua** trên macOS với cùng phiên bản runtime/dependency đã khóa. Đã kiểm tra tiêu đề, tên hiển thị và bố cục 360px. Gitleaks 8.30.1 không phát hiện secret trong diff đổi tên hoặc lịch sử Git public; rà lại định danh deployment và đường dẫn cá nhân không có kết quả. Đây là bằng chứng cho bản source public, tách biệt với website đang vận hành.
+
+## Theme tối — 25/10/2026
+
+Command Line và Visual Code đã qua lint/typecheck/build cùng **125 kiểm thử local**. Kiểm tra bảy lựa chọn được lưu đúng tài khoản, tải lại, bố cục 360px, độ tương phản tối thiểu 4,5:1 cho chữ chính/phụ, giá trị biểu mẫu và nút chính trong hai theme tối. Bản xem trước bảng kê vẫn dùng nền sáng riêng. Đã xem dashboard và form học viên trên điện thoại/desktop bằng dữ liệu giả Emulator. Gitleaks không phát hiện secret trong thay đổi.

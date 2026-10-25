@@ -4,7 +4,7 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-primary: var(--primary);
-  --color-primary-foreground: #fff;
+  --color-primary-foreground: var(--primary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
@@ -12,10 +12,16 @@
   --color-ring: var(--ring);
   --color-accent-soft: var(--accent-soft);
   --color-surface: var(--surface);
-  --color-destructive: #b34232;
-  --font-sans: Arial, Helvetica, sans-serif;
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--content-font);
 }
-:root {
+:root,
+[data-theme="statement"] {
+  color-scheme: light;
   --background: #f7f8f3;
   --foreground: #253a30;
   --card: #fff;
@@ -29,6 +35,24 @@
   --surface: #fcfcf9;
   --label: #45594b;
   --heading-font: Georgia, "Times New Roman", serif;
+  --primary-foreground: #fff;
+  --destructive: #b34232;
+  --destructive-foreground: #fff;
+  --warning-soft: #fbf1d9;
+  --warning-foreground: #806020;
+  --danger-soft: #f9eae6;
+  --completed-background: #e7f2e7;
+  --completed-foreground: #2b6844;
+  --planned-background: #f8efd9;
+  --planned-foreground: #85641d;
+  --cancelled-background: #f2e9e5;
+  --cancelled-foreground: #865345;
+  --selection-background: #d4e8d3;
+  --content-font: Arial, Helvetica, sans-serif;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23596563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 [data-theme="modern"] {
   --background: #edf3fb;
@@ -90,6 +114,88 @@
   --label: #365b64;
   --heading-font: "Trebuchet MS", Arial, sans-serif;
 }
+[data-theme] {
+  font-family: var(--content-font);
+}
+/* Keep the wordmark consistent and compact even in monospace workspaces. */
+[data-slot="brand"] {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+[data-theme="command-line"] {
+  color-scheme: dark;
+  --background: #080e0a;
+  --foreground: #d7eadc;
+  --card: #101a13;
+  --primary: #74e6a1;
+  --primary-foreground: #092116;
+  --muted: #19271d;
+  --muted-foreground: #9bb6a4;
+  --border: #304b39;
+  --input: #557d63;
+  --ring: #74e6a1;
+  --accent-soft: #183522;
+  --surface: #0b140e;
+  --label: #b8d9c1;
+  --destructive: #ffaaa0;
+  --destructive-foreground: #301512;
+  --warning-soft: #352d18;
+  --warning-foreground: #f0d58a;
+  --danger-soft: #3b2223;
+  --completed-background: #183522;
+  --completed-foreground: #9ce8b4;
+  --planned-background: #352d18;
+  --planned-foreground: #f0d58a;
+  --cancelled-background: #3b2223;
+  --cancelled-foreground: #ffb8ad;
+  --selection-background: #244637;
+  --heading-font:
+    ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono",
+    monospace;
+  --content-font:
+    ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono",
+    monospace;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  --radius-2xl: 6px;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23adbeb4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+[data-theme="visual-code"] {
+  color-scheme: dark;
+  --background: #1e1e1e;
+  --foreground: #d4d4d4;
+  --card: #252526;
+  --primary: #75beff;
+  --primary-foreground: #102335;
+  --muted: #303033;
+  --muted-foreground: #b1b3bc;
+  --border: #454549;
+  --input: #737378;
+  --ring: #75beff;
+  --accent-soft: #173b55;
+  --surface: #181818;
+  --label: #c6c9d2;
+  --destructive: #f5a29a;
+  --destructive-foreground: #301512;
+  --warning-soft: #39301d;
+  --warning-foreground: #f0d58a;
+  --danger-soft: #3e2527;
+  --completed-background: #20372c;
+  --completed-foreground: #9cddb8;
+  --planned-background: #39301d;
+  --planned-foreground: #f0d58a;
+  --cancelled-background: #3e2527;
+  --cancelled-foreground: #f5b5b0;
+  --selection-background: #264f78;
+  --heading-font: "Segoe UI", Arial, Helvetica, sans-serif;
+  --content-font: "Segoe UI", Arial, Helvetica, sans-serif;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23adbeb4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 * {
   box-sizing: border-box;
 }
@@ -97,7 +203,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--content-font);
 }
 button,
 a,
@@ -116,7 +222,8 @@ textarea {
   font: inherit;
 }
 ::selection {
-  background: #d4e8d3;
+  background: var(--selection-background);
+  color: var(--foreground);
 }
 a:focus-visible,
 summary:focus-visible {
@@ -154,7 +261,7 @@ select.select-input {
   -webkit-appearance: none;
   height: 42px;
   padding-right: 40px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23596563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: var(--select-arrow);
   background-position: right 14px center;
   background-repeat: no-repeat;
   background-size: 16px;
@@ -179,16 +286,16 @@ select.select-input {
   font-weight: 600;
 }
 .status-completed {
-  background: #e7f2e7;
-  color: #2b6844;
+  background: var(--completed-background);
+  color: var(--completed-foreground);
 }
 .status-planned {
-  background: #f8efd9;
-  color: #85641d;
+  background: var(--planned-background);
+  color: var(--planned-foreground);
 }
 .status-cancelled {
-  background: #f2e9e5;
-  color: #865345;
+  background: var(--cancelled-background);
+  color: var(--cancelled-foreground);
 }
 dialog {
   background: var(--card);

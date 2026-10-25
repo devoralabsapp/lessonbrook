@@ -151,7 +151,7 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   });
 });
 
-test("dropdown gọn trên desktop/360px, năm theme đổi màu và tồn tại sau tải lại", async ({
+test("dropdown gọn trên desktop/360px, bảy theme đổi màu và tồn tại sau tải lại", async ({
   page,
   context,
 }) => {
@@ -185,28 +185,88 @@ test("dropdown gọn trên desktop/360px, năm theme đổi màu và tồn tại
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/app/settings");
   const backgrounds = new Set<string>();
-  for (const name of ["Modern", "Vintage", "Art", "Natura", "Ocean"]) {
+  for (const [name, id] of [
+    ["Modern", "modern"],
+    ["Vintage", "vintage"],
+    ["Art", "art"],
+    ["Natura", "natura"],
+    ["Ocean", "ocean"],
+    ["Command Line", "command-line"],
+    ["Visual Code", "visual-code"],
+  ]) {
     await page.getByRole("radio", { name, exact: false }).check();
     await page
       .getByRole("button", { name: "Lưu giao diện", exact: true })
       .click();
-    const shell = page.locator(`[data-theme="${name.toLowerCase()}"]`);
+    const shell = page.locator(`[data-theme="${id}"]`);
     await expect(shell).toBeVisible();
     backgrounds.add(
       await shell.evaluate((el) => getComputedStyle(el).backgroundColor),
     );
     await page.reload();
-    await expect(
-      page.locator(`[data-theme="${name.toLowerCase()}"]`),
-    ).toBeVisible();
+    await expect(page.locator(`[data-theme="${id}"]`)).toBeVisible();
     await expect(page.getByRole("radio", { name, exact: false })).toBeChecked();
+    // Read persisted colours after reload, outside the save button transition.
+    if (id === "command-line" || id === "visual-code") {
+      await expect(shell).toHaveCSS("color-scheme", "dark");
+      await expect(page.locator('input[name="displayName"]')).toBeVisible();
+      const contrast = await shell.evaluate((element) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext("2d")!;
+        function rgb(color: string) {
+          context.clearRect(0, 0, 1, 1);
+          context.fillStyle = color;
+          context.fillRect(0, 0, 1, 1);
+          return Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3);
+        }
+        function luminance(color: number[]) {
+          return color
+            .map((v) => {
+              v /= 255;
+              return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+            })
+            .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+        }
+        function ratio(a: string, b: string) {
+          const x = luminance(rgb(a)),
+            y = luminance(rgb(b));
+          return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+        }
+        const style = getComputedStyle(element);
+        const input = getComputedStyle(
+          element.querySelector('input[name="displayName"]')!,
+        );
+        const card = getComputedStyle(
+          element.querySelector('[data-slot="card"]')!,
+        );
+        const button = getComputedStyle(
+          Array.from(element.querySelectorAll("button")).find((b) =>
+            b.textContent?.includes("Lưu giao diện"),
+          )!,
+        );
+        return {
+          body: ratio(style.color, style.backgroundColor),
+          muted: ratio(
+            style.getPropertyValue("--muted-foreground"),
+            card.backgroundColor,
+          ),
+          input: ratio(input.color, input.backgroundColor),
+          action: ratio(button.color, button.backgroundColor),
+          font: style.fontFamily,
+        };
+      });
+      for (const [sample, value] of Object.entries({body:contrast.body, muted:contrast.muted, input:contrast.input, action:contrast.action}))
+        expect(value, `${id}: ${sample} contrast`).toBeGreaterThanOrEqual(4.5);
+      if (id === "command-line") expect(contrast.font).toContain("monospace");
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
   }
-  expect(backgrounds.size).toBe(5);
+  expect(backgrounds.size).toBe(7);
   await page.screenshot({
     path: "/tmp/chotcong-024-theme-mobile.png",
     fullPage: true,

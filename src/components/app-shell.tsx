@@ -62,7 +62,7 @@ export function AppShell({
       >
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:z-50 focus:bg-white focus:p-3"
+          className="sr-only focus:not-sr-only focus:fixed focus:z-50 focus:bg-card focus:p-3"
         >
           Đến nội dung
         </a>
@@ -161,7 +161,7 @@ export function AppShell({
             </Link>
           </header>
           {process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" && (
-            <div className="bg-[#f6eed5] px-5 py-1.5 text-center text-[11px] text-[#806722]">
+            <div className="bg-warning-soft px-5 py-1.5 text-center text-[11px] text-warning-foreground">
               Firebase Emulator · Chỉ dùng dữ liệu giả
             </div>
           )}

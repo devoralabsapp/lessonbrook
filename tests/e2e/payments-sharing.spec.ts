@@ -57,6 +57,14 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
     includeBankDetails: false,
   });
   await create(`/api/statements/${statement.id}/issue`, { version: 1 });
+  expect(
+    (
+      await context.request.patch("/api/appearance", {
+        headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+        data: { theme: "command-line" },
+      })
+    ).ok(),
+  ).toBe(true);
   let failStatus = true;
   await page.route(`**/api/statements/${statement.id}/share`, async (route) => {
     if (route.request().method() === "GET" && failStatus) {
@@ -108,6 +116,14 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       .getByRole("button", { name: "Xem trước để tạo link", exact: true })
       .click();
     await expect(page.getByTestId("public-remaining")).toContainText("600.000");
+    await expect(page.getByTestId("public-statement")).toHaveCSS(
+      "color-scheme",
+      "light",
+    );
+    await expect(page.getByTestId("public-statement")).toHaveCSS(
+      "color",
+      "rgb(37, 58, 48)",
+    );
     await expect(page.getByTestId("public-statement")).not.toContainText(
       "PRIVATE",
     );

@@ -14,7 +14,7 @@ Sổ buổi dạy và học phí tiếng Việt cho giáo viên tự do: cá nh�
 - Học viên, đơn giá, lưu trữ/khôi phục; lớp tối đa 50 người và buổi nhóm với giá riêng được chụp tại thời điểm ghi.
 - Bảng kê từng học viên, phát hành/hủy, thu từng phần và vô hiệu hóa khoản thu nhập sai.
 - Link bảng kê có thời hạn/thu hồi; tổng quan, tìm kiếm, bộ lọc, CSV/ZIP/JSON và xóa tài khoản.
-- Năm giao diện: Modern, Vintage, Art, Natura, Ocean; bố cục tối ưu điện thoại.
+- Bảy giao diện: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code; bố cục tối ưu điện thoại.
 
 Mọi đọc/ghi nghiệp vụ đi qua Node server API. Firebase client chỉ dùng cho Auth; Firestore Rules chặn client trực tiếp. Không có chế độ lưu học phí offline.
 

@@ -424,7 +424,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
               {duplicate && (
                 <p
                   role="status"
-                  className="rounded-xl bg-[#fbf1d9] p-3 text-xs leading-5 text-[#866621]"
+                  className="rounded-xl bg-warning-soft p-3 text-xs leading-5 text-warning-foreground"
                 >
                   Đã có buổi cùng học viên, ngày và giờ. Bạn vẫn có thể lưu nếu
                   đây là buổi khác.
@@ -492,7 +492,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
         {error && (
           <p
             role="alert"
-            className="rounded-xl bg-[#f9eae6] p-3 text-sm leading-5 text-destructive"
+            className="rounded-xl bg-danger-soft p-3 text-sm leading-5 text-destructive"
           >
             {error} Nội dung vẫn ở đây; bạn có thể thử lưu lại.
           </p>

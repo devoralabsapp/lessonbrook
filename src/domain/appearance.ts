@@ -5,6 +5,8 @@ export const themeSchema = z.enum([
   "art",
   "natura",
   "ocean",
+  "command-line",
+  "visual-code",
 ]);
 export type Theme = z.infer<typeof themeSchema>;
 export const DEFAULT_THEME: Theme = "natura";
@@ -43,6 +45,18 @@ export const themes: {
     name: "Ocean",
     description: "Xanh biển trong, nhẹ nhàng",
     colors: ["#edf7f8", "#ffffff", "#176676"],
+  },
+  {
+    id: "command-line",
+    name: "Command Line",
+    description: "Terminal tối, chữ xanh và font monospace",
+    colors: ["#080e0a", "#101a13", "#74e6a1"],
+  },
+  {
+    id: "visual-code",
+    name: "Visual Code",
+    description: "Trình soạn thảo tối với điểm nhấn xanh dương",
+    colors: ["#1e1e1e", "#252526", "#75beff"],
   },
 ];
 export const appearanceInputSchema = z.object({ theme: themeSchema }).strict();

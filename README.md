@@ -16,7 +16,7 @@ Repository documentation defaults to English. The application interface is curre
 - Students, default rates, archiving/restoring, classes of up to 50 students, and group lessons with saved price snapshots.
 - Per-student statements, issue/void workflows, partial payments, and voiding incorrect payment records.
 - Expiring and revocable statement links; dashboard, search, filters, CSV/ZIP/JSON export, and account deletion.
-- Five themes: Modern, Vintage, Art, Natura, and Ocean, with mobile-friendly layouts.
+- Seven themes: Modern, Vintage, Art, Natura, Ocean, Command Line, and Visual Code, with mobile-friendly layouts.
 
 All business reads and writes go through Node server APIs. The Firebase client is used only for Auth; Firestore Rules deny direct client access. Tuition data is not stored offline.
 

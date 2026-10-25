@@ -29,3 +29,7 @@ Gitleaks and identifier reviews reduce exposure risk but cannot guarantee the ab
 ## LessonBrook rename — 24 October 2026
 
 Revalidated the renamed application on macOS using the same pinned runtime/dependency versions: lint, typecheck, unit tests (60), Webpack build, backend/Rules tests (53) and browser E2E (12) all passed: **125 total**. The new title/wordmark and 360px layout were also checked. Gitleaks 8.30.1 found no secrets in the branding diff or public Git history, and the deployment-identifier/personal-path review found no matches. This evidence covers the public source edition, independently of any hosted deployment.
+
+## Dark themes — 25 October 2026
+
+The Command Line and Visual Code update passed lint, typecheck, Webpack build and all **125 local tests** (60 unit, 53 backend/Rules, 12 E2E). The theme checks now exercise seven saved preferences, account isolation, 360px layouts and at least 4.5:1 contrast for body, muted, form-value and primary-action text in both dark themes. Statement previews remain explicitly light. Desktop/mobile dashboards and student forms were inspected with fictional Emulator data. The branding and business/data identifiers remain compatible; no cloud writes are part of these checks. Gitleaks 8.30.1 found no secrets in the change.
