@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useState } from "react";
 import { formatVnd, vietnamToday } from "@/domain";
 import { type Statement } from "@/domain/statements";
@@ -19,13 +21,16 @@ export function PaymentPanel({
   statement: Statement;
   onChanged: () => void;
 }) {
+  const { t, locale } = useI18n();
   const [revision, setRevision] = useState(0);
-  const [data, setData] = useState<{ key: string; page: Page<Payment> } | null>(
-    null,
-  );
-  const [error, setError] = useState<{ key: string; message: string } | null>(
-    null,
-  );
+  const [data, setData] = useState<{
+    key: string;
+    page: Page<Payment>;
+  } | null>(null);
+  const [error, setError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
   const [moreBusy, setMoreBusy] = useState(false);
   const [amount, setAmount] = useState("");
   const [receivedDate, setReceivedDate] = useState(vietnamToday());
@@ -47,7 +52,7 @@ export function PaymentPanel({
     return () => {
       active = false;
     };
-  }, [endpoint, key]);
+  }, [endpoint, key, t]);
   const page = data?.key === key ? data.page : null;
   async function more() {
     if (!page?.nextCursor) return;
@@ -77,7 +82,9 @@ export function PaymentPanel({
       setError({
         key,
         message:
-          error instanceof Error ? error.message : "Chưa tải được khoản thu.",
+          error instanceof Error
+            ? error.message
+            : t("Chưa tải được khoản thu."),
       });
     } finally {
       setMoreBusy(false);
@@ -94,7 +101,7 @@ export function PaymentPanel({
     if (result) {
       setAmount("");
       setNote("");
-      setNotice("Đã ghi nhận khoản thu. Số còn thiếu đang được cập nhật.");
+      setNotice(t("Đã ghi nhận khoản thu. Số còn thiếu đang được cập nhật."));
       onChanged();
     }
   }
@@ -112,16 +119,19 @@ export function PaymentPanel({
       { reason },
     );
     if (result) {
-      setNotice("Đã vô hiệu hóa ghi nhận; đây không phải hoàn tiền thực tế.");
+      setNotice(
+        t("Đã vô hiệu hóa ghi nhận; đây không phải hoàn tiền thực tế."),
+      );
       onChanged();
     }
   }
   return (
     <Card className="space-y-5 p-5 sm:p-7">
-      <h2 className="serif text-2xl">Thu tiền và đối chiếu</h2>
+      <h2 className="serif text-2xl">{t("Thu tiền và đối chiếu")}</h2>
       <p className="text-xs leading-5 text-muted-foreground">
-        Giáo viên tự xác nhận tiền đã nhận ngoài đời rồi ghi vào sổ. Một khoản
-        nhận dùng trả nhiều bảng kê cần nhập thành từng khoản riêng.
+        {t(
+          "Giáo viên tự xác nhận tiền đã nhận ngoài đời rồi ghi vào sổ. Một khoản nhận dùng trả nhiều bảng kê cần nhập thành từng khoản riêng.",
+        )}
       </p>
       {notice && (
         <p role="status" className="text-sm text-primary">
@@ -137,10 +147,12 @@ export function PaymentPanel({
         statement.paidVnd < statement.totalVnd && (
           <form onSubmit={record}>
             <fieldset disabled={mutation.busy} className="space-y-4">
-              <h3 className="text-sm font-semibold">Ghi nhận thu tiền</h3>
+              <h3 className="text-sm font-semibold">
+                {t("Ghi nhận thu tiền")}
+              </h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="field-label">
-                  Số tiền nhận (VND)
+                  {t("Số tiền nhận (VND)")}
                   <Input
                     type="number"
                     inputMode="numeric"
@@ -153,7 +165,7 @@ export function PaymentPanel({
                   />
                 </label>
                 <label className="field-label">
-                  Ngày nhận tiền
+                  {t("Ngày nhận tiền")}
                   <Input
                     type="date"
                     min="1900-01-01"
@@ -165,18 +177,18 @@ export function PaymentPanel({
                 </label>
               </div>
               <label className="field-label">
-                Cách nhận
+                {t("Cách nhận")}
                 <select
                   className="select-input"
                   value={method}
                   onChange={(event) => setMethod(event.target.value)}
                 >
-                  <option value="transfer">Chuyển khoản</option>
-                  <option value="cash">Tiền mặt</option>
+                  <option value="transfer">{t("Chuyển khoản")}</option>
+                  <option value="cash">{t("Tiền mặt")}</option>
                 </select>
               </label>
               <label className="field-label">
-                Ghi chú khoản thu (riêng)
+                {t("Ghi chú khoản thu (riêng)")}
                 <textarea
                   className="select-input min-h-20"
                   maxLength={500}
@@ -185,27 +197,27 @@ export function PaymentPanel({
                 />
               </label>
               <Button type="submit">
-                {mutation.busy ? "Đang lưu…" : "Lưu khoản thu"}
+                {mutation.busy ? t("Đang lưu…") : t("Lưu khoản thu")}
               </Button>
             </fieldset>
           </form>
         )}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold">Lịch sử ghi nhận thu</h3>
+        <h3 className="text-sm font-semibold">{t("Lịch sử ghi nhận thu")}</h3>
         {error?.key === key ? (
           <div role="alert" className="space-y-3 text-sm text-destructive">
-            <p>{error.message}</p>
+            <p>{t(error.message)}</p>
             <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-              Tải lại khoản thu
+              {t("Tải lại khoản thu")}
             </Button>
           </div>
         ) : !page ? (
           <p role="status" className="text-sm">
-            Đang tải khoản thu…
+            {t("Đang tải khoản thu…")}
           </p>
         ) : page.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Chưa có khoản thu được ghi nhận.
+            {t("Chưa có khoản thu được ghi nhận.")}
           </p>
         ) : (
           page.items.map((payment) => (
@@ -215,36 +227,41 @@ export function PaymentPanel({
               className="space-y-3 rounded-xl border border-border p-4"
             >
               <div className="flex flex-wrap justify-between gap-2 text-sm">
-                <strong>{formatVnd(payment.amountVnd)}</strong>
+                <strong>{formatVnd(payment.amountVnd, locale)}</strong>
                 <span>
-                  {formatDate(payment.receivedDate)} ·{" "}
-                  {payment.method === "cash" ? "Tiền mặt" : "Chuyển khoản"}
+                  {formatDate(payment.receivedDate, locale)} ·{" "}
+                  {payment.method === "cash"
+                    ? t("Tiền mặt")
+                    : t("Chuyển khoản")}
                 </span>
               </div>
               {payment.privateNote && (
                 <p className="whitespace-pre-wrap break-words text-xs">
-                  Ghi chú riêng: {payment.privateNote}
+                  {t("Ghi chú riêng: ")}
+                  {payment.privateNote}
                 </p>
               )}
               {payment.voidedAt ? (
                 <p className="break-words text-xs text-muted-foreground">
-                  Đã vô hiệu hóa · {payment.voidReason}
+                  {t("Đã vô hiệu hóa · ")}
+                  {payment.voidReason}
                 </p>
               ) : (
                 <details>
                   <summary className="cursor-pointer text-xs text-primary">
-                    Vô hiệu hóa khoản thu
+                    {t("Vô hiệu hóa khoản thu")}
                   </summary>
                   <form
                     onSubmit={(event) => voidRecord(event, payment.id)}
                     className="mt-3 space-y-3"
                   >
                     <p className="text-xs leading-5">
-                      Chỉ sửa sổ ghi nhận, không phải hoàn tiền. Sau đó bạn có
-                      thể nhập khoản đúng.
+                      {t(
+                        "Chỉ sửa sổ ghi nhận, không phải hoàn tiền. Sau đó bạn có thể nhập khoản đúng.",
+                      )}
                     </p>
                     <label className="field-label">
-                      Lý do vô hiệu hóa
+                      {t("Lý do vô hiệu hóa")}
                       <textarea
                         name="reason"
                         required
@@ -258,7 +275,7 @@ export function PaymentPanel({
                       variant="outline"
                       disabled={mutation.busy}
                     >
-                      Xác nhận vô hiệu hóa
+                      {t("Xác nhận vô hiệu hóa")}
                     </Button>
                   </form>
                 </details>
@@ -268,7 +285,7 @@ export function PaymentPanel({
         )}
         {page?.nextCursor && (
           <Button variant="outline" disabled={moreBusy} onClick={more}>
-            {moreBusy ? "Đang tải…" : "Tải thêm khoản thu"}
+            {moreBusy ? t("Đang tải…") : t("Tải thêm khoản thu")}
           </Button>
         )}
       </div>

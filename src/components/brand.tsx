@@ -1,6 +1,10 @@
+"use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { NotebookPen } from "lucide-react";
 import Link from "next/link";
 export function Brand({ compact = false }: { compact?: boolean }) {
+  const { t } = useI18n();
   return (
     <Link
       href="/app"
@@ -10,7 +14,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
           ? "inline-flex min-h-11 items-center gap-2"
           : "inline-flex items-center gap-3"
       }
-      aria-label="LessonBrook — trang tổng quan"
+      aria-label={t("LessonBrook — trang tổng quan")}
     >
       <span
         className={
@@ -33,7 +37,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
         </span>
         {!compact && (
           <span className="block text-[10px] tracking-wide text-muted-foreground">
-            SỔ BUỔI DẠY & HỌC PHÍ
+            {t("SỔ BUỔI DẠY & HỌC PHÍ")}
           </span>
         )}
       </span>

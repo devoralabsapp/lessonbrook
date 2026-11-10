@@ -1,16 +1,18 @@
 import type { MetadataRoute } from "next";
-export default function manifest(): MetadataRoute.Manifest {
+import { translator, type Locale } from "./core";
+export function createManifest(locale: Locale): MetadataRoute.Manifest {
+  const t = translator(locale);
   return {
-    name: "LessonBrook — Sổ buổi dạy & học phí",
+    name: t("LessonBrook — Sổ buổi dạy & học phí"),
     short_name: "LessonBrook",
-    description: "Sổ buổi dạy dành cho giáo viên tự do",
+    description: t("Sổ buổi dạy dành cho giáo viên tự do"),
     id: "/",
     scope: "/",
     start_url: "/app",
     display: "standalone",
     background_color: "#f7f8f3",
     theme_color: "#296447",
-    lang: "vi",
+    lang: locale,
     dir: "ltr",
     icons: [
       {

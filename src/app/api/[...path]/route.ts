@@ -1,3 +1,4 @@
+import { getI18n } from "@/lib/i18n/server";
 import { z } from "zod";
 import { requestIdSchema } from "@/domain";
 import { AppError } from "@/lib/server/errors";
@@ -82,7 +83,7 @@ async function handle(request: Request, context: Context) {
         return json(await getOnboarding(uid));
       }
       if (resource === "exports" && path.length === 2)
-        return json(await exportPage(uid, id, query));
+        return json(await exportPage(uid, id, query, (await getI18n()).locale));
       if (path.length === 1 && resource === "profile")
         return json(await getProfile(uid));
       if (path.length === 1 && resource === "summary")

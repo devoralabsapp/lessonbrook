@@ -111,8 +111,8 @@ export function vietnamToday(now = new Date()) {
     day: "2-digit",
   }).format(now);
 }
-export function formatVnd(value: number) {
-  return new Intl.NumberFormat("vi-VN", {
+export function formatVnd(value: number, locale: "en" | "vi" = "vi") {
+  return new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-GB", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,

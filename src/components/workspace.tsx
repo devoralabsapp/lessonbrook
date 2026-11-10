@@ -1,4 +1,7 @@
 "use client";
+import { formatDate } from "@/features/statements/shared";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -29,7 +32,10 @@ import { StudentPicker } from "@/features/statements/shared";
 import { useDebounced } from "@/lib/use-debounced";
 import { GettingStartedCard } from "@/features/onboarding/guide";
 import type { OnboardingState } from "@/domain/onboarding";
-type Page<T> = { items: T[]; nextCursor: string | null };
+type Page<T> = {
+  items: T[];
+  nextCursor: string | null;
+};
 type Summary = {
   activeStudents: number;
   outstandingVnd: number;
@@ -48,6 +54,7 @@ export function Workspace({
   studentId?: string;
   initialBilling?: string;
 }) {
+  const { t, locale } = useI18n();
   const [revision, setRevision] = useState(0);
   const [archived, setArchived] = useState(false);
   const [search, setSearch] = useState("");
@@ -73,9 +80,10 @@ export function Workspace({
     onboarding: OnboardingState | null;
     student: Student | null;
   } | null>(null);
-  const [error, setError] = useState<{ key: string; message: string } | null>(
-    null,
-  );
+  const [error, setError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
   const [modal, setModal] = useState<{
     kind: "student" | "session";
     record?: Student | TeachingSession;
@@ -131,7 +139,7 @@ export function Workspace({
     return () => {
       active = false;
     };
-  }, [endpoint, key, mode, studentId]);
+  }, [endpoint, key, mode, studentId, t]);
   const loading =
     (mode === "students" && search !== queryText) ||
     (data?.key !== key && error?.key !== key);
@@ -170,7 +178,7 @@ export function Workspace({
           : d,
       );
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Chưa thể tải thêm.");
+      setNotice(e instanceof Error ? e.message : t("Chưa thể tải thêm."));
     } finally {
       setMoreBusy(false);
     }
@@ -185,12 +193,12 @@ export function Workspace({
       });
       setNotice(
         student.archivedAt
-          ? "Đã khôi phục học viên."
-          : "Đã lưu trữ học viên. Các buổi cũ được giữ nguyên.",
+          ? t("Đã khôi phục học viên.")
+          : t("Đã lưu trữ học viên. Các buổi cũ được giữ nguyên."),
       );
       setRevision((v) => v + 1);
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Chưa thể lưu thay đổi.");
+      setNotice(e instanceof Error ? e.message : t("Chưa thể lưu thay đổi."));
     } finally {
       setActionBusy("");
     }
@@ -199,28 +207,35 @@ export function Workspace({
   const student = view?.student;
   const title =
     mode === "overview"
-      ? "Một ngày dạy học thật tốt."
+      ? t("Một ngày dạy học thật tốt.")
       : mode === "students"
-        ? "Học viên của bạn"
-        : (student?.displayName ?? "Sổ buổi dạy");
+        ? t("Học viên của bạn")
+        : (student?.displayName ?? t("Sổ buổi dạy"));
   return (
     <div className="fade-in">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">
             {mode === "overview"
-              ? `HÔM NAY · ${vietnamToday().split("-").reverse().join(" / ")}`
-              : "SỔ BUỔI DẠY & HỌC PHÍ"}
+              ? t("HÔM NAY · {0}", {
+                  "0": formatDate(vietnamToday(), locale),
+                })
+              : t("SỔ BUỔI DẠY & HỌC PHÍ")}
           </p>
           <h1 className="serif text-3xl leading-tight sm:text-4xl">{title}</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             {mode === "overview"
-              ? "Mỗi buổi được ghi lại, cuối tháng bớt một điều phải nhớ."
+              ? t("Mỗi buổi được ghi lại, cuối tháng bớt một điều phải nhớ.")
               : mode === "students"
-                ? "Giữ thông tin và đơn giá. Lịch sử buổi dạy luôn còn trong sổ."
+                ? t(
+                    "Giữ thông tin và đơn giá. Lịch sử buổi dạy luôn còn trong sổ.",
+                  )
                 : student
-                  ? `Đơn giá hiện tại: ${formatVnd(student.defaultRateVnd)} / buổi${student.archivedAt ? " · Đã lưu trữ" : ""}`
-                  : "Ghi từng buổi, theo dõi đúng học phí."}
+                  ? t("Đơn giá hiện tại: {0} / buổi{1}", {
+                      "0": formatVnd(student.defaultRateVnd, locale),
+                      "1": student.archivedAt ? t(" · Đã lưu trữ") : "",
+                    })
+                  : t("Ghi từng buổi, theo dõi đúng học phí.")}
           </p>
         </div>
         <Button
@@ -232,20 +247,21 @@ export function Workspace({
           }
         >
           <Plus />
-          {mode === "students" ? "Thêm học viên" : "Ghi buổi dạy"}
+          {mode === "students" ? t("Thêm học viên") : t("Ghi buổi dạy")}
         </Button>
       </div>
       {mode === "sessions" && !studentId && (
         <div className="mb-6 flex flex-wrap gap-3">
           <Button asChild variant="outline">
-            <Link href="/app/lessons/new">Ghi buổi nhóm/lớp</Link>
+            <Link href="/app/lessons/new">{t("Ghi buổi nhóm/lớp")}</Link>
           </Button>
           <Button asChild variant="ghost">
-            <Link href="/app/lessons">Xem buổi nhóm & lớp</Link>
+            <Link href="/app/lessons">{t("Xem buổi nhóm & lớp")}</Link>
           </Button>
           <p className="w-full text-xs leading-5 text-muted-foreground">
-            Danh sách bên dưới theo từng học viên. Một buổi nhóm có nhiều dòng
-            học phí; mỗi người chỉ tính một lần trong bảng kê riêng.
+            {t(
+              "Danh sách bên dưới theo từng học viên. Một buổi nhóm có nhiều dòng học phí; mỗi người chỉ tính một lần trong bảng kê riêng.",
+            )}
           </p>
         </div>
       )}
@@ -258,8 +274,11 @@ export function Workspace({
             <Check size={16} />
             {notice}
           </span>
-          <button aria-label="Đóng thông báo" onClick={() => setNotice("")}>
-            ×
+          <button
+            aria-label={t("Đóng thông báo")}
+            onClick={() => setNotice("")}
+          >
+            {t("×")}
           </button>
         </div>
       )}
@@ -267,51 +286,53 @@ export function Workspace({
         <>
           <GettingStartedCard state={view?.onboarding ?? null} />
           <p className="mb-4 text-xs text-muted-foreground">
-            <span>Học viên đang học</span>:{" "}
-            {view?.summary?.activeStudents ?? "…"}. Buổi chưa lập bảng kê chưa
-            được cộng vào khoản phải thu.
+            <span>{t("Học viên đang học")}</span>:{" "}
+            {view?.summary?.activeStudents ?? "…"}
+            {t(". Buổi chưa lập bảng kê chưa được cộng vào khoản phải thu.")}
           </p>
           <div className="mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
-                label: "Còn phải thu",
+                label: t("Còn phải thu"),
                 value: view?.summary
-                  ? formatVnd(view.summary.outstandingVnd)
+                  ? formatVnd(view.summary.outstandingVnd, locale)
                   : undefined,
-                unit: "Mọi bảng kê đã phát hành còn thiếu",
+                unit: t("Mọi bảng kê đã phát hành còn thiếu"),
                 icon: NotebookPen,
                 href: "/app/statements?status=outstanding",
               },
               {
-                label: "Đã quá hạn",
+                label: t("Đã quá hạn"),
                 value: view?.summary
-                  ? formatVnd(view.summary.overdueVnd)
+                  ? formatVnd(view.summary.overdueVnd, locale)
                   : undefined,
-                unit: "Phần còn thiếu sau ngày đến hạn",
+                unit: t("Phần còn thiếu sau ngày đến hạn"),
                 icon: CalendarDays,
                 href: "/app/statements?status=overdue",
               },
               {
-                label: "Buổi chưa lập bảng kê",
+                label: t("Buổi chưa lập bảng kê"),
                 value: view?.summary?.unbilledCount,
                 unit: view?.summary
-                  ? `${formatVnd(view.summary.unbilledVnd)} · Theo lượt học viên`
-                  : "Buổi hoàn thành có tính phí",
+                  ? t("{0} · Theo lượt học viên", {
+                      "0": formatVnd(view.summary.unbilledVnd, locale),
+                    })
+                  : t("Buổi hoàn thành có tính phí"),
                 icon: CalendarDays,
                 href: "/app/sessions?billing=unbilled",
               },
               {
-                label: "Đã thu trong tháng",
+                label: t("Đã thu trong tháng"),
                 value: view?.summary
-                  ? formatVnd(view.summary.receivedMonthVnd)
+                  ? formatVnd(view.summary.receivedMonthVnd, locale)
                   : undefined,
-                unit: "Theo ngày nhận tiền tại Việt Nam",
+                unit: t("Theo ngày nhận tiền tại Việt Nam"),
                 icon: NotebookPen,
               },
             ].map(({ label, value, unit, icon: Icon, href }, i) => (
               <Card
                 data-tone={["yellow", "pink", "blue", "mint"][i]}
-                key={label}
+                key={t(label)}
                 className={`p-5 ${i === 2 ? "bg-accent-soft border-border" : ""}`}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -321,7 +342,7 @@ export function Workspace({
                         href={href}
                         className="underline decoration-[#c3cfb4] underline-offset-4"
                       >
-                        {label}
+                        {t(label)}
                       </Link>
                     ) : (
                       label
@@ -342,10 +363,9 @@ export function Workspace({
               className="mt-0.5 shrink-0 text-muted-foreground"
             />
             <p className="text-xs leading-5 text-muted-foreground">
-              Học phí tham khảo gồm buổi hoàn thành có tính phí chưa lập bảng
-              kê. Sổ bắt đầu từ những buổi bạn nhập, chưa bao gồm nợ cũ. Bảng kê
-              chốt các buổi cần thu. Khi nhận tiền, mở bảng kê để ghi nhận khoản
-              thu.
+              {t(
+                "Học phí tham khảo gồm buổi hoàn thành có tính phí chưa lập bảng kê. Sổ bắt đầu từ những buổi bạn nhập, chưa bao gồm nợ cũ. Bảng kê chốt các buổi cần thu. Khi nhận tiền, mở bảng kê để ghi nhận khoản thu.",
+              )}
             </p>
           </div>
         </>
@@ -357,7 +377,7 @@ export function Workspace({
             size="sm"
             onClick={() => setModal({ kind: "student", record: student })}
           >
-            Sửa học viên
+            {t("Sửa học viên")}
           </Button>
           <Button
             variant="ghost"
@@ -365,20 +385,21 @@ export function Workspace({
             disabled={!!actionBusy}
             onClick={() => archive(student)}
           >
-            {student.archivedAt ? "Khôi phục" : "Lưu trữ học viên"}
+            {student.archivedAt ? t("Khôi phục") : t("Lưu trữ học viên")}
           </Button>
           <Link href="/app/students" className="ml-auto text-xs text-primary">
-            Tất cả học viên <ArrowRight size={13} className="inline" />
+            {t("Tất cả học viên ")}
+            <ArrowRight size={13} className="inline" />
           </Link>
           <Link
             href={`/app/statements?studentId=${student.id}`}
             className="text-xs text-primary"
           >
-            Bảng kê của học viên
+            {t("Bảng kê của học viên")}
           </Link>
           <Button asChild variant="outline" size="sm">
             <Link href={`/app/statements/new?studentId=${student.id}`}>
-              Lập bảng kê
+              {t("Lập bảng kê")}
             </Link>
           </Button>
         </div>
@@ -388,46 +409,47 @@ export function Workspace({
           <div>
             <h2 className="text-sm font-semibold">
               {mode === "overview"
-                ? "Những buổi gần đây"
+                ? t("Những buổi gần đây")
                 : mode === "students"
-                  ? "Danh sách học viên"
-                  : "Danh sách buổi dạy"}
+                  ? t("Danh sách học viên")
+                  : t("Danh sách buổi dạy")}
             </h2>
             <p className="mt-1 text-[11px] text-muted-foreground">
               {mode === "students"
-                ? "Chạm vào tên để mở sổ của học viên"
-                : "Đơn giá riêng được giữ cho từng buổi"}
+                ? t("Chạm vào tên để mở sổ của học viên")
+                : t("Đơn giá riêng được giữ cho từng buổi")}
             </p>
           </div>
           {mode === "students" ? (
             <select
-              aria-label="Trạng thái học viên"
+              aria-label={t("Trạng thái học viên")}
               className="select-input !w-auto !py-2 !text-xs"
               value={String(archived)}
               onChange={(e) => setArchived(e.target.value === "true")}
             >
-              <option value="false">Đang học</option>
-              <option value="true">Đã lưu trữ</option>
+              <option value="false">{t("Đang học")}</option>
+              <option value="true">{t("Đã lưu trữ")}</option>
             </select>
           ) : mode === "overview" ? (
             <Link
               href="/app/sessions"
               className="flex items-center gap-2 text-xs text-primary"
             >
-              Xem tất cả <ArrowRight size={14} />
+              {t("Xem tất cả ")}
+              <ArrowRight size={14} />
             </Link>
           ) : null}
         </div>
         {mode === "students" && (
           <div className="border-b border-border p-4">
             <label className="field-label min-w-0">
-              Tìm học viên
+              {t("Tìm học viên")}
               <Input
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 maxLength={100}
-                placeholder="Nhập tên, có dấu hoặc không dấu"
+                placeholder={t("Nhập tên, có dấu hoặc không dấu")}
               />
             </label>
           </div>
@@ -441,7 +463,7 @@ export function Workspace({
             className="grid grid-cols-2 items-end gap-3 border-b border-border bg-surface p-4"
           >
             <label className="field-label min-w-0">
-              Từ ngày
+              {t("Từ ngày")}
               <Input
                 name="from"
                 type="date"
@@ -454,7 +476,7 @@ export function Workspace({
               />
             </label>
             <label className="field-label min-w-0">
-              Đến ngày
+              {t("Đến ngày")}
               <Input
                 name="to"
                 type="date"
@@ -478,7 +500,7 @@ export function Workspace({
               </div>
             )}
             <label className="field-label min-w-0">
-              Trạng thái buổi
+              {t("Trạng thái buổi")}
               <select
                 className="select-input"
                 value={draftRange.status}
@@ -486,14 +508,14 @@ export function Workspace({
                   setDraftRange({ ...draftRange, status: event.target.value })
                 }
               >
-                <option value="all">Tất cả</option>
-                <option value="planned">Dự kiến</option>
-                <option value="completed">Đã dạy</option>
-                <option value="cancelled">Đã hủy</option>
+                <option value="all">{t("Tất cả")}</option>
+                <option value="planned">{t("Dự kiến")}</option>
+                <option value="completed">{t("Đã dạy")}</option>
+                <option value="cancelled">{t("Đã hủy")}</option>
               </select>
             </label>
             <label className="field-label min-w-0">
-              Học phí
+              {t("Học phí")}
               <select
                 className="select-input"
                 value={draftRange.billing}
@@ -501,15 +523,15 @@ export function Workspace({
                   setDraftRange({ ...draftRange, billing: event.target.value })
                 }
               >
-                <option value="all">Tất cả</option>
-                <option value="unbilled">Chưa lập bảng kê</option>
-                <option value="billed">Đã lập bảng kê</option>
-                <option value="free">Buổi miễn phí</option>
+                <option value="all">{t("Tất cả")}</option>
+                <option value="unbilled">{t("Chưa lập bảng kê")}</option>
+                <option value="billed">{t("Đã lập bảng kê")}</option>
+                <option value="free">{t("Buổi miễn phí")}</option>
               </select>
             </label>
             <div className="col-span-2 flex flex-wrap gap-2">
               <Button variant="outline" type="submit">
-                Lọc buổi dạy
+                {t("Lọc buổi dạy")}
               </Button>
               <Button
                 variant="ghost"
@@ -519,7 +541,7 @@ export function Workspace({
                   applyRange({ ...draftRange, from: today, to: today });
                 }}
               >
-                Hôm nay
+                {t("Hôm nay")}
               </Button>
               <Button
                 variant="ghost"
@@ -537,14 +559,14 @@ export function Workspace({
                   });
                 }}
               >
-                Tháng này
+                {t("Tháng này")}
               </Button>
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => applyRange({ ...initialRange, billing: "all" })}
               >
-                Xóa bộ lọc
+                {t("Xóa bộ lọc")}
               </Button>
             </div>
           </form>
@@ -555,13 +577,13 @@ export function Workspace({
             className="flex justify-center gap-2 p-14 text-sm text-muted-foreground"
           >
             <LoaderCircle size={18} className="animate-spin" />
-            Đang mở sổ…
+            {t("Đang mở sổ…")}
           </div>
         ) : error?.key === key ? (
           <div role="alert" className="p-8 text-center">
-            <p className="mb-4 text-sm text-destructive">{error.message}</p>
+            <p className="mb-4 text-sm text-destructive">{t(error.message)}</p>
             <Button variant="outline" onClick={() => setRevision((v) => v + 1)}>
-              Thử lại
+              {t("Thử lại")}
             </Button>
           </div>
         ) : mode === "students" ? (
@@ -583,7 +605,8 @@ export function Workspace({
                       {s.displayName}
                     </span>
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      {formatVnd(s.defaultRateVnd)} / buổi
+                      {formatVnd(s.defaultRateVnd, locale)}
+                      {t(" / buổi")}
                     </span>
                   </Link>
                   <Button
@@ -591,7 +614,7 @@ export function Workspace({
                     size="sm"
                     onClick={() => setModal({ kind: "student", record: s })}
                   >
-                    Sửa
+                    {t("Sửa")}
                   </Button>
                   <Button
                     variant="outline"
@@ -600,10 +623,10 @@ export function Workspace({
                     onClick={() => archive(s)}
                   >
                     {actionBusy === s.id
-                      ? "Đang lưu…"
+                      ? t("Đang lưu…")
                       : s.archivedAt
-                        ? "Khôi phục"
-                        : "Lưu trữ"}
+                        ? t("Khôi phục")
+                        : t("Lưu trữ")}
                   </Button>
                 </div>
               ))}
@@ -611,8 +634,10 @@ export function Workspace({
           ) : search.trim() ? (
             <div className="p-8 text-center text-sm" role="status">
               {view?.students.nextCursor
-                ? "Chưa thấy học viên phù hợp. Bạn có thể tìm tiếp trong danh sách."
-                : "Không tìm thấy học viên phù hợp."}
+                ? t(
+                    "Chưa thấy học viên phù hợp. Bạn có thể tìm tiếp trong danh sách.",
+                  )
+                : t("Không tìm thấy học viên phù hợp.")}
             </div>
           ) : (
             <Empty
@@ -630,7 +655,8 @@ export function Workspace({
               >
                 <div className="flex w-11 shrink-0 flex-col items-center rounded-xl border border-border bg-surface py-1.5">
                   <span className="text-[9px] text-muted-foreground">
-                    THÁNG {s.sessionDate.slice(5, 7)}
+                    {t("THÁNG ")}
+                    {s.sessionDate.slice(5, 7)}
                   </span>
                   <span className="text-lg font-semibold leading-6">
                     {s.sessionDate.slice(8)}
@@ -648,34 +674,38 @@ export function Workspace({
                       href={`/app/lessons/${s.lessonId}`}
                       className="mt-1 block break-words text-[11px] text-primary underline"
                     >
-                      {s.className ? `Lớp ${s.className}` : "Buổi nhóm tự chọn"}
+                      {s.className
+                        ? t("Lớp {0}", { "0": s.className })
+                        : t("Buổi nhóm tự chọn")}
                     </Link>
                   )}
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    {s.sessionDate.split("-").reverse().join("/")}
+                    {formatDate(s.sessionDate, locale)}
                     {s.startTime ? ` · ${s.startTime}` : ""}
-                    {s.durationMinutes ? ` · ${s.durationMinutes} phút` : ""}
+                    {s.durationMinutes
+                      ? t(" · {0} phút", { "0": s.durationMinutes })
+                      : ""}
                   </p>
                 </div>
                 <span className={`status status-${s.status}`}>
-                  {statusLabels[s.status]}
+                  {t(statusLabels[s.status])}
                 </span>
                 <div className="ml-auto min-w-24 text-right">
                   <p className="text-sm font-semibold">
                     {s.status === "completed" && s.billable
-                      ? formatVnd(s.amountVnd)
+                      ? formatVnd(s.amountVnd, locale)
                       : !s.billable
-                        ? "Miễn phí"
-                        : formatVnd(s.rateVnd)}
+                        ? t("Miễn phí")
+                        : formatVnd(s.rateVnd, locale)}
                   </p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
                     {s.status === "planned" && s.billable
-                      ? "Dự kiến"
+                      ? t("Dự kiến")
                       : s.billedStatementId
-                        ? "Đã lập bảng kê"
+                        ? t("Đã lập bảng kê")
                         : s.billable && s.status === "completed"
-                          ? "Chưa lập bảng kê"
-                          : "Không tính phí"}
+                          ? t("Chưa lập bảng kê")
+                          : t("Không tính phí")}
                   </p>
                 </div>
                 <Button
@@ -684,7 +714,7 @@ export function Workspace({
                   disabled={s.billedStatementId !== null}
                   onClick={() => setModal({ kind: "session", record: s })}
                 >
-                  Sửa
+                  {t("Sửa")}
                 </Button>
               </div>
             ))}
@@ -696,8 +726,8 @@ export function Workspace({
           range.billing !== "all" ? (
           <div className="p-8 text-center text-sm" role="status">
             {view?.sessions.nextCursor
-              ? "Chưa thấy buổi phù hợp. Bạn có thể tải tiếp danh sách."
-              : "Không có buổi phù hợp với bộ lọc."}
+              ? t("Chưa thấy buổi phù hợp. Bạn có thể tải tiếp danh sách.")
+              : t("Không có buổi phù hợp với bộ lọc.")}
           </div>
         ) : (
           <Empty kind="session" onAdd={() => setModal({ kind: "session" })} />
@@ -710,10 +740,10 @@ export function Workspace({
               <Button variant="ghost" disabled={moreBusy} onClick={more}>
                 <ChevronDown />
                 {moreBusy
-                  ? "Đang tải…"
+                  ? t("Đang tải…")
                   : mode === "students" && search.trim()
-                    ? "Tìm tiếp"
-                    : "Tải thêm"}
+                    ? t("Tìm tiếp")
+                    : t("Tải thêm")}
               </Button>
             </div>
           )}
@@ -721,7 +751,7 @@ export function Workspace({
       {mode === "overview" && (
         <div className="mt-7 flex items-center gap-3 text-xs text-muted-foreground">
           <Leaf size={16} className="text-muted-foreground" />
-          Một cuốn sổ gọn gàng, để bạn yên tâm đứng lớp.
+          {t("Một cuốn sổ gọn gàng, để bạn yên tâm đứng lớp.")}
         </div>
       )}
       {modal && (
@@ -749,6 +779,7 @@ function Empty({
   onAdd: () => void;
   archived?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center px-5 py-14 text-center">
       <span className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-muted-foreground">
@@ -761,19 +792,21 @@ function Empty({
       <h3 className="serif text-2xl">
         {kind === "student"
           ? archived
-            ? "Chưa có học viên lưu trữ"
-            : "Bắt đầu với học viên đầu tiên"
-          : "Chưa có buổi dạy trong sổ"}
+            ? t("Chưa có học viên lưu trữ")
+            : t("Bắt đầu với học viên đầu tiên")
+          : t("Chưa có buổi dạy trong sổ")}
       </h3>
       <p className="mb-6 mt-3 max-w-sm text-xs leading-6 text-muted-foreground">
         {kind === "student"
-          ? "Thêm tên và đơn giá mỗi buổi. Bạn có thể thay đổi đơn giá sau."
-          : "Thêm học viên, rồi ghi một buổi đã dạy. Học phí sẽ được lưu đúng theo buổi đó."}
+          ? t("Thêm tên và đơn giá mỗi buổi. Bạn có thể thay đổi đơn giá sau.")
+          : t(
+              "Thêm học viên, rồi ghi một buổi đã dạy. Học phí sẽ được lưu đúng theo buổi đó.",
+            )}
       </p>
       {!archived && (
         <Button variant="outline" onClick={onAdd}>
           <Plus />
-          {kind === "student" ? "Thêm học viên" : "Ghi buổi đầu tiên"}
+          {kind === "student" ? t("Thêm học viên") : t("Ghi buổi đầu tiên")}
         </Button>
       )}
     </div>

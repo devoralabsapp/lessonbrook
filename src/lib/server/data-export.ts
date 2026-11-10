@@ -1,4 +1,5 @@
 import "server-only";
+import { translator, type Locale, type Translator } from "@/lib/i18n/core";
 import { randomUUID } from "node:crypto";
 import {
   FieldPath,
@@ -246,7 +247,7 @@ const translated: Record<string, string> = {
   cash: "Tiền mặt",
   transfer: "Chuyển khoản",
 };
-function csvValue(record: Record<string, unknown>, key: string) {
+function csvValue(record: Record<string, unknown>, key: string, t: Translator) {
   let value: unknown = record;
   for (const part of key.split("."))
     value =
@@ -254,8 +255,8 @@ function csvValue(record: Record<string, unknown>, key: string) {
         ? (value as Record<string, unknown>)[part]
         : null;
   if ((key === "status" || key === "method") && typeof value === "string")
-    return translated[value] ?? value;
-  return typeof value === "boolean" ? (value ? "Có" : "Không") : value;
+    return translated[value] ? t(translated[value]) : value;
+  return typeof value === "boolean" ? t(value ? "Có" : "Không") : value;
 }
 export async function startExport(
   uid: string,
@@ -288,6 +289,7 @@ export async function exportPage(
   uid: string,
   id: string,
   raw: unknown,
+  locale: Locale = "vi",
 ): Promise<ExportPage> {
   await assertAccountAvailable(uid);
   const input = exportPageInputSchema.parse(raw),
@@ -324,16 +326,19 @@ export async function exportPage(
     },
     { readOnly: true, readTime: job.readTime },
   );
+  const t = translator(locale);
   const selected = page.slice(0, input.limit),
     values = records(input.dataset, selected);
   const result = {
     csv:
       (!input.cursor
-        ? csvLine(columns[input.dataset].map(([, label]) => label))
+        ? csvLine(columns[input.dataset].map(([, label]) => t(label)))
         : "") +
       values
         .map((record) =>
-          csvLine(columns[input.dataset].map(([key]) => csvValue(record, key))),
+          csvLine(
+            columns[input.dataset].map(([key]) => csvValue(record, key, t)),
+          ),
         )
         .join(""),
     records: values,

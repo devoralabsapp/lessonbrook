@@ -312,6 +312,41 @@ dialog::backdrop {
   background: #142b2766;
   backdrop-filter: blur(3px);
 }
+
+/* The sample ledger settles to its normal layout without JS or with reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-ledger-motion="playing"] .ledger-motion-step {
+    animation: ledger-step-in 360ms cubic-bezier(0.2, 0.7, 0.2, 1)
+      var(--ledger-delay, 0ms) both;
+  }
+  [data-ledger-motion="playing"] .ledger-motion-step:nth-child(2) {
+    --ledger-delay: 120ms;
+  }
+  [data-ledger-motion="playing"] .ledger-motion-check {
+    stroke-dasharray: 1;
+    animation: ledger-check-draw 360ms ease-out
+      calc(var(--ledger-delay, 0ms) + 90ms) both;
+  }
+  @keyframes ledger-step-in {
+    from {
+      opacity: 0.82;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes ledger-check-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .fade-in {
     animation: appear 0.3s ease both;

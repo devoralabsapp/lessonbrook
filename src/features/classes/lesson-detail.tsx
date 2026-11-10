@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useState } from "react";
 import Link from "next/link";
 import { formatVnd, statusLabels, type TeachingSession } from "@/domain";
@@ -9,6 +11,7 @@ import { formatDate } from "@/features/statements/shared";
 import { LessonForm, type LessonDetailData } from "./lesson-form";
 import { LoadError, useResource } from "./shared";
 export function LessonDetail({ id }: { id: string }) {
+  const { t, locale } = useI18n();
   const resource = useResource<LessonDetailData>(
     `/api/lessons/${encodeURIComponent(id)}`,
   );
@@ -18,7 +21,7 @@ export function LessonDetail({ id }: { id: string }) {
   const item = resource.data;
   if (resource.error)
     return <LoadError message={resource.error} retry={resource.reload} />;
-  if (!item) return <p role="status">Đang mở buổi học…</p>;
+  if (!item) return <p role="status">{t("Đang mở buổi học…")}</p>;
   const locked = item.sessions.some((s) => s.billedStatementId !== null);
   return (
     <div className="space-y-6 fade-in">
@@ -26,19 +29,21 @@ export function LessonDetail({ id }: { id: string }) {
         href={item.classId ? `/app/classes/${item.classId}` : "/app/lessons"}
         className="text-sm text-primary underline"
       >
-        ← {item.classId ? "Về lớp học" : "Buổi nhóm & lớp"}
+        ← {item.classId ? t("Về lớp học") : t("Buổi nhóm & lớp")}
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="serif break-words text-3xl">
-            {item.className ?? "Buổi nhóm tự chọn"}
+            {item.className ?? t("Buổi nhóm tự chọn")}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            {formatDate(item.sessionDate)}
+            {formatDate(item.sessionDate, locale)}
             {item.startTime ? ` · ${item.startTime}` : ""}
             {item.durationMinutes
-              ? ` · ${item.durationMinutes} phút`
-              : ""} · {item.sessions.length} học viên
+              ? t(" · {0} phút", { "0": item.durationMinutes })
+              : ""}{" "}
+            · {item.sessions.length}
+            {t(" học viên")}
           </p>
         </div>
         <Button
@@ -46,22 +51,27 @@ export function LessonDetail({ id }: { id: string }) {
           disabled={locked || editing}
           onClick={() => setEditing(true)}
         >
-          Sửa thông tin chung
+          {t("Sửa thông tin chung")}
         </Button>
       </div>
       <p className="text-sm leading-6 text-muted-foreground">
-        Đơn giá đã lưu: {formatVnd(item.rateVnd)} / người. Tổng học phí đã dạy:{" "}
+        {t("Đơn giá đã lưu: ")}
+        {formatVnd(item.rateVnd, locale)}
+        {t(" / người. Tổng học phí đã dạy:")}{" "}
         <strong className="text-foreground">
-          {formatVnd(item.sessions.reduce((sum, s) => sum + s.amountVnd, 0))}
+          {formatVnd(
+            item.sessions.reduce((sum, s) => sum + s.amountVnd, 0),
+            locale,
+          )}
         </strong>
-        . Mỗi học viên có dòng học phí và bảng kê riêng.
+        {t(". Mỗi học viên có dòng học phí và bảng kê riêng.")}
         {locked
-          ? " Thông tin chung đã khóa vì có học viên được lập bảng kê."
+          ? t(" Thông tin chung đã khóa vì có học viên được lập bảng kê.")
           : ""}
       </p>
       {message && (
         <p role="status" className="rounded-xl bg-accent-soft p-4 text-sm">
-          {message}
+          {t(message)}
         </p>
       )}
       {editing && (
@@ -70,7 +80,7 @@ export function LessonDetail({ id }: { id: string }) {
           onCancel={() => setEditing(false)}
           onSaved={() => {
             setEditing(false);
-            setMessage("Đã lưu thông tin chung của buổi.");
+            setMessage(t("Đã lưu thông tin chung của buổi."));
             resource.reload();
           }}
         />
@@ -90,43 +100,46 @@ export function LessonDetail({ id }: { id: string }) {
               </Link>
               <p className="mt-2 text-xs text-muted-foreground">
                 {s.billedStatementId
-                  ? "Đã lập bảng kê"
+                  ? t("Đã lập bảng kê")
                   : s.status === "completed" && s.billable
-                    ? "Chưa lập bảng kê"
-                    : "Chưa tính học phí"}
+                    ? t("Chưa lập bảng kê")
+                    : t("Chưa tính học phí")}
               </p>
             </div>
             <span className={`status justify-self-start status-${s.status}`}>
-              {statusLabels[s.status]}
+              {t(statusLabels[s.status])}
             </span>
             <strong className="justify-self-end text-sm">
               {s.billable
-                ? formatVnd(s.status === "completed" ? s.amountVnd : s.rateVnd)
-                : "Miễn phí"}
+                ? formatVnd(
+                    s.status === "completed" ? s.amountVnd : s.rateVnd,
+                    locale,
+                  )
+                : t("Miễn phí")}
             </strong>
             <Button
               className="justify-self-start"
-              aria-label={`Sửa ${s.studentName}`}
+              aria-label={t("Sửa {0}", { "0": s.studentName })}
               size="sm"
               variant="ghost"
               disabled={s.billedStatementId !== null}
               onClick={() => setParticipant(s)}
             >
-              Sửa
+              {t("Sửa")}
             </Button>
             {s.billedStatementId ? (
               <Link
                 href={`/app/statements/${s.billedStatementId}`}
                 className="justify-self-end text-xs text-primary underline"
               >
-                Mở bảng kê
+                {t("Mở bảng kê")}
               </Link>
             ) : s.status === "completed" && s.billable ? (
               <Link
                 href={`/app/statements/new?studentId=${s.studentId}`}
                 className="justify-self-end text-xs text-primary underline"
               >
-                Lập bảng kê
+                {t("Lập bảng kê")}
               </Link>
             ) : null}
           </div>
@@ -134,7 +147,9 @@ export function LessonDetail({ id }: { id: string }) {
       </Card>
       {item.privateNote && (
         <Card className="p-5">
-          <h2 className="mb-2 text-sm font-semibold">Ghi chú riêng của buổi</h2>
+          <h2 className="mb-2 text-sm font-semibold">
+            {t("Ghi chú riêng của buổi")}
+          </h2>
           <p className="whitespace-pre-wrap break-words text-sm">
             {item.privateNote}
           </p>

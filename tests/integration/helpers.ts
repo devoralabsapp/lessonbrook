@@ -27,13 +27,14 @@ export async function googleToken(uid = crypto.randomUUID()) {
   if (!response.ok) throw new Error(JSON.stringify(data));
   return { idToken: data.idToken as string, uid: data.localId as string };
 }
-export async function client() {
+export async function client(locale: "en" | "vi" = "vi") {
   const csrfResponse = await fetch(`${origin}/api/auth/csrf`);
   const { token } = await csrfResponse.json();
-  const csrfCookie = csrfResponse.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
+  const csrfCookie =
+    csrfResponse.headers
+      .getSetCookie()
+      .map((c) => c.split(";")[0])
+      .join("; ") + `; chotcong_locale=${locale}`;
   let session = "";
   const call = async (
     path: string,

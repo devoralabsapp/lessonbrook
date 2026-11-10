@@ -1,4 +1,5 @@
 import "server-only";
+import { getI18n } from "@/lib/i18n/server";
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -52,7 +53,8 @@ export function json(data: unknown, status = 200) {
     headers: { "Cache-Control": "private, no-store" },
   });
 }
-export function errorResponse(error: unknown) {
+export async function errorResponse(error: unknown) {
+  const { t } = await getI18n();
   const status =
     error instanceof AppError
       ? error.status
@@ -70,7 +72,10 @@ export function errorResponse(error: unknown) {
       "Server request failed",
       error instanceof Error ? error.name : "UnknownError",
     );
-  const response = json({ error: message }, status);
+  const response = json(
+    { error: t(message ?? "Không thể xử lý lúc này. Vui lòng thử lại.") },
+    status,
+  );
   if (status === 401)
     response.cookies.set(SESSION_COOKIE, "", { ...cookieOptions(), maxAge: 0 });
   return response;

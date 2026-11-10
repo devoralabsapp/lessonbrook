@@ -8,13 +8,13 @@
 
 A lesson and tuition ledger for independent teachers, supporting individual lessons, groups, and classes billed after each lesson. Run it locally, self-host it, or fork it to fit your workflow. Released under the [MIT License](LICENSE).
 
-Repository documentation defaults to English. The application interface is currently in Vietnamese, with VND amounts and Vietnam business dates.
+English is the default language for the documentation and application. Switch between English and Vietnamese in the application header. Amounts use VND and business dates use Vietnam time.
 
 ## Preview
 
 ![English LessonBrook dashboard in Playful Retro Neo-Brutalism, showing pastel tuition summary cards and a sample lesson.](docs/images/dashboard-playful-retro.png)
 
-English interface preview · Playful Retro Neo-Brutalism · Fictional sample data captured locally with Firebase Emulator. The community edition UI is currently Vietnamese.
+English interface preview · Playful Retro Neo-Brutalism · Fictional sample data captured locally with Firebase Emulator.
 
 ## Features
 
@@ -25,6 +25,8 @@ English interface preview · Playful Retro Neo-Brutalism · Fictional sample dat
 - Eight themes: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code, and Playful Retro Neo-Brutalism, with mobile-friendly layouts. Command Line uses black panels and green accents. Playful Retro adds cream, yellow/pink/blue/mint cards, bold outlines, hard shadows, pill controls and self-hosted Nunito (SIL OFL 1.1). Select any theme in account settings for an instant preview; only Save appearance persists it. Cancel preview, leave settings or reload to discard an unsaved choice.
 
 All business reads and writes go through Node server APIs. The Firebase client is used only for Auth; Firestore Rules deny direct client access. Tuition data is not stored offline.
+
+Visitors can try all eight themes from **Preview theme** on the home page. This preview lasts until the page is reloaded or left. The sample ledger plays a brief entrance sequence and respects the browser’s reduced motion preference.
 
 ## Quick start
 

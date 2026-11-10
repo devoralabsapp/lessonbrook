@@ -46,7 +46,7 @@ export const MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024;
 export const DELETE_CONFIRMATION = "XÓA TÀI KHOẢN";
 export const deletionInputSchema = z
   .object({
-    confirmation: z.literal(DELETE_CONFIRMATION),
+    confirmation: z.enum([DELETE_CONFIRMATION, "DELETE ACCOUNT"]),
     acknowledged: z.literal(true),
     idToken: z.string().min(1).max(12000),
   })

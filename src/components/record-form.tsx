@@ -1,4 +1,7 @@
 "use client";
+import { formatDate } from "@/features/statements/shared";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, X } from "lucide-react";
@@ -22,11 +25,15 @@ type Props = {
   onSaved: (message: string) => void;
 };
 export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const request = useRef<{ payload: string; id: string } | null>(null);
+  const request = useRef<{
+    payload: string;
+    id: string;
+  } | null>(null);
   const s = kind === "student" ? (record as Student | undefined) : undefined;
   const lesson =
     kind === "session" ? (record as TeachingSession | undefined) : undefined;
@@ -61,12 +68,15 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
       if (trigger instanceof HTMLElement && trigger.isConnected)
         trigger.focus({ preventScroll: true });
     };
-  }, []);
+  }, [t]);
   useEffect(() => {
     if (kind !== "session") return;
     studentGeneration.current++;
     let active = true;
-    api<{ items: Student[]; nextCursor: string | null }>(studentEndpoint)
+    api<{
+      items: Student[];
+      nextCursor: string | null;
+    }>(studentEndpoint)
       .then((p) => {
         if (active) {
           setStudents((prev) => [
@@ -89,19 +99,21 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
       .catch(() => {
         if (active)
           setStudentsError(
-            "Chưa tải được học viên. Đóng form và thử lại, hoặc tải lại danh sách bên dưới.",
+            t(
+              "Chưa tải được học viên. Đóng form và thử lại, hoặc tải lại danh sách bên dưới.",
+            ),
           );
       });
     return () => {
       active = false;
     };
-  }, [kind, studentEndpoint, selected, student]);
+  }, [kind, studentEndpoint, selected, student, t]);
   useEffect(() => {
     if (kind !== "session" || !selected || !date) return;
     let active = true;
-    api<{ items: TeachingSession[] }>(
-      `/api/sessions?studentId=${selected}&from=${date}&to=${date}&limit=50`,
-    )
+    api<{
+      items: TeachingSession[];
+    }>(`/api/sessions?studentId=${selected}&from=${date}&to=${date}&limit=50`)
       .then((p) => {
         if (active)
           setDuplicate(
@@ -114,13 +126,16 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
     return () => {
       active = false;
     };
-  }, [kind, selected, date, time, lesson?.id]);
+  }, [kind, selected, date, time, lesson?.id, t]);
   async function moreStudents() {
     if (studentsBusy || studentSearch !== studentTerm) return;
     const generation = studentGeneration.current;
     setStudentsBusy(true);
     try {
-      const p = await api<{ items: Student[]; nextCursor: string | null }>(
+      const p = await api<{
+        items: Student[];
+        nextCursor: string | null;
+      }>(
         `${studentEndpoint}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
       );
       if (generation !== studentGeneration.current) return;
@@ -132,7 +147,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
       setStudentsError("");
     } catch {
       if (generation === studentGeneration.current)
-        setStudentsError("Chưa tải được học viên. Vui lòng thử lại.");
+        setStudentsError(t("Chưa tải được học viên. Vui lòng thử lại."));
     } finally {
       setStudentsBusy(false);
     }
@@ -181,19 +196,26 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
       const name =
         students.find((s) => s.id === selected)?.displayName ??
         lesson?.studentName ??
-        "học viên";
+        t("học viên");
       onSaved(
         kind === "student"
-          ? `Đã lưu học viên ${values.get("displayName")}.`
-          : `Đã lưu buổi ${name} ngày ${date.split("-").reverse().join("/")}: ${formatVnd(sessionAmount({ status, billable, rateVnd: rate }))}.`,
+          ? t("Đã lưu học viên {0}.", { "0": values.get("displayName") })
+          : t("Đã lưu buổi {0} ngày {1}: {2}.", {
+              "0": name,
+              "1": formatDate(date, locale),
+              "2": formatVnd(
+                sessionAmount({ status, billable, rateVnd: rate }),
+                locale,
+              ),
+            }),
       );
     } catch (e) {
       setError(
         e instanceof TypeError
-          ? "Chưa kết nối được máy chủ."
+          ? t("Chưa kết nối được máy chủ.")
           : e instanceof Error
             ? e.message
-            : "Chưa lưu được. Hãy thử lại.",
+            : t("Chưa lưu được. Hãy thử lại."),
       );
       setBusy(false);
     }
@@ -210,22 +232,22 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
       <div className="flex items-center justify-between border-b border-border px-6 py-5">
         <div>
           <p className="mb-1 text-[10px] tracking-[.16em] text-muted-foreground">
-            CUỐN SỔ CỦA BẠN
+            {t("CUỐN SỔ CỦA BẠN")}
           </p>
           <h2 id="record-title" className="serif text-2xl">
             {kind === "student"
               ? s
-                ? "Sửa học viên"
-                : "Thêm học viên"
+                ? t("Sửa học viên")
+                : t("Thêm học viên")
               : lesson
-                ? "Sửa buổi dạy"
-                : "Ghi buổi dạy"}
+                ? t("Sửa buổi dạy")
+                : t("Ghi buổi dạy")}
           </h2>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Đóng biểu mẫu"
+          aria-label={t("Đóng biểu mẫu")}
           disabled={busy}
           onClick={onClose}
         >
@@ -237,17 +259,17 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
           {kind === "student" ? (
             <>
               <label className="field-label">
-                Tên học viên *
+                {t("Tên học viên *")}
                 <Input
                   name="displayName"
                   required
                   maxLength={100}
                   defaultValue={s?.displayName}
-                  placeholder="Ví dụ: Nguyễn Lan"
+                  placeholder={t("Ví dụ: Nguyễn Lan")}
                 />
               </label>
               <label className="field-label">
-                Đơn giá mặc định / buổi (VND) *
+                {t("Đơn giá mặc định / buổi (VND) *")}
                 <Input
                   name="defaultRateVnd"
                   type="number"
@@ -260,12 +282,13 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                 />
               </label>
               <p className="text-xs leading-5 text-muted-foreground">
-                Đổi đơn giá chỉ áp dụng cho buổi mới. Giá các buổi đã ghi được
-                giữ nguyên.
+                {t(
+                  "Đổi đơn giá chỉ áp dụng cho buổi mới. Giá các buổi đã ghi được giữ nguyên.",
+                )}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="field-label">
-                  Tên người liên hệ
+                  {t("Tên người liên hệ")}
                   <Input
                     name="contactName"
                     maxLength={100}
@@ -273,7 +296,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                   />
                 </label>
                 <label className="field-label">
-                  Số điện thoại
+                  {t("Số điện thoại")}
                   <Input
                     name="phone"
                     type="tel"
@@ -287,7 +310,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
             <>
               {!lesson && (
                 <label className="field-label">
-                  Dạy cho
+                  {t("Dạy cho")}
                   <select
                     className="select-input"
                     value="single"
@@ -300,26 +323,26 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                       }
                     }}
                   >
-                    <option value="single">Một học viên</option>
-                    <option value="group">Nhóm học viên tự chọn</option>
-                    <option value="class">Một lớp học</option>
+                    <option value="single">{t("Một học viên")}</option>
+                    <option value="group">{t("Nhóm học viên tự chọn")}</option>
+                    <option value="class">{t("Một lớp học")}</option>
                   </select>
                 </label>
               )}
               {!lesson && (
                 <label className="field-label">
-                  Tìm tên học viên
+                  {t("Tìm tên học viên")}
                   <Input
                     type="search"
                     value={studentSearch}
                     onChange={(event) => setStudentSearch(event.target.value)}
                     maxLength={100}
-                    placeholder="Có dấu hoặc không dấu"
+                    placeholder={t("Có dấu hoặc không dấu")}
                   />
                 </label>
               )}
               <label className="field-label">
-                Học viên *
+                {t("Học viên *")}
                 <select
                   required
                   disabled={!!lesson}
@@ -331,7 +354,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                     if (found) setRate(found.defaultRateVnd);
                   }}
                 >
-                  <option value="">Chọn học viên</option>
+                  <option value="">{t("Chọn học viên")}</option>
                   {lesson &&
                     !students.some((s) => s.id === lesson.studentId) && (
                       <option value={lesson.studentId}>
@@ -356,8 +379,8 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                   disabled={studentsBusy || studentSearch !== studentTerm}
                 >
                   {studentsBusy
-                    ? "Đang tải…"
-                    : "Tải thêm / thử lại danh sách học viên"}
+                    ? t("Đang tải…")
+                    : t("Tải thêm / thử lại danh sách học viên")}
                 </Button>
               )}
               {studentsError && (
@@ -366,13 +389,17 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
               {!students.length && !studentsError && (
                 <p className="text-xs leading-5 text-muted-foreground">
                   {studentTerm
-                    ? "Chưa tìm thấy học viên phù hợp. Thử tên khác hoặc tìm tiếp trong danh sách."
-                    : "Cần thêm học viên trước khi ghi buổi. Vào mục Học viên để tạo học viên đầu tiên."}
+                    ? t(
+                        "Chưa tìm thấy học viên phù hợp. Thử tên khác hoặc tìm tiếp trong danh sách.",
+                      )
+                    : t(
+                        "Cần thêm học viên trước khi ghi buổi. Vào mục Học viên để tạo học viên đầu tiên.",
+                      )}
                 </p>
               )}
               <div className="grid grid-cols-2 gap-4">
                 <label className="field-label">
-                  Ngày dạy *
+                  {t("Ngày dạy *")}
                   <Input
                     required
                     disabled={!!lesson?.lessonId}
@@ -384,7 +411,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                   />
                 </label>
                 <label className="field-label">
-                  Trạng thái
+                  {t("Trạng thái")}
                   <select
                     className="select-input"
                     value={status}
@@ -394,13 +421,13 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                       if (v === "cancelled") setBillable(false);
                     }}
                   >
-                    <option value="completed">Đã dạy</option>
-                    <option value="planned">Dự kiến</option>
-                    <option value="cancelled">Đã hủy</option>
+                    <option value="completed">{t("Đã dạy")}</option>
+                    <option value="planned">{t("Dự kiến")}</option>
+                    <option value="cancelled">{t("Đã hủy")}</option>
                   </select>
                 </label>
                 <label className="field-label">
-                  Giờ bắt đầu (tùy chọn)
+                  {t("Giờ bắt đầu (tùy chọn)")}
                   <Input
                     type="time"
                     disabled={!!lesson?.lessonId}
@@ -409,7 +436,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                   />
                 </label>
                 <label className="field-label">
-                  Thời lượng (phút)
+                  {t("Thời lượng (phút)")}
                   <Input
                     type="number"
                     name="durationMinutes"
@@ -426,12 +453,13 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                   role="status"
                   className="rounded-xl bg-warning-soft p-3 text-xs leading-5 text-warning-foreground"
                 >
-                  Đã có buổi cùng học viên, ngày và giờ. Bạn vẫn có thể lưu nếu
-                  đây là buổi khác.
+                  {t(
+                    "Đã có buổi cùng học viên, ngày và giờ. Bạn vẫn có thể lưu nếu đây là buổi khác.",
+                  )}
                 </p>
               )}
               <label className="field-label">
-                Đơn giá buổi này (VND) *
+                {t("Đơn giá buổi này (VND) *")}
                 <Input
                   type="number"
                   disabled={!!lesson?.lessonId}
@@ -446,9 +474,9 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
               </label>
               {lesson?.lessonId && (
                 <p className="text-xs leading-5 text-muted-foreground">
-                  Ngày, giờ và đơn giá chung được sửa tại trang buổi nhóm/lớp.
-                  Bạn có thể đổi trạng thái, miễn phí hoặc ghi chú riêng cho học
-                  viên này.
+                  {t(
+                    "Ngày, giờ và đơn giá chung được sửa tại trang buổi nhóm/lớp. Bạn có thể đổi trạng thái, miễn phí hoặc ghi chú riêng cho học viên này.",
+                  )}
                 </p>
               )}
               <label className="flex items-center gap-2 text-sm">
@@ -459,33 +487,34 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                   onChange={(e) => setBillable(e.target.checked)}
                   className="size-4 accent-primary"
                 />
-                Tính phí buổi này
+                {t("Tính phí buổi này")}
               </label>
               <div className="flex items-center justify-between rounded-xl bg-accent-soft p-4 text-sm">
                 <span>
                   {status === "planned"
-                    ? "Học phí dự kiến"
-                    : "Học phí buổi dạy"}
+                    ? t("Học phí dự kiến")
+                    : t("Học phí buổi dạy")}
                 </span>
                 <strong>
                   {formatVnd(
                     status === "planned" && billable
                       ? rate
                       : sessionAmount({ status, billable, rateVnd: rate }),
+                    locale,
                   )}
                 </strong>
               </div>
             </>
           )}
           <label className="field-label">
-            Ghi chú riêng
+            {t("Ghi chú riêng")}
             <textarea
               name="privateNote"
               maxLength={1000}
               rows={3}
               defaultValue={s?.privateNote ?? lesson?.privateNote}
               className="select-input resize-y"
-              placeholder="Chỉ bạn xem được"
+              placeholder={t("Chỉ bạn xem được")}
             />
           </label>
         </fieldset>
@@ -494,7 +523,8 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
             role="alert"
             className="rounded-xl bg-danger-soft p-3 text-sm leading-5 text-destructive"
           >
-            {error} Nội dung vẫn ở đây; bạn có thể thử lưu lại.
+            {t(error)}
+            {t(" Nội dung vẫn ở đây; bạn có thể thử lưu lại.")}
           </p>
         )}
         <div className="flex justify-end gap-2 border-t border-border pt-4">
@@ -504,17 +534,17 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
             disabled={busy}
             onClick={onClose}
           >
-            Để sau
+            {t("Để sau")}
           </Button>
           <Button type="submit" disabled={busy}>
             {busy && <LoaderCircle className="animate-spin" />}
             {busy
-              ? "Đang lưu…"
+              ? t("Đang lưu…")
               : error
-                ? "Thử lưu lại"
+                ? t("Thử lưu lại")
                 : kind === "student"
-                  ? "Lưu học viên"
-                  : "Lưu buổi dạy"}
+                  ? t("Lưu học viên")
+                  : t("Lưu buổi dạy")}
           </Button>
         </div>
       </form>

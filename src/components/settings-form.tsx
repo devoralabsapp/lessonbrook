@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +13,7 @@ import { DeletePanel } from "@/features/account/delete-panel";
 import { InfoLinks } from "./info-links";
 import { AppearancePicker } from "./appearance";
 export function SettingsForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const [profile, setProfile] = useState<{
     displayName: string;
@@ -20,7 +23,10 @@ export function SettingsForm() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const request = useRef<{ hash: string; id: string } | null>(null);
+  const request = useRef<{
+    hash: string;
+    id: string;
+  } | null>(null);
   useEffect(() => {
     let active = true;
     api<typeof profile>("/api/profile")
@@ -33,7 +39,7 @@ export function SettingsForm() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
@@ -54,10 +60,10 @@ export function SettingsForm() {
         body,
         requestId: request.current!.id,
       });
-      setMessage("Đã lưu hồ sơ.");
+      setMessage(t("Đã lưu hồ sơ."));
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Chưa thể lưu.");
+      setError(e instanceof Error ? e.message : t("Chưa thể lưu."));
     } finally {
       setBusy(false);
     }
@@ -69,20 +75,22 @@ export function SettingsForm() {
       await api("/api/auth/logout", { method: "POST", body: { allDevices } });
       window.location.assign("/login");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Chưa thể đăng xuất.");
+      setError(e instanceof Error ? e.message : t("Chưa thể đăng xuất."));
       setBusy(false);
     }
   }
   return (
     <div className="max-w-xl">
-      <p className="mb-2 text-xs text-muted-foreground">KHÔNG GIAN CỦA BẠN</p>
-      <h1 className="serif mb-7 text-4xl">Cài đặt tài khoản</h1>
+      <p className="mb-2 text-xs text-muted-foreground">
+        {t("KHÔNG GIAN CỦA BẠN")}
+      </p>
+      <h1 className="serif mb-7 text-4xl">{t("Cài đặt tài khoản")}</h1>
       <p className="mb-5 text-sm">
         <Link
           href="/onboarding"
           className="text-primary underline underline-offset-4"
         >
-          Xem hướng dẫn bắt đầu
+          {t("Xem hướng dẫn bắt đầu")}
         </Link>
       </p>
       <div className="mb-6">
@@ -94,7 +102,7 @@ export function SettingsForm() {
           <form onSubmit={submit} className="space-y-5">
             <p className="text-xs text-muted-foreground">{profile.email}</p>
             <label className="field-label">
-              Tên giáo viên / tên lớp
+              {t("Tên giáo viên / tên lớp")}
               <Input
                 name="displayName"
                 required
@@ -103,7 +111,7 @@ export function SettingsForm() {
               />
             </label>
             <label className="field-label">
-              Thông tin nhận chuyển khoản (tùy chọn)
+              {t("Thông tin nhận chuyển khoản (tùy chọn)")}
               <textarea
                 className="select-input"
                 name="bankDetails"
@@ -113,23 +121,25 @@ export function SettingsForm() {
               />
             </label>
             <p className="text-xs leading-6 text-muted-foreground">
-              Tiền tệ: VND · Múi giờ: Việt Nam.
+              {t("Tiền tệ: VND · Múi giờ: Việt Nam.")}
               <br />
-              Sổ chỉ ghi nhận các buổi bạn nhập, chưa bao gồm nợ cũ.
+              {t("Sổ chỉ ghi nhận các buổi bạn nhập, chưa bao gồm nợ cũ.")}
             </p>
-            <Button disabled={busy}>{busy ? "Đang lưu…" : "Lưu hồ sơ"}</Button>
+            <Button disabled={busy}>
+              {busy ? t("Đang lưu…") : t("Lưu hồ sơ")}
+            </Button>
           </form>
         ) : (
-          !error && <p role="status">Đang tải hồ sơ…</p>
+          !error && <p role="status">{t("Đang tải hồ sơ…")}</p>
         )}
         {error && (
           <p role="alert" className="mt-4 text-sm text-destructive">
-            {error}
+            {t(error)}
           </p>
         )}
         {message && (
           <p role="status" className="mt-4 text-sm text-primary">
-            {message}
+            {t(message)}
           </p>
         )}
       </Card>
@@ -141,10 +151,10 @@ export function SettingsForm() {
       )}
       <div className="mt-5 flex flex-wrap gap-3">
         <Button variant="outline" disabled={busy} onClick={() => logout(false)}>
-          Đăng xuất
+          {t("Đăng xuất")}
         </Button>
         <Button variant="ghost" disabled={busy} onClick={() => logout(true)}>
-          Đăng xuất mọi thiết bị
+          {t("Đăng xuất mọi thiết bị")}
         </Button>
       </div>
     </div>

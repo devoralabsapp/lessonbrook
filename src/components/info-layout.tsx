@@ -1,8 +1,11 @@
+"use client";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useI18n } from "@/lib/i18n/client";
+
 import Link from "next/link";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
 import { InfoLinks } from "./info-links";
-
 export function InfoLayout({
   title,
   description,
@@ -12,18 +15,20 @@ export function InfoLayout({
   description: string;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <div className="min-h-dvh">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:z-50 focus:bg-white focus:p-3"
       >
-        Đến nội dung
+        {t("Đến nội dung")}
       </a>
       <header className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-5 py-6 sm:px-8">
         <Brand compact />
+        <LanguageSwitcher />
         <Button asChild variant="outline">
-          <Link href="/app">Mở sổ của bạn</Link>
+          <Link href="/app">{t("Mở sổ của bạn")}</Link>
         </Button>
       </header>
       <main
@@ -32,11 +37,11 @@ export function InfoLayout({
         className="mx-auto max-w-3xl px-5 py-8 sm:px-8"
       >
         <p className="mb-3 text-xs font-semibold tracking-widest text-primary">
-          SỔ BUỔI DẠY & HỌC PHÍ
+          {t("SỔ BUỔI DẠY & HỌC PHÍ")}
         </p>
-        <h1 className="serif text-3xl leading-tight sm:text-4xl">{title}</h1>
+        <h1 className="serif text-3xl leading-tight sm:text-4xl">{t(title)}</h1>
         <p className="mb-8 mt-4 text-sm leading-7 text-muted-foreground">
-          {description}
+          {t(description)}
         </p>
         <div className="info-content space-y-8 text-sm leading-7">
           {children}
@@ -48,7 +53,7 @@ export function InfoLayout({
           className="inline-block text-xs text-primary underline underline-offset-4"
           href="/"
         >
-          Về trang giới thiệu
+          {t("Về trang giới thiệu")}
         </Link>
       </footer>
     </div>

@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useState } from "react";
 import Link from "next/link";
 import { formatVnd } from "@/domain";
@@ -9,6 +11,7 @@ import { ClassForm, type ClassDetail as Detail } from "./class-form";
 import { LessonsList } from "./lessons-list";
 import { LoadError, useResource } from "./shared";
 export function ClassDetail({ id }: { id: string }) {
+  const { t, locale } = useI18n();
   const resource = useResource<Detail>(
     `/api/classes/${encodeURIComponent(id)}`,
   );
@@ -24,11 +27,11 @@ export function ClassDetail({ id }: { id: string }) {
   }
   if (resource.error)
     return <LoadError message={resource.error} retry={resource.reload} />;
-  if (!item) return <p role="status">Đang mở lớp…</p>;
+  if (!item) return <p role="status">{t("Đang mở lớp…")}</p>;
   return (
     <div className="space-y-6 fade-in">
       <Link href="/app/classes" className="text-sm text-primary underline">
-        ← Lớp học
+        {t("← Lớp học")}
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -36,23 +39,25 @@ export function ClassDetail({ id }: { id: string }) {
             {item.displayName}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            {formatVnd(item.rateVnd)} / học viên / buổi · {item.students.length}{" "}
-            học viên{item.archivedAt ? " · Đã lưu trữ" : ""}
+            {formatVnd(item.rateVnd, locale)}
+            {t(" / học viên / buổi · ")}
+            {item.students.length} {t("học viên")}
+            {item.archivedAt ? t(" · Đã lưu trữ") : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setEditing(true)}>
-            Sửa lớp học
+            {t("Sửa lớp học")}
           </Button>
           {!item.archivedAt && (
             <Button asChild>
               <Link href={`/app/lessons/new?classId=${id}`}>
-                Ghi buổi cho lớp
+                {t("Ghi buổi cho lớp")}
               </Link>
             </Button>
           )}
           <Button variant="ghost" disabled={mutation.busy} onClick={archive}>
-            {item.archivedAt ? "Khôi phục lớp" : "Lưu trữ lớp"}
+            {item.archivedAt ? t("Khôi phục lớp") : t("Lưu trữ lớp")}
           </Button>
         </div>
       </div>
@@ -62,10 +67,11 @@ export function ClassDetail({ id }: { id: string }) {
         </p>
       )}
       <Card className="p-5">
-        <h2 className="serif mb-4 text-2xl">Học viên trong lớp</h2>
+        <h2 className="serif mb-4 text-2xl">{t("Học viên trong lớp")}</h2>
         <p className="mb-4 text-xs leading-5 text-muted-foreground">
-          Khi ghi buổi, chỉ chọn những người tham gia. Đổi thành viên hoặc đơn
-          giá lớp không thay đổi buổi cũ.
+          {t(
+            "Khi ghi buổi, chỉ chọn những người tham gia. Đổi thành viên hoặc đơn giá lớp không thay đổi buổi cũ.",
+          )}
         </p>
         <ul className="divide-y divide-border">
           {item.students.map((s) => (
@@ -78,7 +84,7 @@ export function ClassDetail({ id }: { id: string }) {
               </Link>
               {s.archivedAt && (
                 <span className="ml-2 text-xs text-muted-foreground">
-                  Đã lưu trữ · không thêm vào buổi mới
+                  {t("Đã lưu trữ · không thêm vào buổi mới")}
                 </span>
               )}
             </li>
@@ -86,13 +92,13 @@ export function ClassDetail({ id }: { id: string }) {
         </ul>
         {item.privateNote && (
           <p className="mt-4 whitespace-pre-wrap break-words border-t border-border pt-4 text-sm">
-            <span className="font-semibold">Ghi chú riêng: </span>
+            <span className="font-semibold">{t("Ghi chú riêng: ")}</span>
             {item.privateNote}
           </p>
         )}
       </Card>
       <div>
-        <h2 className="serif mb-4 text-2xl">Buổi học của lớp</h2>
+        <h2 className="serif mb-4 text-2xl">{t("Buổi học của lớp")}</h2>
         <LessonsList classId={id} />
       </div>
       {editing && (

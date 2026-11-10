@@ -1,4 +1,7 @@
 "use client";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
@@ -18,6 +21,7 @@ import { InfoLinks } from "./info-links";
 import { useAuthReady } from "@/lib/firebase/use-auth-ready";
 import { authErrorMessage } from "@/lib/firebase/auth-errors";
 export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
+  const { t } = useI18n();
   const configured = Boolean(
     serverConfigured &&
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
@@ -39,7 +43,9 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
       try {
         // Keep the SDK call in the button handler, before any awaited work.
         const result = await signInWithPopup(auth, new GoogleAuthProvider());
-        const session = await api<{ redirect?: string }>("/api/auth/session", {
+        const session = await api<{
+          redirect?: string;
+        }>("/api/auth/session", {
           method: "POST",
           body: { idToken: await result.user.getIdToken() },
         });
@@ -64,17 +70,18 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
         <div className="max-w-lg">
           <BookOpen className="mb-10 text-primary" size={44} strokeWidth={1} />
           <h1 className="serif text-5xl leading-tight">
-            Dành tâm trí
+            {t("Dành tâm trí")}
             <br />
-            cho những buổi dạy.
+            {t("cho những buổi dạy.")}
           </h1>
           <p className="mt-6 max-w-sm text-base leading-7 text-[#667459]">
-            Từng học viên, từng buổi học, từng đơn giá — gọn gàng trong một cuốn
-            sổ của riêng bạn.
+            {t(
+              "Từng học viên, từng buổi học, từng đơn giá — gọn gàng trong một cuốn sổ của riêng bạn.",
+            )}
           </p>
         </div>
         <p className="text-xs text-[#667459]">
-          LessonBrook · Sổ buổi dạy & học phí
+          {t("LessonBrook · Sổ buổi dạy & học phí")}
         </p>
       </section>
       <section className="flex flex-col px-6 py-8 sm:px-12">
@@ -82,27 +89,31 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
           href="/"
           className="inline-flex items-center gap-2 text-xs text-muted-foreground"
         >
-          <ArrowLeft size={14} /> Về trang giới thiệu
+          <ArrowLeft size={14} />
+          {t(" Về trang giới thiệu")}
         </Link>
         <div className="mx-auto my-auto w-full max-w-sm py-14">
           <div className="mb-12 lg:hidden">
             <Brand />
           </div>
+          <div className="mb-5 flex justify-end">
+            <LanguageSwitcher />
+          </div>
           <p className="mb-3 text-xs font-semibold tracking-[.18em] text-primary">
-            MỘT CUỐN SỔ NHẸ NHÀNG HƠN
+            {t("MỘT CUỐN SỔ NHẸ NHÀNG HƠN")}
           </p>
-          <h2 className="serif text-4xl">Chào bạn.</h2>
+          <h2 className="serif text-4xl">{t("Chào bạn.")}</h2>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            Đăng nhập để mở sổ buổi dạy của bạn.
+            {t("Đăng nhập để mở sổ buổi dạy của bạn.")}
             <br />
-            Học viên không cần tạo tài khoản.
+            {t("Học viên không cần tạo tài khoản.")}
           </p>
           {params.has("expired") && (
             <p
               role="status"
               className="mt-5 rounded-xl bg-[#f8efd9] p-3 text-sm text-[#85641d]"
             >
-              Phiên đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.
+              {t("Phiên đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.")}
             </p>
           )}
           <Button
@@ -117,10 +128,10 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
               <span className="text-base font-bold text-primary">G</span>
             )}
             {busy
-              ? "Đang đăng nhập…"
+              ? t("Đang đăng nhập…")
               : configured && !preparation.ready && !preparation.error
-                ? "Đang chuẩn bị đăng nhập…"
-                : "Tiếp tục với Google"}
+                ? t("Đang chuẩn bị đăng nhập…")
+                : t("Tiếp tục với Google")}
             {!busy && <ArrowRight className="ml-auto" />}
           </Button>
           {!configured && (
@@ -128,12 +139,12 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
               role="status"
               className="mt-4 rounded-xl bg-[#f8efd9] p-3 text-sm leading-6 text-[#85641d]"
             >
-              Ứng dụng đang được thiết lập. Đăng nhập sẽ được mở sau.
+              {t("Ứng dụng đang được thiết lập. Đăng nhập sẽ được mở sau.")}
             </p>
           )}
           {(error || preparation.error) && (
             <p role="alert" className="mt-4 text-sm leading-6 text-destructive">
-              {error || preparation.error}
+              {t(error || preparation.error)}
             </p>
           )}
           {preparation.error && (
@@ -142,33 +153,37 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
               variant="outline"
               onClick={preparation.retry}
             >
-              Thử chuẩn bị lại
+              {t("Thử chuẩn bị lại")}
             </Button>
           )}
           <details className="mt-5 text-xs leading-6 text-muted-foreground">
             <summary className="cursor-pointer text-primary">
-              Popup bị chặn hoặc báo thiếu trạng thái?
+              {t("Popup bị chặn hoặc báo thiếu trạng thái?")}
             </summary>
             <ol className="mt-3 list-decimal space-y-2 pl-5">
               <li>
-                Cho phép cửa sổ bật lên cho trang LessonBrook trong trình duyệt.
+                {t(
+                  "Cho phép cửa sổ bật lên cho trang LessonBrook trong trình duyệt.",
+                )}
               </li>
               <li>
-                Đóng cửa sổ đang báo lỗi, quay lại trang này và nhấn nút Google
-                để bắt đầu lần mới. Không mở lại đường dẫn đăng nhập cũ từ lịch
-                sử.
+                {t(
+                  "Đóng cửa sổ đang báo lỗi, quay lại trang này và nhấn nút Google để bắt đầu lần mới. Không mở lại đường dẫn đăng nhập cũ từ lịch sử.",
+                )}
               </li>
               <li>
-                Nếu mở từ Zalo/Facebook, dùng menu để mở LessonBrook bằng Safari
-                hoặc Chrome. Giữ nguyên trình duyệt trong suốt lần đăng nhập.
+                {t(
+                  "Nếu mở từ Zalo/Facebook, dùng menu để mở LessonBrook bằng Safari hoặc Chrome. Giữ nguyên trình duyệt trong suốt lần đăng nhập.",
+                )}
               </li>
             </ol>
           </details>
           <div className="mt-8 flex gap-3 border-t border-border pt-6">
             <ShieldCheck size={19} className="shrink-0 text-primary" />
             <p className="text-xs leading-5 text-muted-foreground">
-              Dữ liệu buổi dạy thuộc tài khoản của bạn. Đơn giá được lưu riêng
-              cho từng buổi. Cần kết nối mạng để lưu thay đổi.
+              {t(
+                "Dữ liệu buổi dạy thuộc tài khoản của bạn. Đơn giá được lưu riêng cho từng buổi. Cần kết nối mạng để lưu thay đổi.",
+              )}
             </p>
           </div>
           <div className="mt-6">
@@ -176,8 +191,9 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
           </div>
           {process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" && (
             <p className="mt-6 rounded-xl bg-[#f8efd9] p-3 text-xs leading-5 text-[#85641d]">
-              Firebase Emulator · Môi trường thử nghiệm cục bộ. Chỉ sử dụng dữ
-              liệu giả; đăng nhập này không xác minh tài khoản Google thật.
+              {t(
+                "Firebase Emulator · Môi trường thử nghiệm cục bộ. Chỉ sử dụng dữ liệu giả; đăng nhập này không xác minh tài khoản Google thật.",
+              )}
             </p>
           )}
         </div>

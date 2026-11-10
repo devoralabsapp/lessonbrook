@@ -1,0 +1,347 @@
+import { expect, test } from "@playwright/test";
+import { googleToken, origin } from "../integration/helpers";
+import { vietnamToday } from "../../src/domain";
+
+test.use({ locale: "vi-VN", storageState: { cookies: [], origins: [] } });
+
+test("visitors can preview themes on the home page without saving an account preference", async ({
+  page,
+}) => {
+  const appearanceRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/appearance")
+      appearanceRequests.push(request.method());
+  });
+
+  await page.goto("/");
+  const theme = page.getByRole("combobox", { name: "Preview theme" });
+  const home = page.getByRole("main");
+  await expect(theme).toHaveValue("natura");
+  await expect(theme.locator("option")).toHaveCount(8);
+
+  await theme.selectOption("command-line");
+  await expect(home).toHaveCSS("background-color", "rgb(0, 0, 0)");
+  await expect(home.locator('[data-slot="card"]')).toHaveCSS(
+    "background-color",
+    "rgb(13, 13, 13)",
+  );
+  await theme.selectOption("playful-retro");
+  await expect(home).toHaveCSS("background-color", "rgb(255, 246, 230)");
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(theme).toBeInViewport();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+
+  await page.reload();
+  await expect(theme).toHaveValue("natura");
+  await expect(home).toHaveAttribute("data-theme", "natura");
+  expect(appearanceRequests).toEqual([]);
+});
+
+test("home ledger draws its checks on entry, rearms after leaving, and settles with reduced motion", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 560 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+  const ledger = page.locator('[data-slot="home-ledger"]');
+  const check = ledger.locator(".ledger-motion-check").first();
+  await expect(ledger).not.toHaveAttribute("data-ledger-motion", "playing");
+
+  const observeDrawing = () =>
+    ledger.evaluate(async (panel) => {
+      const path = panel.querySelector(".ledger-motion-check")!;
+      panel.scrollIntoView({ block: "center" });
+      const deadline = performance.now() + 2000;
+      while (performance.now() < deadline) {
+        await new Promise(requestAnimationFrame);
+        const offset = Number.parseFloat(
+          getComputedStyle(path).strokeDashoffset,
+        );
+        if (offset > 0 && offset < 1) return true;
+      }
+      return false;
+    });
+
+  expect(await observeDrawing()).toBe(true);
+  await expect(check).toHaveCSS("stroke-dashoffset", "0px");
+  await page.mouse.wheel(0, 5);
+  await expect(check).toHaveCSS("stroke-dashoffset", "0px");
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(ledger).not.toHaveAttribute("data-ledger-motion", "playing");
+  expect(await observeDrawing()).toBe(true);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(ledger).not.toHaveAttribute("data-ledger-motion", "playing");
+  await expect(check).toHaveCSS("animation-name", "none");
+  await expect(ledger.getByText(/Lan · Piano/)).toBeVisible();
+});
+
+test("360px: English default, switch persists across routes and reload, metadata and manifest follow locale", async ({
+  page,
+  context,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(
+    page.getByRole("heading", { name: /Focus on teaching/ }),
+  ).toBeVisible();
+  await expect(page).toHaveTitle(/Lesson & tuition ledger/);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  const language = page.getByRole("combobox", {
+    name: "Language",
+    exact: true,
+  });
+  // Keep both controls adjacent at phone and desktop widths.
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    const picker = (await language.boundingBox())!;
+    const signIn = (await page
+      .getByRole("link", { name: "Sign in", exact: true })
+      .boundingBox())!;
+    expect(Math.abs(picker.y - signIn.y)).toBeLessThan(2);
+    expect(signIn.x - picker.x - picker.width).toBeGreaterThanOrEqual(7);
+    expect(signIn.x - picker.x - picker.width).toBeLessThanOrEqual(16);
+  }
+  await page.setViewportSize({ width: 360, height: 800 });
+  await language.focus();
+  await language.press("ArrowDown");
+  await expect(language).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    page.getByRole("option", { name: "English", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await language.press("Escape");
+  await expect(language).toHaveAttribute("aria-expanded", "false");
+  await expect(language).toBeFocused();
+  await language.click();
+  await page.getByRole("heading", { name: /Focus on teaching/ }).click();
+  await expect(language).toHaveAttribute("aria-expanded", "false");
+  await language.press("ArrowDown");
+  await language.press("End");
+  await expect(language).toHaveAttribute(
+    "aria-activedescendant",
+    (await page
+      .getByRole("option", { name: "Tiếng Việt", exact: true })
+      .getAttribute("id"))!,
+  );
+  await language.press("Enter");
+  await expect(page.locator("html")).toHaveAttribute("lang", "vi");
+  await expect(
+    page.getByRole("combobox", { name: "Xem thử giao diện" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Dạy hết mình/ }),
+  ).toBeVisible();
+  await page.goto("/help#install");
+  await expect(
+    page.getByRole("heading", { name: "Dùng sổ nhẹ nhàng mỗi ngày" }),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Ngôn ngữ", exact: true }).click();
+  await page.getByRole("option", { name: "English", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  expect(new URL(page.url()).hash).toBe("#install");
+  await page.goto("/privacy");
+  await expect(
+    page.getByRole("heading", { name: "The data in your ledger" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  expect(
+    (await (await context.request.get("/manifest.webmanifest")).json()).lang,
+  ).toBe("en");
+  await page.goto("/login?expired=1");
+  await expect(
+    page.getByRole("button", { name: "Continue with Google" }),
+  ).toBeEnabled();
+  await expect(page.getByRole("status")).toContainText(
+    "Your session has expired",
+  );
+  const cookie = (await context.cookies()).find(
+    (c) => c.name === "chotcong_locale",
+  )!;
+  expect(cookie.httpOnly).toBe(true);
+  expect(cookie.sameSite).toBe("Lax");
+  expect(errors).toEqual([]);
+});
+
+test("English teacher flow: entered Vietnamese names stay intact, lessons and statements use English and VND", async ({
+  page,
+  context,
+  browser,
+}) => {
+  const token = await googleToken();
+  const csrf = (await (await context.request.get("/api/auth/csrf")).json())
+    .token;
+  const headers = { Origin: origin, "x-csrf-token": csrf };
+  expect(
+    (
+      await context.request.post("/api/auth/session", {
+        headers,
+        data: { idToken: token.idToken },
+      })
+    ).ok(),
+  ).toBe(true);
+  const create = async (path: string, data: unknown) => {
+    const response = await context.request.post(path, {
+      headers: {
+        ...headers,
+        "x-csrf-token": (await context.cookies()).find(
+          (cookie) => cookie.name === "chotcong_csrf",
+        )!.value,
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+      data,
+    });
+    expect(response.ok()).toBe(true);
+    return response.json();
+  };
+  await page.goto("/app/students");
+  await page
+    .getByRole("button", { name: "Add student", exact: true })
+    .first()
+    .click();
+  await page.getByLabel("Student name *", { exact: true }).fill("Đã dạy");
+  await page.getByLabel("Default price / lesson").fill("200000");
+  await page.getByRole("button", { name: "Save student", exact: true }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Student Đã dạy saved." }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /Đã dạy/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Đã dạy", exact: true }),
+  ).toBeVisible();
+  const studentUrl = page.url();
+  const studentId = studentUrl.split("/").pop()!;
+  await page
+    .getByRole("button", { name: "Record lesson", exact: true })
+    .click();
+  await page.getByLabel("Lesson date *", { exact: true }).fill(vietnamToday());
+  await page.getByRole("button", { name: "Save lesson", exact: true }).click();
+  await expect(page.locator(".status-completed")).toHaveText("Completed");
+  await expect(page.getByText(/200,000/).last()).toBeVisible();
+  const sessions = await (await context.request.get("/api/sessions")).json();
+  const statement = await create("/api/statements", {
+    studentId,
+    sessionIds: [sessions.items[0].id],
+    periodStart: vietnamToday(),
+    periodEnd: vietnamToday(),
+    dueDate: vietnamToday(),
+    includeBankDetails: false,
+  });
+  await page.goto(`/app/statements/${statement.id}`);
+  await expect(
+    page.getByRole("heading", { name: "Preview draft", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Issue statement", exact: true })
+    .click();
+  await expect(page.getByRole("heading", { name: /^CC-/ })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Preview to create a link", exact: true })
+    .click();
+  await page.getByLabel("I have checked the public content above").check();
+  await page
+    .getByRole("button", { name: "Create new shared link", exact: true })
+    .click();
+  const link = await page
+    .getByLabel("New shared link", { exact: true })
+    .inputValue();
+  const guest = await browser.newContext({
+    storageState: { cookies: [], origins: [] },
+    viewport: { width: 360, height: 800 },
+  });
+  try {
+    const recipient = await guest.newPage();
+    await recipient.goto(link);
+    await expect(recipient.getByTestId("public-statement")).toContainText(
+      "TUITION STATEMENT",
+    );
+    await expect(recipient.getByTestId("public-statement")).toContainText(
+      "Đã dạy",
+    );
+    await expect(recipient.getByTestId("public-remaining")).toContainText(
+      "200,000",
+    );
+    await recipient
+      .getByRole("combobox", { name: "Language", exact: true })
+      .click();
+    await recipient
+      .getByRole("option", { name: "Tiếng Việt", exact: true })
+      .click();
+    await expect(recipient.locator("html")).toHaveAttribute("lang", "vi");
+    expect(new URL(recipient.url()).hash).toBe(new URL(link).hash);
+    await expect(recipient.getByTestId("public-remaining")).toContainText(
+      "200.000",
+    );
+    expect(
+      await recipient.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  } finally {
+    await guest.close();
+  }
+  await page.goto("/app/settings");
+  await expect(
+    page.getByRole("heading", { name: "Your appearance" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Type DELETE ACCOUNT to confirm")).toBeVisible();
+  const saveAppearance = page.getByRole("button", {
+    name: "Save appearance",
+    exact: true,
+  });
+  await expect(saveAppearance).toBeDisabled();
+  await page.getByRole("radio", { name: "Command Line", exact: false }).check();
+  await expect(page.locator('[data-theme="command-line"]')).toHaveCSS(
+    "background-color",
+    "rgb(0, 0, 0)",
+  );
+  await expect(
+    page.getByRole("status").filter({ hasText: "Previewing — not saved yet." }),
+  ).toBeVisible();
+  expect(
+    (await (await context.request.get("/api/appearance")).json()).theme,
+  ).toBe("natura");
+  await page
+    .getByRole("button", { name: "Cancel preview", exact: true })
+    .click();
+  await expect(page.locator('[data-theme="natura"]')).toBeVisible();
+  await expect(saveAppearance).toBeDisabled();
+  await page
+    .getByRole("radio", { name: "Playful Retro Neo-Brutalism", exact: false })
+    .check();
+  await expect(page.locator('[data-theme="playful-retro"]')).toHaveCSS(
+    "background-color",
+    "rgb(255, 246, 230)",
+  );
+  await expect(
+    page.getByText(
+      "Warm cream, vivid pastels, bold outlines and retro shadows",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Previewing — not saved yet." }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Cancel preview", exact: true })
+    .click();
+  await expect(page.locator('[data-theme="natura"]')).toBeVisible();
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

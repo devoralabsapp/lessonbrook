@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Default to English and offer Vietnamese through the language selector. Add guest theme previews and a sample ledger entrance sequence on the home page. The animation respects reduced motion and replays when the sample scrolls fully out of view and returns.
+
 - Add Playful Retro Neo-Brutalism as an eighth optional theme: warm cream, pastel summary panels, black outlines/offset shadows, pill buttons and bundled Nunito under SIL OFL 1.1. Reuse instant preview/explicit save; scope retro component styles to preserve all other themes and light shared statements. Respect reduced motion.
 
 - Preview themes instantly in settings; persist only after Save, with cancel and automatic reset on navigation/reload. Failed saves keep the preview for retry. Make Command Line panels neutral black.

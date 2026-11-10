@@ -1,22 +1,41 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useRef, useState } from "react";
 import { type Student } from "@/domain";
 import { api } from "@/lib/client-api";
 import { useDebounced } from "@/lib/use-debounced";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-export type Page<T> = { items: T[]; nextCursor: string | null };
-export const formatDate = (date: string) => date.split("-").reverse().join("/");
+export type Page<T> = {
+  items: T[];
+  nextCursor: string | null;
+};
+export const formatDate = (date: string, locale: "en" | "vi" = "vi") =>
+  locale === "vi"
+    ? date.split("-").reverse().join("/")
+    : new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "Asia/Ho_Chi_Minh",
+      }).format(new Date(`${date}T12:00:00+07:00`));
 export function useStatementMutation() {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const request = useRef<{ payload: string; id: string } | null>(null);
+  const request = useRef<{
+    payload: string;
+    id: string;
+  } | null>(null);
   const running = useRef(false);
-  async function run<T extends { id: string } = { id: string }>(
-    path: string,
-    method: string,
-    body: unknown,
-  ) {
+  async function run<
+    T extends {
+      id: string;
+    } = {
+      id: string;
+    },
+  >(path: string, method: string, body: unknown) {
     if (running.current) return null;
     running.current = true;
     setBusy(true);
@@ -35,10 +54,10 @@ export function useStatementMutation() {
     } catch (error) {
       setError(
         (error instanceof TypeError
-          ? "Chưa kết nối được máy chủ."
+          ? t("Chưa kết nối được máy chủ.")
           : error instanceof Error
             ? error.message
-            : "Chưa thể lưu.") + " Nội dung vẫn được giữ để bạn thử lại.",
+            : t("Chưa thể lưu.")) + t(" Nội dung vẫn được giữ để bạn thử lại."),
       );
       return null;
     } finally {
@@ -57,18 +76,21 @@ export function StudentPicker({
   onChange: (id: string) => void;
   optional?: boolean;
 }) {
+  const { t } = useI18n();
   const [archived, setArchived] = useState(false);
   const [search, setSearch] = useState("");
   const term = useDebounced(search);
   const endpoint = `/api/students?${new URLSearchParams({ archived: String(archived), limit: "50", q: term })}`;
   const [revision, setRevision] = useState(0);
-  const [data, setData] = useState<{ key: string; page: Page<Student> } | null>(
-    null,
-  );
+  const [data, setData] = useState<{
+    key: string;
+    page: Page<Student>;
+  } | null>(null);
   const [selected, setSelected] = useState<Student | null>(null);
-  const [error, setError] = useState<{ key: string; message: string } | null>(
-    null,
-  );
+  const [error, setError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
   const [moreBusy, setMoreBusy] = useState(false);
   const key = `${endpoint}:${revision}`;
   useEffect(() => {
@@ -83,7 +105,7 @@ export function StudentPicker({
     return () => {
       active = false;
     };
-  }, [endpoint, key]);
+  }, [endpoint, key, t]);
   useEffect(() => {
     if (!value) return;
     let active = true;
@@ -95,7 +117,7 @@ export function StudentPicker({
     return () => {
       active = false;
     };
-  }, [value]);
+  }, [value, t]);
   const page = data?.key === key && search === term ? data.page : null;
   async function more() {
     if (!page?.nextCursor) return;
@@ -127,7 +149,7 @@ export function StudentPicker({
       setError({
         key,
         message:
-          error instanceof Error ? error.message : "Chưa tải được học viên.",
+          error instanceof Error ? error.message : t("Chưa tải được học viên."),
       });
     } finally {
       setMoreBusy(false);
@@ -136,17 +158,17 @@ export function StudentPicker({
   return (
     <div className="space-y-3">
       <label className="field-label">
-        Tìm tên học viên
+        {t("Tìm tên học viên")}
         <Input
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           maxLength={100}
-          placeholder="Có dấu hoặc không dấu"
+          placeholder={t("Có dấu hoặc không dấu")}
         />
       </label>
       <label className="field-label">
-        Học viên
+        {t("Học viên")}
         <select
           className="select-input"
           value={value}
@@ -154,19 +176,19 @@ export function StudentPicker({
           required={!optional}
         >
           <option value="">
-            {optional ? "Tất cả học viên" : "Chọn học viên"}
+            {optional ? t("Tất cả học viên") : t("Chọn học viên")}
           </option>
           {value && !page?.items.some((student) => student.id === value) && (
             <option value={value}>
               {selected?.id === value
                 ? selected.displayName
-                : "Học viên đã chọn"}
+                : t("Học viên đã chọn")}
             </option>
           )}
           {page?.items.map((student) => (
             <option key={student.id} value={student.id}>
               {student.displayName}
-              {student.archivedAt ? " · Đã lưu trữ" : ""}
+              {student.archivedAt ? t(" · Đã lưu trữ") : ""}
             </option>
           ))}
         </select>
@@ -177,31 +199,31 @@ export function StudentPicker({
           checked={archived}
           onChange={(event) => setArchived(event.target.checked)}
         />
-        Hiện học viên đã lưu trữ
+        {t("Hiện học viên đã lưu trữ")}
       </label>
       {!page && error?.key !== key && (
         <p role="status" className="text-xs">
-          Đang tải học viên…
+          {t("Đang tải học viên…")}
         </p>
       )}
       {error?.key === key && (
         <div role="alert" className="text-xs text-destructive">
-          {error.message}{" "}
+          {t(error.message)}{" "}
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => setRevision((value) => value + 1)}
           >
-            Thử lại
+            {t("Thử lại")}
           </Button>
         </div>
       )}
       {page && !page.items.length && (
         <p role="status" className="text-xs">
           {page.nextCursor
-            ? "Chưa thấy học viên phù hợp. Bạn có thể tìm tiếp."
-            : "Không có học viên phù hợp trong danh sách này."}
+            ? t("Chưa thấy học viên phù hợp. Bạn có thể tìm tiếp.")
+            : t("Không có học viên phù hợp trong danh sách này.")}
         </p>
       )}
       {page?.nextCursor && (
@@ -213,10 +235,10 @@ export function StudentPicker({
           onClick={more}
         >
           {moreBusy
-            ? "Đang tải…"
+            ? t("Đang tải…")
             : term
-              ? "Tìm tiếp học viên"
-              : "Tải thêm học viên"}
+              ? t("Tìm tiếp học viên")
+              : t("Tải thêm học viên")}
         </Button>
       )}
     </div>

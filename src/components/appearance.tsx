@@ -1,11 +1,12 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { createContext, useContext, useState } from "react";
 import { DEFAULT_THEME, themes } from "@/domain/appearance";
 import { useStatementMutation } from "@/features/statements/shared";
 import type { useAppearancePreview } from "@/lib/use-appearance-preview";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-
 export const AppearanceContext = createContext<
   ReturnType<typeof useAppearancePreview>
 >({
@@ -16,6 +17,7 @@ export const AppearanceContext = createContext<
   cancelPreview: () => undefined,
 });
 export function AppearancePicker() {
+  const { t } = useI18n();
   const {
     theme: choice,
     savedTheme,
@@ -34,22 +36,23 @@ export function AppearancePicker() {
     if (result) {
       commitTheme(choice);
       setMessage(
-        "Đã lưu giao diện. Áp dụng cho tài khoản của bạn trên các thiết bị.",
+        t("Đã lưu giao diện. Áp dụng cho tài khoản của bạn trên các thiết bị."),
       );
     }
   }
   return (
     <Card className="mb-6 p-6">
-      <h2 className="serif text-2xl">Giao diện của bạn</h2>
+      <h2 className="serif text-2xl">{t("Giao diện của bạn")}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Chọn màu sắc và kiểu chữ cho cuốn sổ. Bảng kê gửi cho người nhận giữ
-        cách trình bày riêng.
+        {t(
+          "Chọn màu sắc và kiểu chữ cho cuốn sổ. Bảng kê gửi cho người nhận giữ cách trình bày riêng.",
+        )}
       </p>
       <fieldset
         disabled={mutation.busy}
         className="mt-5 grid gap-3 sm:grid-cols-2"
       >
-        <legend className="sr-only">Chọn theme</legend>
+        <legend className="sr-only">{t("Chọn theme")}</legend>
         {themes.map((item) => (
           <label
             key={item.id}
@@ -80,18 +83,18 @@ export function AppearancePicker() {
                 ))}
               </span>
               <span className="block text-xs leading-5 text-muted-foreground">
-                {item.description}
+                {t(item.description)}
               </span>
             </span>
           </label>
         ))}
       </fieldset>
       <p className="mt-4 text-xs leading-5 text-muted-foreground">
-        {"Bấm chọn để xem thử ngay. Chỉ lưu khi bạn bấm Lưu giao diện."}
+        {t("Bấm chọn để xem thử ngay. Chỉ lưu khi bạn bấm Lưu giao diện.")}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button disabled={mutation.busy || !dirty} onClick={save}>
-          {mutation.busy ? "Đang lưu…" : "Lưu giao diện"}
+          {mutation.busy ? t("Đang lưu…") : t("Lưu giao diện")}
         </Button>
         {dirty && (
           <Button
@@ -103,7 +106,7 @@ export function AppearancePicker() {
               mutation.clearError();
             }}
           >
-            {"Hủy xem trước"}
+            {t("Hủy xem trước")}
           </Button>
         )}
       </div>
@@ -114,7 +117,7 @@ export function AppearancePicker() {
       )}
       {(dirty || message) && (
         <p role="status" className="mt-3 text-sm text-primary">
-          {dirty ? "Đang xem trước, chưa lưu." : message}
+          {dirty ? t("Đang xem trước, chưa lưu.") : message}
         </p>
       )}
     </Card>

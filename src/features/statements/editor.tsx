@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -37,6 +39,7 @@ export function StatementEditor({
   onCancel?: () => void;
   onSaved?: (id: string) => void;
 }) {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const today = vietnamToday();
   const [studentId, setStudentId] = useState(
@@ -60,9 +63,10 @@ export function StatementEditor({
     key: string;
     page: Page<TeachingSession>;
   } | null>(null);
-  const [error, setError] = useState<{ key: string; message: string } | null>(
-    null,
-  );
+  const [error, setError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
   const [moreBusy, setMoreBusy] = useState(false);
   const mutation = useStatementMutation();
   const validRange =
@@ -102,7 +106,7 @@ export function StatementEditor({
     return () => {
       active = false;
     };
-  }, [endpoint, key]);
+  }, [endpoint, key, t]);
   const page = data?.key === key ? data.page : null;
   const total = [...selected.values()].reduce(
     (sum, item) => sum + item.amountVnd,
@@ -148,7 +152,7 @@ export function StatementEditor({
       setError({
         key,
         message:
-          error instanceof Error ? error.message : "Chưa tải được buổi dạy.",
+          error instanceof Error ? error.message : t("Chưa tải được buổi dạy."),
       });
     } finally {
       setMoreBusy(false);
@@ -181,13 +185,15 @@ export function StatementEditor({
     <div className="fade-in space-y-6">
       <div>
         <Link href="/app/statements" className="text-xs text-primary">
-          ← Danh sách bảng kê
+          {t("← Danh sách bảng kê")}
         </Link>
         <h1 className="serif mt-4 text-3xl">
-          {initial ? "Sửa bản nháp" : "Lập bảng kê học phí"}
+          {initial ? t("Sửa bản nháp") : t("Lập bảng kê học phí")}
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Chọn buổi đã dạy, lưu nháp rồi kiểm tra bản xem trước để phát hành.
+          {t(
+            "Chọn buổi đã dạy, lưu nháp rồi kiểm tra bản xem trước để phát hành.",
+          )}
         </p>
       </div>
       <form onSubmit={save}>
@@ -202,7 +208,7 @@ export function StatementEditor({
             />
             <div className="grid grid-cols-2 gap-3">
               <label className="field-label">
-                Từ ngày
+                {t("Từ ngày")}
                 <Input
                   type="date"
                   required
@@ -216,7 +222,7 @@ export function StatementEditor({
                 />
               </label>
               <label className="field-label">
-                Đến ngày
+                {t("Đến ngày")}
                 <Input
                   type="date"
                   required
@@ -231,14 +237,14 @@ export function StatementEditor({
               </label>
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
-              Gồm cả ngày đầu và ngày cuối. Chỉ lấy buổi hoàn thành, tính phí và
-              chưa thuộc bảng kê đã phát hành. Học viên lưu trữ vẫn lập được
-              bảng kê cho buổi cũ.
+              {t(
+                "Gồm cả ngày đầu và ngày cuối. Chỉ lấy buổi hoàn thành, tính phí và chưa thuộc bảng kê đã phát hành. Học viên lưu trữ vẫn lập được bảng kê cho buổi cũ.",
+              )}
             </p>
           </Card>
           <Card className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
-              <h2 className="font-semibold">Buổi đủ điều kiện</h2>
+              <h2 className="font-semibold">{t("Buổi đủ điều kiện")}</h2>
               {page?.items.length ? (
                 <Button
                   variant="outline"
@@ -258,28 +264,28 @@ export function StatementEditor({
                     })
                   }
                 >
-                  Chọn các buổi đang hiện
+                  {t("Chọn các buổi đang hiện")}
                 </Button>
               ) : null}
             </div>
             {!endpoint ? (
               <p className="p-6 text-sm text-muted-foreground">
-                Chọn học viên và khoảng ngày hợp lệ để xem các buổi.
+                {t("Chọn học viên và khoảng ngày hợp lệ để xem các buổi.")}
               </p>
             ) : error?.key === key ? (
               <div role="alert" className="p-5 text-sm text-destructive">
-                {error.message}
+                {t(error.message)}
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => setRevision((value) => value + 1)}
                 >
-                  Tải lại danh sách
+                  {t("Tải lại danh sách")}
                 </Button>
               </div>
             ) : !page ? (
               <p role="status" className="p-6 text-sm">
-                Đang tìm buổi dạy…
+                {t("Đang tìm buổi dạy…")}
               </p>
             ) : page.items.length ? (
               <div className="divide-y divide-border">
@@ -306,19 +312,21 @@ export function StatementEditor({
                       }
                     />
                     <span className="min-w-0 flex-1 text-sm">
-                      Buổi {formatDate(session.sessionDate)}
+                      {t("Buổi ")}
+                      {formatDate(session.sessionDate, locale)}
                       {session.startTime ? ` · ${session.startTime}` : ""}
                     </span>
                     <span className="text-sm font-semibold">
-                      {formatVnd(session.amountVnd)}
+                      {formatVnd(session.amountVnd, locale)}
                     </span>
                   </label>
                 ))}
               </div>
             ) : (
               <p className="p-6 text-sm text-muted-foreground">
-                Không có buổi đủ điều kiện trong khoảng này. Buổi đã phát hành
-                bảng kê sẽ không xuất hiện ở đây.
+                {t(
+                  "Không có buổi đủ điều kiện trong khoảng này. Buổi đã phát hành bảng kê sẽ không xuất hiện ở đây.",
+                )}
               </p>
             )}
             {page?.nextCursor && (
@@ -329,7 +337,7 @@ export function StatementEditor({
                   onClick={more}
                   disabled={moreBusy}
                 >
-                  {moreBusy ? "Đang tải…" : "Tải thêm buổi"}
+                  {moreBusy ? t("Đang tải…") : t("Tải thêm buổi")}
                 </Button>
               </div>
             )}
@@ -337,7 +345,9 @@ export function StatementEditor({
           <Card className="space-y-5 p-5 sm:p-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-semibold">
-                Đã chọn {selected.size}/100 buổi
+                {t("Đã chọn ")}
+                {selected.size}
+                {t("/100 buổi")}
               </h2>
               {selected.size > 0 && (
                 <Button
@@ -346,7 +356,7 @@ export function StatementEditor({
                   size="sm"
                   onClick={resetSelection}
                 >
-                  Bỏ chọn tất cả
+                  {t("Bỏ chọn tất cả")}
                 </Button>
               )}
             </div>
@@ -360,14 +370,17 @@ export function StatementEditor({
                       className="flex items-center gap-2 text-xs"
                     >
                       <span className="min-w-0 flex-1">
-                        {formatDate(item.sessionDate)} ·{" "}
-                        {formatVnd(item.amountVnd)}
+                        {formatDate(item.sessionDate, locale)} ·{" "}
+                        {formatVnd(item.amountVnd, locale)}
                       </span>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        aria-label={`Bỏ buổi ${formatDate(item.sessionDate)} số ${index + 1}`}
+                        aria-label={t("Bỏ buổi {0} số {1}", {
+                          "0": formatDate(item.sessionDate, locale),
+                          "1": index + 1,
+                        })}
                         onClick={() =>
                           setSelected((current) => {
                             const next = new Map(current);
@@ -376,18 +389,20 @@ export function StatementEditor({
                           })
                         }
                       >
-                        Bỏ chọn
+                        {t("Bỏ chọn")}
                       </Button>
                     </li>
                   ))}
               </ul>
             )}
             <p className="flex justify-between gap-2 text-sm">
-              Tổng bản nháp
-              <strong data-testid="draft-total">{formatVnd(total)}</strong>
+              {t("Tổng bản nháp")}
+              <strong data-testid="draft-total">
+                {formatVnd(total, locale)}
+              </strong>
             </p>
             <label className="field-label">
-              Ngày đến hạn
+              {t("Ngày đến hạn")}
               <Input
                 type="date"
                 required
@@ -407,15 +422,16 @@ export function StatementEditor({
                 }
               />
               <span>
-                Đưa thông tin nhận tiền từ hồ sơ vào bảng kê
+                {t("Đưa thông tin nhận tiền từ hồ sơ vào bảng kê")}
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  Bạn sẽ kiểm tra lại nội dung trước khi phát hành.
+                  {t("Bạn sẽ kiểm tra lại nội dung trước khi phát hành.")}
                 </span>
               </span>
             </label>
             <p className="text-xs leading-5 text-muted-foreground">
-              Nháp chưa tạo khoản phải thu và chưa khóa buổi dạy. Nếu buổi thay
-              đổi, số tiền sẽ được tính lại khi lưu nháp.
+              {t(
+                "Nháp chưa tạo khoản phải thu và chưa khóa buổi dạy. Nếu buổi thay đổi, số tiền sẽ được tính lại khi lưu nháp.",
+              )}
             </p>
             {mutation.error && (
               <p role="alert" className="text-sm text-destructive">
@@ -433,7 +449,7 @@ export function StatementEditor({
                   total <= 0
                 }
               >
-                {mutation.busy ? "Đang lưu…" : "Lưu nháp"}
+                {mutation.busy ? t("Đang lưu…") : t("Lưu nháp")}
               </Button>
               {onCancel && (
                 <Button
@@ -442,7 +458,7 @@ export function StatementEditor({
                   onClick={onCancel}
                   disabled={mutation.busy}
                 >
-                  Quay lại bản xem trước
+                  {t("Quay lại bản xem trước")}
                 </Button>
               )}
             </div>

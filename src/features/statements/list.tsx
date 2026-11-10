@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatVnd, vietnamToday } from "@/domain";
@@ -15,6 +17,7 @@ export function StatementsList({
   initialStudentId?: string;
   initialStatus?: string;
 }) {
+  const { t, locale } = useI18n();
   const [status, setStatus] = useState(initialStatus);
   const [studentId, setStudentId] = useState(initialStudentId);
   const [revision, setRevision] = useState(0);
@@ -22,9 +25,10 @@ export function StatementsList({
     key: string;
     page: Page<Statement>;
   } | null>(null);
-  const [error, setError] = useState<{ key: string; message: string } | null>(
-    null,
-  );
+  const [error, setError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
   const [moreBusy, setMoreBusy] = useState(false);
   const params = new URLSearchParams({ status });
   if (studentId) params.set("studentId", studentId);
@@ -42,7 +46,7 @@ export function StatementsList({
     return () => {
       active = false;
     };
-  }, [endpoint, key]);
+  }, [endpoint, key, t]);
   const page = data?.key === key ? data.page : null;
   async function more() {
     if (!page?.nextCursor) return;
@@ -72,7 +76,7 @@ export function StatementsList({
       setError({
         key,
         message:
-          error instanceof Error ? error.message : "Chưa tải được bảng kê.",
+          error instanceof Error ? error.message : t("Chưa tải được bảng kê."),
       });
     } finally {
       setMoreBusy(false);
@@ -83,25 +87,25 @@ export function StatementsList({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="mb-2 text-xs text-muted-foreground">
-            SỔ BUỔI DẠY & HỌC PHÍ
+            {t("SỔ BUỔI DẠY & HỌC PHÍ")}
           </p>
-          <h1 className="serif text-3xl sm:text-4xl">Bảng kê học phí</h1>
+          <h1 className="serif text-3xl sm:text-4xl">{t("Bảng kê học phí")}</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Đối chiếu từng buổi và chốt số tiền cần thu.
+            {t("Đối chiếu từng buổi và chốt số tiền cần thu.")}
           </p>
         </div>
         <Button asChild>
           <Link
             href={`/app/statements/new${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""}`}
           >
-            Lập bảng kê
+            {t("Lập bảng kê")}
           </Link>
         </Button>
       </div>
       <Card className="grid items-start gap-5 p-5 sm:grid-cols-2">
         <StudentPicker value={studentId} onChange={setStudentId} optional />
         <label className="field-label">
-          Trạng thái bảng kê
+          {t("Trạng thái bảng kê")}
           <select
             className="select-input"
             value={status}
@@ -109,7 +113,7 @@ export function StatementsList({
           >
             {Object.entries(statementFilterLabels).map(([value, label]) => (
               <option key={value} value={value}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
@@ -117,29 +121,31 @@ export function StatementsList({
       </Card>
       {error?.key === key ? (
         <Card role="alert" className="p-6 text-sm">
-          <p className="mb-3 text-destructive">{error.message}</p>
+          <p className="mb-3 text-destructive">{t(error.message)}</p>
           <Button
             variant="outline"
             onClick={() => setRevision((value) => value + 1)}
           >
-            Thử lại
+            {t("Thử lại")}
           </Button>
         </Card>
       ) : !page ? (
         <Card role="status" className="p-8 text-sm">
-          Đang tải bảng kê…
+          {t("Đang tải bảng kê…")}
         </Card>
       ) : !page.items.length ? (
         <Card className="p-8 text-center">
           <h2 className="serif text-2xl">
             {page.nextCursor
-              ? "Chưa thấy bảng kê phù hợp."
-              : "Chưa có bảng kê trong danh sách này."}
+              ? t("Chưa thấy bảng kê phù hợp.")
+              : t("Chưa có bảng kê trong danh sách này.")}
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             {page.nextCursor
-              ? "Bạn có thể tải tiếp danh sách để tìm thêm kết quả."
-              : "Lập nháp từ các buổi hoàn thành có tính phí. Bản nháp chưa được tính vào khoản phải thu."}
+              ? t("Bạn có thể tải tiếp danh sách để tìm thêm kết quả.")
+              : t(
+                  "Lập nháp từ các buổi hoàn thành có tính phí. Bản nháp chưa được tính vào khoản phải thu.",
+                )}
           </p>
         </Card>
       ) : (
@@ -154,31 +160,35 @@ export function StatementsList({
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong className="break-words text-sm">
-                      {statement.number ?? "Bản nháp"} ·{" "}
+                      {statement.number ?? t("Bản nháp")} ·{" "}
                       {statement.recipientSnapshot.displayName}
                     </strong>
                     <span className="rounded-full bg-muted px-3 py-1 text-xs">
                       {display.label}
-                      {display.overdue ? " · Quá hạn" : ""}
+                      {display.overdue ? t(" · Quá hạn") : ""}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {formatDate(statement.periodStart)} –{" "}
-                    {formatDate(statement.periodEnd)} · {statement.items.length}{" "}
-                    buổi
+                    {formatDate(statement.periodStart, locale)} –{" "}
+                    {formatDate(statement.periodEnd, locale)} ·{" "}
+                    {statement.items.length} {t("buổi")}
                   </p>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="text-xs text-muted-foreground">
-                      Đến hạn {formatDate(statement.dueDate)}
+                      {t("Đến hạn ")}
+                      {formatDate(statement.dueDate, locale)}
                     </span>
                     <strong className="text-base">
-                      {formatVnd(statement.totalVnd)}
+                      {formatVnd(statement.totalVnd, locale)}
                     </strong>
                   </div>
                   {statement.status === "issued" && (
                     <p className="text-xs">
-                      Còn phải thu:{" "}
-                      {formatVnd(statement.totalVnd - statement.paidVnd)}
+                      {t("Còn phải thu:")}{" "}
+                      {formatVnd(
+                        statement.totalVnd - statement.paidVnd,
+                        locale,
+                      )}
                     </p>
                   )}
                 </Link>
@@ -189,7 +199,7 @@ export function StatementsList({
       )}
       {page?.nextCursor && (
         <Button variant="outline" disabled={moreBusy} onClick={more}>
-          {moreBusy ? "Đang tải…" : "Tải thêm bảng kê"}
+          {moreBusy ? t("Đang tải…") : t("Tải thêm bảng kê")}
         </Button>
       )}
     </div>

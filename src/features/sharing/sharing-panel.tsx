@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useState } from "react";
 import { formatVnd } from "@/domain";
 import { type Statement } from "@/domain/statements";
@@ -20,6 +22,7 @@ export function SharingPanel({
   statement: Statement;
   onChanged: () => void;
 }) {
+  const { t, locale } = useI18n();
   const [status, setStatus] = useState<{
     version: number;
     data: ShareStatus;
@@ -28,7 +31,10 @@ export function SharingPanel({
   const [showPreview, setShowPreview] = useState(false);
   const [acceptedVersion, setAcceptedVersion] = useState<number | null>(null);
   const [newLink, setNewLink] = useState<
-    (ShareResult & { url: string }) | null
+    | (ShareResult & {
+        url: string;
+      })
+    | null
   >(null);
   const [notice, setNotice] = useState("");
   const [statusError, setStatusError] = useState("");
@@ -51,7 +57,7 @@ export function SharingPanel({
     return () => {
       active = false;
     };
-  }, [statement.id, statement.version, revision]);
+  }, [statement.id, statement.version, revision, t]);
   useEffect(() => {
     if (!showPreview) return;
     let active = true;
@@ -68,7 +74,7 @@ export function SharingPanel({
     return () => {
       active = false;
     };
-  }, [statement.id, statement.version, showPreview, revision]);
+  }, [statement.id, statement.version, showPreview, revision, t]);
   const currentStatus =
     status?.version === statement.version ? status.data : null;
   const currentPreview =
@@ -96,11 +102,13 @@ export function SharingPanel({
           ...result,
           url: `${window.location.origin}/s#${result.token}`,
         });
-        setNotice("Đã tạo link mới. Link trước đó được thu hồi.");
+        setNotice(t("Đã tạo link mới. Link trước đó được thu hồi."));
       } else {
         setNewLink(null);
         setNotice(
-          "Link đã được tạo ở lần lưu trước, nhưng mã gốc không thể lấy lại. Bạn xem trước và tạo link mới để sao chép nhé.",
+          t(
+            "Link đã được tạo ở lần lưu trước, nhưng mã gốc không thể lấy lại. Bạn xem trước và tạo link mới để sao chép nhé.",
+          ),
         );
       }
       onChanged();
@@ -115,46 +123,65 @@ export function SharingPanel({
     if (result) {
       setNewLink(null);
       setShowPreview(false);
-      setNotice("Đã thu hồi link chia sẻ.");
+      setNotice(t("Đã thu hồi link chia sẻ."));
       onChanged();
     }
   }
   async function copy(message = false) {
     if (!usableLink) return;
     const text = message
-      ? `${statement.teacherSnapshot.displayName} gửi bảng kê học phí ${statement.number} của ${statement.recipientSnapshot.displayName}. Tổng học phí ${formatVnd(statement.totalVnd)}, còn phải thu ${formatVnd(statement.totalVnd - statement.paidVnd)} theo ghi nhận của giáo viên. Xem chi tiết: ${usableLink.url}`
+      ? t(
+          "{0} gửi bảng kê học phí {1} của {2}. Tổng học phí {3}, còn phải thu {4} theo ghi nhận của giáo viên. Xem chi tiết: {5}",
+          {
+            "0": statement.teacherSnapshot.displayName,
+            "1": statement.number,
+            "2": statement.recipientSnapshot.displayName,
+            "3": formatVnd(statement.totalVnd, locale),
+            "4": formatVnd(statement.totalVnd - statement.paidVnd, locale),
+            "5": usableLink.url,
+          },
+        )
       : usableLink.url;
     try {
       await navigator.clipboard.writeText(text);
       setNotice(
-        message ? "Đã sao chép nội dung để bạn tự gửi." : "Đã sao chép link.",
+        message
+          ? t("Đã sao chép nội dung để bạn tự gửi.")
+          : t("Đã sao chép link."),
       );
     } catch {
       setNotice(
-        "Chưa sao chép được. Bạn có thể chọn và sao chép link trong ô bên dưới.",
+        t(
+          "Chưa sao chép được. Bạn có thể chọn và sao chép link trong ô bên dưới.",
+        ),
       );
     }
   }
   return (
     <Card className="space-y-5 p-5 sm:p-7">
-      <h2 className="serif text-2xl">Chia sẻ bảng kê</h2>
+      <h2 className="serif text-2xl">{t("Chia sẻ bảng kê")}</h2>
       <p className="text-xs leading-5 text-muted-foreground">
-        Ai có link đều xem được và có thể chuyển tiếp. Link chỉ đọc, hết hạn sau
-        30 ngày. Mỗi bảng kê có một link đang dùng; tạo link mới sẽ thu hồi link
-        cũ.
+        {t(
+          "Ai có link đều xem được và có thể chuyển tiếp. Link chỉ đọc, hết hạn sau 30 ngày. Mỗi bảng kê có một link đang dùng; tạo link mới sẽ thu hồi link cũ.",
+        )}
       </p>
       <p className="text-sm">
         {!currentStatus
-          ? "Đang kiểm tra trạng thái chia sẻ…"
+          ? t("Đang kiểm tra trạng thái chia sẻ…")
           : currentStatus.active
-            ? `Đang bật chia sẻ · Hết hạn ${new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", dateStyle: "medium" }).format(new Date(currentStatus.expiresAt!))}`
-            : "Chia sẻ đang tắt hoặc link đã hết hạn."}
+            ? t("Đang bật chia sẻ · Hết hạn {0}", {
+                "0": new Intl.DateTimeFormat(
+                  locale === "vi" ? "vi-VN" : "en-GB",
+                  { timeZone: "Asia/Ho_Chi_Minh", dateStyle: "medium" },
+                ).format(new Date(currentStatus.expiresAt!)),
+              })
+            : t("Chia sẻ đang tắt hoặc link đã hết hạn.")}
       </p>
       {loadError && (
         <div role="alert" className="space-y-2 text-sm text-destructive">
-          <p>{loadError}</p>
+          <p>{t(loadError)}</p>
           <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Tải lại trạng thái
+            {t("Tải lại trạng thái")}
           </Button>
         </div>
       )}
@@ -171,7 +198,7 @@ export function SharingPanel({
       {usableLink ? (
         <div className="space-y-3">
           <label className="field-label">
-            Link chia sẻ mới
+            {t("Link chia sẻ mới")}
             <Input
               readOnly
               value={usableLink.url}
@@ -180,10 +207,10 @@ export function SharingPanel({
           </label>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={() => copy()}>
-              Sao chép link
+              {t("Sao chép link")}
             </Button>
             <Button variant="outline" onClick={() => copy(true)}>
-              Sao chép tin nhắn
+              {t("Sao chép tin nhắn")}
             </Button>
             <a
               className="py-3 text-sm text-primary"
@@ -191,15 +218,16 @@ export function SharingPanel({
               target="_blank"
               rel="noreferrer noopener"
             >
-              Mở bảng kê công khai
+              {t("Mở bảng kê công khai")}
             </a>
           </div>
         </div>
       ) : (
         currentStatus?.active && (
           <p className="text-xs leading-5 text-muted-foreground">
-            Mã link gốc chỉ có ở lần tạo. Nếu đã đóng màn hình, bạn cần tạo link
-            mới để sao chép; link cũ sẽ hết hiệu lực.
+            {t(
+              "Mã link gốc chỉ có ở lần tạo. Nếu đã đóng màn hình, bạn cần tạo link mới để sao chép; link cũ sẽ hết hiệu lực.",
+            )}
           </p>
         )
       )}
@@ -213,17 +241,17 @@ export function SharingPanel({
             mutation.clearError();
           }}
         >
-          Xem trước để tạo link
+          {t("Xem trước để tạo link")}
         </Button>
         {currentStatus?.active && (
           <Button variant="outline" disabled={mutation.busy} onClick={revoke}>
-            Thu hồi link
+            {t("Thu hồi link")}
           </Button>
         )}
       </div>
       {showPreview && (
         <div className="space-y-4 border-t border-border pt-5">
-          <h3 className="font-semibold">Nội dung người nhận sẽ thấy</h3>
+          <h3 className="font-semibold">{t("Nội dung người nhận sẽ thấy")}</h3>
           {currentPreview ? (
             <>
               <PublicStatementView statement={currentPreview.statement} />
@@ -239,7 +267,7 @@ export function SharingPanel({
                   }
                   disabled={mutation.busy}
                 />
-                Tôi đã kiểm tra nội dung công khai phía trên
+                {t("Tôi đã kiểm tra nội dung công khai phía trên")}
               </label>
               <Button
                 onClick={create}
@@ -247,12 +275,12 @@ export function SharingPanel({
                   mutation.busy || acceptedVersion !== currentPreview.version
                 }
               >
-                {mutation.busy ? "Đang tạo…" : "Tạo link chia sẻ mới"}
+                {mutation.busy ? t("Đang tạo…") : t("Tạo link chia sẻ mới")}
               </Button>
             </>
           ) : (
             <p role="status" className="text-sm">
-              Đang chuẩn bị bản xem trước…
+              {t("Đang chuẩn bị bản xem trước…")}
             </p>
           )}
         </div>

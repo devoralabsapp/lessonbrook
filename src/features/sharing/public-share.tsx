@@ -1,4 +1,7 @@
 "use client";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   publicStatementSchema,
@@ -12,6 +15,7 @@ const subscribe = (change: () => void) => {
   return () => window.removeEventListener("hashchange", change);
 };
 export function PublicShare() {
+  const { t } = useI18n();
   const hash = useSyncExternalStore(
     subscribe,
     () => window.location.hash.slice(1),
@@ -54,13 +58,16 @@ export function PublicShare() {
     return () => {
       active = false;
     };
-  }, [hash, key]);
+  }, [hash, key, t]);
   return (
     <main className="mx-auto max-w-2xl space-y-5 px-4 py-8 sm:py-12">
+      <div className="flex justify-end">
+        <LanguageSwitcher />
+      </div>
       <p className="serif text-xl text-primary">
         LessonBrook{" "}
         <span className="font-sans text-xs text-muted-foreground">
-          · Sổ buổi dạy & học phí
+          {t("· Sổ buổi dạy & học phí")}
         </span>
       </p>
       {data?.key !== key ? (
@@ -68,31 +75,35 @@ export function PublicShare() {
           role="status"
           className="rounded-2xl border border-border bg-white p-8 text-sm"
         >
-          Đang mở bảng kê…
+          {t("Đang mở bảng kê…")}
         </p>
       ) : data.statement ? (
         <>
           <PublicStatementView statement={data.statement} />
           <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Cập nhật số liệu
+            {t("Cập nhật số liệu")}
           </Button>
         </>
       ) : (
         <section className="space-y-4 rounded-2xl border border-border bg-white p-6">
           <h1 className="serif text-2xl">
-            {data.failed ? "Chưa tải được bảng kê" : "Bảng kê không khả dụng"}
+            {data.failed
+              ? t("Chưa tải được bảng kê")
+              : t("Bảng kê không khả dụng")}
           </h1>
           <p className="text-sm leading-6 text-muted-foreground">
             {data.failed
-              ? "Bạn thử lại sau ít phút hoặc liên hệ giáo viên nhé."
-              : "Link có thể đã hết hạn, được thu hồi hoặc không còn sử dụng. Bạn liên hệ giáo viên để nhận link mới nhé."}
+              ? t("Bạn thử lại sau ít phút hoặc liên hệ giáo viên nhé.")
+              : t(
+                  "Link có thể đã hết hạn, được thu hồi hoặc không còn sử dụng. Bạn liên hệ giáo viên để nhận link mới nhé.",
+                )}
           </p>
           <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
-            Thử lại
+            {t("Thử lại")}
           </Button>
         </section>
       )}
-      <noscript>Bật JavaScript để mở bảng kê học phí.</noscript>
+      <noscript>{t("Bật JavaScript để mở bảng kê học phí.")}</noscript>
     </main>
   );
 }

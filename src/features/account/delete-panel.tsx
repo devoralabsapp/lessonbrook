@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
@@ -11,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { useAuthReady } from "@/lib/firebase/use-auth-ready";
 import { authErrorMessage } from "@/lib/firebase/auth-errors";
 export function DeletePanel() {
+  const { t } = useI18n();
+  const confirmationPhrase = t(DELETE_CONFIRMATION);
   const [confirmation, setConfirmation] = useState(""),
     [acknowledged, setAcknowledged] = useState(false),
     [busy, setBusy] = useState(false),
@@ -23,7 +27,7 @@ export function DeletePanel() {
     if (
       running.current ||
       !preparation.ready ||
-      confirmation !== DELETE_CONFIRMATION ||
+      confirmation !== confirmationPhrase ||
       !acknowledged
     )
       return;
@@ -58,15 +62,16 @@ export function DeletePanel() {
   }
   return (
     <Card className="mt-6 space-y-4 border-destructive/30 p-6">
-      <h2 className="serif text-2xl">Xóa tài khoản</h2>
+      <h2 className="serif text-2xl">{t("Xóa tài khoản")}</h2>
       <p className="text-sm leading-6">
-        Các học viên, buổi dạy, bảng kê, khoản thu và tài khoản đăng nhập sẽ
-        được xóa vĩnh viễn. Link chia sẻ ngừng truy cập ngay khi yêu cầu bắt
-        đầu. Sau khi xác nhận, bạn không thể hủy yêu cầu.
+        {t(
+          "Các học viên, buổi dạy, bảng kê, khoản thu và tài khoản đăng nhập sẽ được xóa vĩnh viễn. Link chia sẻ ngừng truy cập ngay khi yêu cầu bắt đầu. Sau khi xác nhận, bạn không thể hủy yêu cầu.",
+        )}
       </p>
       <p className="text-xs leading-5 text-muted-foreground">
-        Bạn có thể tải dữ liệu cần giữ ở phần trên. Sau xóa, hệ thống giữ dấu
-        xác nhận kỹ thuật tối thiểu để ngăn yêu cầu cũ tạo lại dữ liệu.
+        {t(
+          "Bạn có thể tải dữ liệu cần giữ ở phần trên. Sau xóa, hệ thống giữ dấu xác nhận kỹ thuật tối thiểu để ngăn yêu cầu cũ tạo lại dữ liệu.",
+        )}
       </p>
       <form onSubmit={submit}>
         <fieldset disabled={busy} className="space-y-4">
@@ -77,10 +82,10 @@ export function DeletePanel() {
               checked={acknowledged}
               onChange={(event) => setAcknowledged(event.target.checked)}
             />
-            Tôi đã tải dữ liệu cần giữ hoặc không cần giữ lại
+            {t("Tôi đã tải dữ liệu cần giữ hoặc không cần giữ lại")}
           </label>
           <label className="field-label">
-            Nhập XÓA TÀI KHOẢN để xác nhận
+            {t("Nhập XÓA TÀI KHOẢN để xác nhận")}
             <Input
               autoComplete="off"
               value={confirmation}
@@ -94,25 +99,27 @@ export function DeletePanel() {
             variant="outline"
             type="submit"
             disabled={
-              confirmation !== DELETE_CONFIRMATION ||
+              confirmation !== confirmationPhrase ||
               !acknowledged ||
               !preparation.ready
             }
           >
-            {busy ? "Đang xác nhận…" : "Xác nhận bằng Google và xóa tài khoản"}
+            {busy
+              ? t("Đang xác nhận…")
+              : t("Xác nhận bằng Google và xóa tài khoản")}
           </Button>
         </fieldset>
       </form>
       {(error || preparation.error) && (
         <div role="alert" className="space-y-3 text-sm text-destructive">
-          <p>{error || preparation.error}</p>
+          <p>{t(error || preparation.error)}</p>
           {preparation.error && (
             <Button type="button" variant="outline" onClick={preparation.retry}>
-              Thử chuẩn bị lại
+              {t("Thử chuẩn bị lại")}
             </Button>
           )}
           <Link href="/account/deletion" className="underline">
-            Mở trang tiếp tục yêu cầu xóa
+            {t("Mở trang tiếp tục yêu cầu xóa")}
           </Link>
         </div>
       )}

@@ -26,8 +26,8 @@ try {
   });
   const page = await context.newPage();
   for (const [path, heading] of [
-    ["/help", "Dùng sổ nhẹ nhàng mỗi ngày"],
-    ["/privacy", "Dữ liệu trong sổ của bạn"],
+    ["/help", "A simple daily routine"],
+    ["/privacy", "The data in your ledger"],
   ]) {
     step = path;
     const response = await page.goto(origin + path);
@@ -41,7 +41,7 @@ try {
   }
   step = "login";
   await page.goto(origin + "/login");
-  const google = page.getByRole("button", { name: "Tiếp tục với Google" });
+  const google = page.getByRole("button", { name: "Continue with Google" });
   await google.waitFor();
   assert(await google.isEnabled());
   assert(
@@ -107,6 +107,8 @@ try {
   assert.equal(manifest.scope, "/");
   assert.equal(manifest.start_url, "/app");
   assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.lang, "en");
+  assert.equal(await page.locator("html").getAttribute("lang"), "en");
   const verifyPng = async (src, size) => {
     const url = new URL(src, origin);
     assert.equal(url.origin, origin);
@@ -140,6 +142,21 @@ try {
     .getAttribute("href");
   assert(apple);
   await verifyPng(apple, 180);
+  step = "language-switch";
+  await page.getByRole("combobox", { name: "Language", exact: true }).click();
+  await page.getByRole("option", { name: "Tiếng Việt", exact: true }).click();
+  await page.waitForFunction(() => document.documentElement.lang === "vi");
+  await page.getByRole("button", { name: "Tiếp tục với Google" }).waitFor();
+  await page.reload();
+  assert.equal(await page.locator("html").getAttribute("lang"), "vi");
+  const preference = (await context.cookies()).find(
+    (cookie) => cookie.name === "chotcong_locale",
+  );
+  assert(preference?.httpOnly && preference.sameSite === "Lax");
+  assert.equal(preference.secure, target.protocol === "https:");
+  await page.getByRole("combobox", { name: "Ngôn ngữ", exact: true }).click();
+  await page.getByRole("option", { name: "English", exact: true }).click();
+  await page.waitForFunction(() => document.documentElement.lang === "en");
   step = "no-offline-cache";
   assert.deepEqual(
     await page.evaluate(async () => ({

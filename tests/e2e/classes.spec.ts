@@ -344,7 +344,7 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   expect(await stored()).toBe("natura");
   expect(writes).toBe(0);
   await page.screenshot({
-    path: "/tmp/lessonbrook-public-command-line-preview.png",
+    path: "/tmp/lessonbrook-command-line-preview.png",
     fullPage: true,
     animations: "disabled",
   });
@@ -477,7 +477,13 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
     }
     await page.goto("/app");
     await page.evaluate(() => document.fonts.ready);
-    expect(await page.evaluate(() => Array.from(document.fonts).some(face => face.family === "playfulFont" && face.status === "loaded"))).toBe(true);
+    expect(
+      await page.evaluate(() =>
+        Array.from(document.fonts).some(
+          (face) => face.family === "playfulFont" && face.status === "loaded",
+        ),
+      ),
+    ).toBe(true);
     // Only the four summary cards carry these tones; onboarding is a separate mint callout.
     const summary = page.locator(
       '[data-tone="yellow"], [data-tone="pink"], [data-tone="blue"]',
@@ -497,7 +503,7 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
       );
     }
     await page.screenshot({
-      path: `/tmp/lessonbrook-public-retro-${width}.png`,
+      path: `/tmp/lessonbrook-retro-${width}.png`,
       fullPage: true,
       animations: "disabled",
     });
@@ -509,10 +515,15 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
     const dialog = page.getByRole("dialog");
     await expect(dialog).toHaveCSS("border-top-width", "2px");
     const dialogBox = (await dialog.boundingBox())!;
-    expect(Math.abs(dialogBox.x - (width - dialogBox.width) / 2)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(dialogBox.x - (width - dialogBox.width) / 2),
+    ).toBeLessThanOrEqual(1);
     expect(dialogBox.x).toBeGreaterThanOrEqual(12);
     if (width === 1440) {
-      const action = dialog.getByRole("button", { name: "Lưu học viên", exact: true });
+      const action = dialog.getByRole("button", {
+        name: "Lưu học viên",
+        exact: true,
+      });
       await action.hover();
       await expect(action).toHaveCSS("transform", "matrix(1, 0, 0, 1, -1, -1)");
     }
@@ -520,7 +531,7 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
       dialog.getByLabel("Tên học viên *", { exact: true }),
     ).toHaveCSS("border-top-width", "2px");
     await page.screenshot({
-      path: `/tmp/lessonbrook-public-retro-form-${width}.png`,
+      path: `/tmp/lessonbrook-retro-form-${width}.png`,
       fullPage: true,
       animations: "disabled",
     });
@@ -534,7 +545,10 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
     exact: true,
   });
   const save = page.getByRole("button", { name: "Lưu giao diện", exact: true });
-  const profileSave = page.getByRole("button", { name: "Lưu hồ sơ", exact: true });
+  const profileSave = page.getByRole("button", {
+    name: "Lưu hồ sơ",
+    exact: true,
+  });
   await profileSave.hover();
   await expect(profileSave).toHaveCSS("transform", "none");
   await expect(save).toHaveCSS("transform", "none");

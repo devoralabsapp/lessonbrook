@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { ClassForm } from "./class-form";
 import { LoadError, usePaged } from "./shared";
 export function ClassesList() {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
@@ -24,24 +27,26 @@ export function ClassesList() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="mb-2 text-xs text-muted-foreground">
-            CÙNG HỌC, CÙNG TIẾN BỘ
+            {t("CÙNG HỌC, CÙNG TIẾN BỘ")}
           </p>
-          <h1 className="serif text-3xl sm:text-4xl">Lớp học</h1>
+          <h1 className="serif text-3xl sm:text-4xl">{t("Lớp học")}</h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Gom học viên vào lớp, ghi một buổi và tính học phí riêng từng người.
+            {t(
+              "Gom học viên vào lớp, ghi một buổi và tính học phí riêng từng người.",
+            )}
           </p>
         </div>
-        <Button onClick={() => setAdding(true)}>Thêm lớp học</Button>
+        <Button onClick={() => setAdding(true)}>{t("Thêm lớp học")}</Button>
       </div>
       <Card className="space-y-4 p-5">
         <label className="field-label">
-          Tìm tên lớp
+          {t("Tìm tên lớp")}
           <Input
             type="search"
             maxLength={100}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Có dấu hoặc không dấu"
+            placeholder={t("Có dấu hoặc không dấu")}
           />
         </label>
         <label className="flex items-center gap-2 text-sm">
@@ -51,11 +56,13 @@ export function ClassesList() {
             onChange={(e) => setArchived(e.target.checked)}
             className="accent-primary"
           />
-          Hiện lớp đã lưu trữ
+          {t("Hiện lớp đã lưu trữ")}
         </label>
       </Card>
       {list.error && <LoadError message={list.error} retry={list.reload} />}
-      {!list.page && !list.error && <p role="status">Đang tải lớp học…</p>}
+      {!list.page && !list.error && (
+        <p role="status">{t("Đang tải lớp học…")}</p>
+      )}
       {list.page && (
         <Card className="divide-y divide-border">
           {list.page.items.map((item) => (
@@ -68,12 +75,13 @@ export function ClassesList() {
                   {item.displayName}
                 </h2>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {item.studentIds.length} học viên · {formatVnd(item.rateVnd)}{" "}
-                  / người / buổi
+                  {item.studentIds.length}
+                  {t(" học viên · ")}
+                  {formatVnd(item.rateVnd, locale)} {t("/ người / buổi")}
                 </p>
               </Link>
               <Button asChild variant="outline" size="sm">
-                <Link href={`/app/classes/${item.id}`}>Mở lớp</Link>
+                <Link href={`/app/classes/${item.id}`}>{t("Mở lớp")}</Link>
               </Button>
             </div>
           ))}
@@ -81,12 +89,13 @@ export function ClassesList() {
             <div className="p-8 text-center">
               <h2 className="serif text-2xl">
                 {list.page.nextCursor
-                  ? "Chưa thấy lớp phù hợp."
-                  : "Chưa có lớp trong danh sách này."}
+                  ? t("Chưa thấy lớp phù hợp.")
+                  : t("Chưa có lớp trong danh sách này.")}
               </h2>
               <p className="mt-3 text-sm text-muted-foreground">
-                Thêm lớp từ các học viên đã có. Có thể bỏ chọn người vắng khi
-                ghi buổi.
+                {t(
+                  "Thêm lớp từ các học viên đã có. Có thể bỏ chọn người vắng khi ghi buổi.",
+                )}
               </p>
             </div>
           )}
@@ -98,7 +107,7 @@ export function ClassesList() {
           disabled={list.moreBusy || search !== term}
           onClick={list.more}
         >
-          {list.moreBusy ? "Đang tải…" : "Tải tiếp lớp học"}
+          {list.moreBusy ? t("Đang tải…") : t("Tải tiếp lớp học")}
         </Button>
       )}
       {adding && (

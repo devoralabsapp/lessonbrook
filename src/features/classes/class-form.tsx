@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useRef, useState } from "react";
 import type { Student } from "@/domain";
 import { MAX_VND } from "@/domain";
@@ -7,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStatementMutation } from "@/features/statements/shared";
 import { MemberPicker } from "./shared";
-export type ClassDetail = TeachingClass & { students: Student[] };
+export type ClassDetail = TeachingClass & {
+  students: Student[];
+};
 export function ClassForm({
   record,
   onClose,
@@ -17,6 +21,7 @@ export function ClassForm({
   onClose: () => void;
   onSaved: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const dialog = useRef<HTMLDialogElement>(null);
   const [members, setMembers] = useState<Student[]>(record?.students ?? []);
   const [selectionError, setSelectionError] = useState("");
@@ -31,11 +36,11 @@ export function ClassForm({
       if (trigger instanceof HTMLElement && trigger.isConnected)
         trigger.focus();
     };
-  }, []);
+  }, [t]);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!members.length) {
-      setSelectionError("Chọn ít nhất một học viên cho lớp.");
+      setSelectionError(t("Chọn ít nhất một học viên cho lớp."));
       return;
     }
     setSelectionError("");
@@ -63,21 +68,21 @@ export function ClassForm({
     >
       <form onSubmit={submit} className="space-y-5 p-6">
         <h2 id="class-title" className="serif text-2xl">
-          {record ? "Sửa lớp học" : "Thêm lớp học"}
+          {record ? t("Sửa lớp học") : t("Thêm lớp học")}
         </h2>
         <fieldset disabled={mutation.busy} className="space-y-4">
           <label className="field-label">
-            Tên lớp *
+            {t("Tên lớp *")}
             <Input
               name="displayName"
               required
               maxLength={100}
               defaultValue={record?.displayName}
-              placeholder="Ví dụ: Piano tối thứ Ba"
+              placeholder={t("Ví dụ: Piano tối thứ Ba")}
             />
           </label>
           <label className="field-label">
-            Học phí mỗi học viên / buổi (VND) *
+            {t("Học phí mỗi học viên / buổi (VND) *")}
             <Input
               name="rateVnd"
               type="number"
@@ -90,13 +95,13 @@ export function ClassForm({
             />
           </label>
           <p className="text-xs leading-5 text-muted-foreground">
-            Cùng một đơn giá cho mỗi người tham gia. Đổi giá hoặc thành viên lớp
-            chỉ ảnh hưởng buổi mới; học phí cũ được giữ nguyên. Một học viên có
-            thể ở nhiều lớp.
+            {t(
+              "Cùng một đơn giá cho mỗi người tham gia. Đổi giá hoặc thành viên lớp chỉ ảnh hưởng buổi mới; học phí cũ được giữ nguyên. Một học viên có thể ở nhiều lớp.",
+            )}
           </p>
           <MemberPicker value={members} onChange={setMembers} />
           <label className="field-label">
-            Ghi chú riêng
+            {t("Ghi chú riêng")}
             <textarea
               className="select-input"
               rows={3}
@@ -118,10 +123,10 @@ export function ClassForm({
             disabled={mutation.busy}
             onClick={onClose}
           >
-            Để sau
+            {t("Để sau")}
           </Button>
           <Button disabled={mutation.busy}>
-            {mutation.busy ? "Đang lưu…" : "Lưu lớp học"}
+            {mutation.busy ? t("Đang lưu…") : t("Lưu lớp học")}
           </Button>
         </div>
       </form>

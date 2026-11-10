@@ -172,6 +172,21 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
   expect(new URL(link).hash).toMatch(/^#[A-Za-z0-9_-]{43}$/);
   expect(keys[2]).not.toBe(keys[1]);
   const guest = await browser.newContext({
+    storageState: {
+      cookies: [
+        {
+          name: "chotcong_locale",
+          value: "vi",
+          domain: "localhost",
+          path: "/",
+          expires: -1,
+          httpOnly: true,
+          secure: false,
+          sameSite: "Lax",
+        },
+      ],
+      origins: [],
+    },
     viewport: { width: 360, height: 800 },
   });
   try {

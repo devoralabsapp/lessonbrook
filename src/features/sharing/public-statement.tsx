@@ -1,11 +1,15 @@
+"use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { formatVnd, vietnamToday } from "@/domain";
 import { type PublicStatement } from "@/domain/sharing";
-const date = (value: string) => value.split("-").reverse().join("/");
+import { formatDate } from "@/features/statements/shared";
 export function PublicStatementView({
   statement: s,
 }: {
   statement: PublicStatement;
 }) {
+  const { t, locale } = useI18n();
   const overdue = s.remainingVnd > 0 && vietnamToday() > s.dueDate;
   return (
     <article
@@ -15,68 +19,78 @@ export function PublicStatementView({
     >
       <header className="space-y-3 border-b border-border bg-[#f5f7ee] p-5 sm:p-7">
         <p className="text-xs font-semibold tracking-widest text-primary">
-          BẢNG KÊ HỌC PHÍ
+          {t("BẢNG KÊ HỌC PHÍ")}
         </p>
         <h1 className="serif break-words text-3xl">{s.teacherName}</h1>
         <p className="break-words text-sm">
-          Học viên: <strong>{s.recipientName}</strong>
+          {t("Học viên: ")}
+          <strong>{s.recipientName}</strong>
         </p>
         <p className="text-xs">
-          {s.number} · Phát hành {date(s.issueDate)}
+          {s.number}
+          {t(" · Phát hành ")}
+          {formatDate(s.issueDate, locale)}
         </p>
         <p className="text-xs">
-          Đến hạn {date(s.dueDate)}
-          {overdue ? " · Quá hạn" : ""}
+          {t("Đến hạn ")}
+          {formatDate(s.dueDate, locale)}
+          {overdue ? t(" · Quá hạn") : ""}
         </p>
       </header>
       <ol className="divide-y divide-border">
         {s.items.map((item, index) => (
           <li key={index} className="flex justify-between gap-3 p-5 text-sm">
             <span>
-              {index + 1}. Buổi {date(item.sessionDate)}
+              {index + 1}
+              {t(". Buổi ")}
+              {formatDate(item.sessionDate, locale)}
             </span>
-            <strong>{formatVnd(item.amountVnd)}</strong>
+            <strong>{formatVnd(item.amountVnd, locale)}</strong>
           </li>
         ))}
       </ol>
       <div className="space-y-3 border-t border-border p-5 text-sm">
         <p className="flex justify-between gap-3">
-          <span>Tổng học phí</span>
-          <strong>{formatVnd(s.totalVnd)}</strong>
+          <span>{t("Tổng học phí")}</span>
+          <strong>{formatVnd(s.totalVnd, locale)}</strong>
         </p>
         <p className="flex justify-between gap-3">
-          <span>Đã ghi nhận thu</span>
-          <strong>{formatVnd(s.paidVnd)}</strong>
+          <span>{t("Đã ghi nhận thu")}</span>
+          <strong>{formatVnd(s.paidVnd, locale)}</strong>
         </p>
         <p className="flex justify-between gap-3 text-base">
-          <span>Còn phải thu</span>
+          <span>{t("Còn phải thu")}</span>
           <strong data-testid="public-remaining">
-            {formatVnd(s.remainingVnd)}
+            {formatVnd(s.remainingVnd, locale)}
           </strong>
         </p>
         <p className="text-xs text-muted-foreground">
           {s.remainingVnd === 0
-            ? "Đã thu đủ"
+            ? t("Đã thu đủ")
             : s.paidVnd > 0
-              ? "Thu một phần"
-              : "Chưa thu"}{" "}
-          · Theo ghi nhận của giáo viên
+              ? t("Thu một phần")
+              : t("Chưa thu")}{" "}
+          {t("· Theo ghi nhận của giáo viên")}
         </p>
       </div>
       {s.payments.length > 0 && (
         <section className="space-y-3 border-t border-border p-5">
-          <h2 className="text-sm font-semibold">Các khoản đã ghi nhận thu</h2>
+          <h2 className="text-sm font-semibold">
+            {t("Các khoản đã ghi nhận thu")}
+          </h2>
           {s.payments.map((payment, i) => (
             <p key={i} className="flex justify-between gap-3 text-sm">
-              <span>{date(payment.receivedDate)}</span>
-              <strong>{formatVnd(payment.amountVnd)}</strong>
+              <span>{formatDate(payment.receivedDate, locale)}</span>
+              <strong>{formatVnd(payment.amountVnd, locale)}</strong>
             </p>
           ))}
         </section>
       )}
       {s.bankDetails && (
         <section className="border-t border-border p-5">
-          <h2 className="mb-2 text-sm font-semibold">Thông tin nhận tiền</h2>
+          <h2 className="mb-2 text-sm font-semibold">
+            {t("Thông tin nhận tiền")}
+          </h2>
           <p className="whitespace-pre-wrap break-words text-sm leading-6">
             {s.bankDetails}
           </p>
@@ -84,16 +98,17 @@ export function PublicStatementView({
       )}
       <footer className="space-y-2 border-t border-border p-5 text-xs leading-5 text-muted-foreground">
         <p>
-          Cập nhật{" "}
-          {new Intl.DateTimeFormat("vi-VN", {
+          {t("Cập nhật")}{" "}
+          {new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", {
             timeZone: "Asia/Ho_Chi_Minh",
             dateStyle: "medium",
             timeStyle: "short",
           }).format(new Date(s.updatedAt))}
         </p>
         <p>
-          Số liệu theo ghi nhận của giáo viên, không phải xác nhận giao dịch từ
-          ngân hàng. Nếu cần đối chiếu, vui lòng liên hệ giáo viên.
+          {t(
+            "Số liệu theo ghi nhận của giáo viên, không phải xác nhận giao dịch từ ngân hàng. Nếu cần đối chiếu, vui lòng liên hệ giáo viên.",
+          )}
         </p>
       </footer>
     </article>

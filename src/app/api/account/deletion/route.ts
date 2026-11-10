@@ -12,9 +12,10 @@ import {
 } from "@/lib/server/http";
 import { z } from "zod";
 import { AppError } from "@/lib/server/errors";
-const failure = (error: unknown) =>
+import { getI18n } from "@/lib/i18n/server";
+const failure = async (error: unknown) =>
   error instanceof AppError && error.status === 401
-    ? json({ error: error.message }, 401)
+    ? json({ error: (await getI18n()).t(error.message) }, 401)
     : errorResponse(error);
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

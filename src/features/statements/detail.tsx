@@ -1,4 +1,6 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatVnd, vietnamToday } from "@/domain";
@@ -11,6 +13,7 @@ import { formatDate, useStatementMutation } from "./shared";
 import { PaymentPanel } from "@/features/payments/payment-panel";
 import { SharingPanel } from "@/features/sharing/sharing-panel";
 export function StatementDetail({ id }: { id: string }) {
+  const { t, locale } = useI18n();
   const [data, setData] = useState<Statement | null>(null);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
@@ -32,26 +35,26 @@ export function StatementDetail({ id }: { id: string }) {
     return () => {
       active = false;
     };
-  }, [id, revision]);
+  }, [id, revision, t]);
   if (error)
     return (
       <Card role="alert" className="space-y-4 p-6">
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-sm text-destructive">{t(error)}</p>
         <Button
           variant="outline"
           onClick={() => setRevision((value) => value + 1)}
         >
-          Tải lại bảng kê
+          {t("Tải lại bảng kê")}
         </Button>
         <Link href="/app/statements" className="block text-sm text-primary">
-          Quay lại danh sách
+          {t("Quay lại danh sách")}
         </Link>
       </Card>
     );
   if (!data || data.id !== id)
     return (
       <p role="status" className="p-8 text-sm">
-        Đang mở bảng kê…
+        {t("Đang mở bảng kê…")}
       </p>
     );
   if (editing && data.status === "draft")
@@ -92,38 +95,46 @@ export function StatementDetail({ id }: { id: string }) {
     <div className="fade-in space-y-6">
       <div>
         <Link href="/app/statements" className="text-xs text-primary">
-          ← Danh sách bảng kê
+          {t("← Danh sách bảng kê")}
         </Link>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="serif break-words text-3xl">
-            {data.number ?? "Xem trước bản nháp"}
+            {data.number ?? t("Xem trước bản nháp")}
           </h1>
           <span className="rounded-full bg-muted px-3 py-1 text-xs">
             {display.label}
-            {display.overdue ? " · Quá hạn" : ""}
+            {display.overdue ? t(" · Quá hạn") : ""}
           </span>
         </div>
       </div>
       <Card className="overflow-hidden" data-testid="statement-preview">
         <div className="space-y-4 border-b border-border bg-accent-soft p-5 sm:p-7">
           <p className="text-xs font-semibold tracking-widest text-primary">
-            BẢNG KÊ HỌC PHÍ
+            {t("BẢNG KÊ HỌC PHÍ")}
           </p>
           <h2 className="serif break-words text-2xl">
             {data.teacherSnapshot.displayName}
           </h2>
           <p className="break-words text-sm">
-            Học viên: <strong>{data.recipientSnapshot.displayName}</strong>
+            {t("Học viên: ")}
+            <strong>{data.recipientSnapshot.displayName}</strong>
           </p>
           <p className="text-xs text-muted-foreground">
-            Kỳ học {formatDate(data.periodStart)} – {formatDate(data.periodEnd)}
+            {t("Kỳ học ")}
+            {formatDate(data.periodStart, locale)} –{" "}
+            {formatDate(data.periodEnd, locale)}
           </p>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
             <span>
-              Ngày phát hành:{" "}
-              {data.issueDate ? formatDate(data.issueDate) : "Chưa phát hành"}
+              {t("Ngày phát hành:")}{" "}
+              {data.issueDate
+                ? formatDate(data.issueDate, locale)
+                : t("Chưa phát hành")}
             </span>
-            <span>Ngày đến hạn: {formatDate(data.dueDate)}</span>
+            <span>
+              {t("Ngày đến hạn: ")}
+              {formatDate(data.dueDate, locale)}
+            </span>
           </div>
         </div>
         <ol className="divide-y divide-border">
@@ -133,34 +144,41 @@ export function StatementDetail({ id }: { id: string }) {
               className="flex items-center justify-between gap-3 px-5 py-4 text-sm sm:px-7"
             >
               <span>
-                {index + 1}. Buổi {formatDate(item.sessionDate)}
+                {index + 1}
+                {t(". Buổi ")}
+                {formatDate(item.sessionDate, locale)}
               </span>
-              <strong>{formatVnd(item.amountVnd)}</strong>
+              <strong>{formatVnd(item.amountVnd, locale)}</strong>
             </li>
           ))}
         </ol>
         <div className="space-y-3 border-t border-border p-5 text-sm sm:p-7">
           <p className="flex justify-between gap-2">
-            <span>Tổng học phí · {data.items.length} buổi</span>
+            <span>
+              {t("Tổng học phí · ")}
+              {data.items.length}
+              {t(" buổi")}
+            </span>
             <strong data-testid="statement-total">
-              {formatVnd(data.totalVnd)}
+              {formatVnd(data.totalVnd, locale)}
             </strong>
           </p>
           {data.status !== "draft" && (
             <>
               <p className="flex justify-between gap-2">
-                <span>Đã ghi nhận thu</span>
-                <strong>{formatVnd(data.paidVnd)}</strong>
+                <span>{t("Đã ghi nhận thu")}</span>
+                <strong>{formatVnd(data.paidVnd, locale)}</strong>
               </p>
               <p className="flex justify-between gap-2">
                 <span>
                   {data.status === "void"
-                    ? "Khoản phải thu đã hủy"
-                    : "Còn phải thu"}
+                    ? t("Khoản phải thu đã hủy")
+                    : t("Còn phải thu")}
                 </span>
                 <strong>
                   {formatVnd(
                     data.status === "void" ? 0 : data.totalVnd - data.paidVnd,
+                    locale,
                   )}
                 </strong>
               </p>
@@ -169,7 +187,9 @@ export function StatementDetail({ id }: { id: string }) {
         </div>
         {data.bankSnapshot && (
           <div className="border-t border-border p-5 sm:p-7">
-            <h3 className="mb-2 text-xs font-semibold">Thông tin nhận tiền</h3>
+            <h3 className="mb-2 text-xs font-semibold">
+              {t("Thông tin nhận tiền")}
+            </h3>
             <p className="whitespace-pre-wrap break-words text-sm leading-6">
               {data.bankSnapshot}
             </p>
@@ -187,20 +207,20 @@ export function StatementDetail({ id }: { id: string }) {
       {data.status === "draft" ? (
         <Card className="space-y-4 p-5">
           <p className="text-sm leading-6">
-            Kiểm tra tên, các buổi, số tiền và thông tin nhận tiền ở trên. Khi
-            phát hành, nội dung được chốt cố định và các buổi này không còn được
-            sửa. Nháp chưa được tính vào khoản phải thu.
+            {t(
+              "Kiểm tra tên, các buổi, số tiền và thông tin nhận tiền ở trên. Khi phát hành, nội dung được chốt cố định và các buổi này không còn được sửa. Nháp chưa được tính vào khoản phải thu.",
+            )}
           </p>
           <div className="flex flex-wrap gap-3">
             <Button disabled={mutation.busy} onClick={issue}>
-              {mutation.busy ? "Đang phát hành…" : "Phát hành bảng kê"}
+              {mutation.busy ? t("Đang phát hành…") : t("Phát hành bảng kê")}
             </Button>
             <Button
               variant="outline"
               disabled={mutation.busy}
               onClick={() => setEditing(true)}
             >
-              Sửa nháp
+              {t("Sửa nháp")}
             </Button>
           </div>
         </Card>
@@ -217,15 +237,16 @@ export function StatementDetail({ id }: { id: string }) {
           <Card className="p-5">
             <details>
               <summary className="cursor-pointer text-sm font-semibold">
-                Hủy bảng kê
+                {t("Hủy bảng kê")}
               </summary>
               <form onSubmit={cancel} className="mt-4 space-y-4">
                 <p className="text-xs leading-5 text-muted-foreground">
-                  Chỉ hủy khi không còn khoản thu hợp lệ. Bản cũ và lịch sử được
-                  giữ; các buổi sẽ được giải phóng để lập bảng kê lại.
+                  {t(
+                    "Chỉ hủy khi không còn khoản thu hợp lệ. Bản cũ và lịch sử được giữ; các buổi sẽ được giải phóng để lập bảng kê lại.",
+                  )}
                 </p>
                 <label className="field-label">
-                  Lý do hủy
+                  {t("Lý do hủy")}
                   <textarea
                     className="select-input min-h-24"
                     required
@@ -244,7 +265,7 @@ export function StatementDetail({ id }: { id: string }) {
                     data.activePaymentCount > 0
                   }
                 >
-                  {mutation.busy ? "Đang hủy…" : "Xác nhận hủy bảng kê"}
+                  {mutation.busy ? t("Đang hủy…") : t("Xác nhận hủy bảng kê")}
                 </Button>
               </form>
             </details>
@@ -252,17 +273,21 @@ export function StatementDetail({ id }: { id: string }) {
         </>
       ) : (
         <Card className="space-y-3 p-5">
-          <h2 className="font-semibold">Bảng kê đã hủy</h2>
-          <p className="break-words text-sm">Lý do: {data.voidReason}</p>
+          <h2 className="font-semibold">{t("Bảng kê đã hủy")}</h2>
+          <p className="break-words text-sm">
+            {t("Lý do: ")}
+            {data.voidReason}
+          </p>
           <p className="text-xs leading-5 text-muted-foreground">
-            Nội dung cũ được giữ để đối chiếu. Bảng kê này không còn tạo khoản
-            phải thu; các buổi có thể lập bảng kê mới.
+            {t(
+              "Nội dung cũ được giữ để đối chiếu. Bảng kê này không còn tạo khoản phải thu; các buổi có thể lập bảng kê mới.",
+            )}
           </p>
           <Button asChild variant="outline">
             <Link
               href={`/app/statements/new?studentId=${encodeURIComponent(data.studentId)}`}
             >
-              Lập bảng kê mới
+              {t("Lập bảng kê mới")}
             </Link>
           </Button>
         </Card>
@@ -277,7 +302,7 @@ export function StatementDetail({ id }: { id: string }) {
         href={`/app/students/${data.studentId}`}
         className="block text-sm text-primary"
       >
-        Mở sổ học viên →
+        {t("Mở sổ học viên →")}
       </Link>
     </div>
   );

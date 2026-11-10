@@ -1,4 +1,7 @@
 "use client";
+import { formatDate } from "@/features/statements/shared";
+import { useI18n } from "@/lib/i18n/client";
+
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,28 +14,31 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { RecordForm } from "@/components/record-form";
 import { useStatementMutation } from "@/features/statements/shared";
-
 export function GettingStartedCard({
   state,
 }: {
   state: OnboardingState | null;
 }) {
+  const { t } = useI18n();
   if (!state || state.completed) return null;
   return (
     <Card data-tone="mint" className="mb-6 border-border bg-accent-soft p-5">
       <p className="text-xs font-semibold text-primary">
-        BẮT ĐẦU VỚI LESSONBROOK
+        {t("BẮT ĐẦU VỚI LESSONBROOK")}
       </p>
-      <h2 className="serif mt-2 text-2xl">Ghi buổi dạy đầu tiên của bạn</h2>
+      <h2 className="serif mt-2 text-2xl">
+        {t("Ghi buổi dạy đầu tiên của bạn")}
+      </h2>
       <p className="my-3 text-sm leading-6 text-muted-foreground">
-        Xác nhận tên giáo viên, thêm học viên rồi ghi một buổi đã dạy. Sổ bắt
-        đầu từ những buổi bạn nhập, chưa bao gồm nợ cũ.
+        {t(
+          "Xác nhận tên giáo viên, thêm học viên rồi ghi một buổi đã dạy. Sổ bắt đầu từ những buổi bạn nhập, chưa bao gồm nợ cũ.",
+        )}
       </p>
       <Button asChild>
         <Link href="/onboarding">
           {state.profileConfirmed
-            ? "Tiếp tục thiết lập"
-            : "Thiết lập sổ của bạn"}
+            ? t("Tiếp tục thiết lập")
+            : t("Thiết lập sổ của bạn")}
           <ArrowRight size={15} />
         </Link>
       </Button>
@@ -40,6 +46,7 @@ export function GettingStartedCard({
   );
 }
 export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
+  const { t, locale } = useI18n();
   const [data, setData] = useState(initial),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
@@ -64,7 +71,7 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
       setError(
         e instanceof Error
           ? e.message
-          : "Chưa tải được tiến trình. Hãy thử lại.",
+          : t("Chưa tải được tiến trình. Hãy thử lại."),
       );
     } finally {
       setLoading(false);
@@ -92,22 +99,25 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <p className="mb-2 text-xs text-muted-foreground">
-          SỔ BUỔI DẠY & HỌC PHÍ
+          {t("SỔ BUỔI DẠY & HỌC PHÍ")}
         </p>
-        <h1 className="serif text-3xl sm:text-4xl">Mở sổ buổi dạy của bạn</h1>
+        <h1 className="serif text-3xl sm:text-4xl">
+          {t("Mở sổ buổi dạy của bạn")}
+        </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Dành cho dạy cá nhân và lớp học, tính theo buổi và thu sau. Bạn có thể
-          dừng và tiếp tục bất cứ lúc nào.
+          {t(
+            "Dành cho dạy cá nhân và lớp học, tính theo buổi và thu sau. Bạn có thể dừng và tiếp tục bất cứ lúc nào.",
+          )}
         </p>
       </div>
       <ol
-        aria-label="Các bước bắt đầu"
+        aria-label={t("Các bước bắt đầu")}
         className="grid grid-cols-3 gap-2 text-xs"
       >
-        {["Hồ sơ giáo viên", "Thêm học viên", "Ghi buổi đầu"].map(
+        {[t("Hồ sơ giáo viên"), t("Thêm học viên"), t("Ghi buổi đầu")].map(
           (label, index) => (
             <li
-              key={label}
+              key={t(label)}
               aria-current={step === index ? "step" : undefined}
               className={`rounded-xl border p-3 ${step >= index ? "border-border bg-accent-soft" : "border-border"}`}
             >
@@ -115,23 +125,23 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
                 {step > index ? (
                   <>
                     <Check size={14} />
-                    Đã xong
+                    {t("Đã xong")}
                   </>
                 ) : (
-                  `Bước ${index + 1}`
+                  t("Bước {0}", { "0": index + 1 })
                 )}
               </span>
-              {label}
+              {t(label)}
             </li>
           ),
         )}
       </ol>
       {(error || mutation.error) && (
         <Card role="alert" className="p-4 text-sm text-destructive">
-          {error || mutation.error}
+          {t(error || mutation.error)}
           {error && (
             <Button variant="ghost" disabled={loading} onClick={refresh}>
-              Thử tải lại
+              {t("Thử tải lại")}
             </Button>
           )}
         </Card>
@@ -144,16 +154,18 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
       {loading && (
         <p role="status" className="flex items-center gap-2 text-sm">
           <LoaderCircle size={16} className="animate-spin" />
-          Đang cập nhật tiến trình…
+          {t("Đang cập nhật tiến trình…")}
         </p>
       )}
       <Card className="p-5 sm:p-7">
         {step === 0 ? (
           <form onSubmit={confirm}>
             <fieldset className="space-y-5" disabled={mutation.busy || loading}>
-              <h2 className="serif text-2xl">Bạn muốn hiển thị tên gì?</h2>
+              <h2 className="serif text-2xl">
+                {t("Bạn muốn hiển thị tên gì?")}
+              </h2>
               <label className="field-label">
-                Tên giáo viên / tên lớp
+                {t("Tên giáo viên / tên lớp")}
                 <Input
                   name="displayName"
                   required
@@ -162,7 +174,7 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
                 />
               </label>
               <label className="field-label">
-                Thông tin nhận chuyển khoản (tùy chọn)
+                {t("Thông tin nhận chuyển khoản (tùy chọn)")}
                 <textarea
                   name="bankDetails"
                   className="select-input"
@@ -172,66 +184,74 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
                 />
               </label>
               <p className="text-xs leading-6 text-muted-foreground">
-                Tên này xuất hiện trên bảng kê bạn phát hành. Thông tin chuyển
-                khoản chỉ chia sẻ khi bạn chủ động chọn đưa vào bảng kê.
+                {t(
+                  "Tên này xuất hiện trên bảng kê bạn phát hành. Thông tin chuyển khoản chỉ chia sẻ khi bạn chủ động chọn đưa vào bảng kê.",
+                )}
               </p>
               <Button disabled={mutation.busy || loading}>
-                {mutation.busy ? "Đang lưu…" : "Lưu và tiếp tục"}
+                {mutation.busy ? t("Đang lưu…") : t("Lưu và tiếp tục")}
               </Button>
             </fieldset>
           </form>
         ) : step === 1 ? (
           <div className="space-y-4">
-            <h2 className="serif text-2xl">Thêm học viên đầu tiên</h2>
+            <h2 className="serif text-2xl">{t("Thêm học viên đầu tiên")}</h2>
             <p className="text-sm leading-6 text-muted-foreground">
-              Chỉ cần tên và đơn giá mỗi buổi. Thông tin liên hệ có thể bổ sung
-              sau; đổi đơn giá sẽ không đổi các buổi cũ.
+              {t(
+                "Chỉ cần tên và đơn giá mỗi buổi. Thông tin liên hệ có thể bổ sung sau; đổi đơn giá sẽ không đổi các buổi cũ.",
+              )}
             </p>
             <Button disabled={loading} onClick={() => setModal("student")}>
-              Thêm học viên đầu tiên
+              {t("Thêm học viên đầu tiên")}
             </Button>
           </div>
         ) : step === 2 ? (
           <div className="space-y-4">
-            <h2 className="serif text-2xl">Ghi buổi đã dạy đầu tiên</h2>
+            <h2 className="serif text-2xl">{t("Ghi buổi đã dạy đầu tiên")}</h2>
             <p className="text-sm leading-6">
               {data.student?.displayName} ·{" "}
-              {formatVnd(data.student?.defaultRateVnd ?? 0)} / buổi
+              {formatVnd(data.student?.defaultRateVnd ?? 0, locale)}
+              {t(" / buổi")}
             </p>
             <p className="text-sm leading-6 text-muted-foreground">
-              Chọn ngày dạy thực tế và trạng thái “Đã dạy”. Bạn có thể ghi bù
-              một buổi trước đó.
+              {t(
+                "Chọn ngày dạy thực tế và trạng thái “Đã dạy”. Bạn có thể ghi bù một buổi trước đó.",
+              )}
             </p>
             <Button
               disabled={loading || !data.student}
               onClick={() => setModal("session")}
             >
-              Ghi buổi đầu tiên
+              {t("Ghi buổi đầu tiên")}
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
-            <h2 className="serif text-2xl">Sổ của bạn đã sẵn sàng</h2>
+            <h2 className="serif text-2xl">{t("Sổ của bạn đã sẵn sàng")}</h2>
             <p className="text-sm leading-6">
-              Đã ghi buổi {data.session?.studentName} ngày{" "}
-              {data.session?.sessionDate.split("-").reverse().join("/")}:{" "}
-              <strong>{formatVnd(data.session?.amountVnd ?? 0)}</strong>.
+              {t("Đã ghi buổi ")}
+              {data.session?.studentName}
+              {t(" ngày")}{" "}
+              {data.session ? formatDate(data.session.sessionDate, locale) : ""}
+              :{" "}
+              <strong>{formatVnd(data.session?.amountVnd ?? 0, locale)}</strong>
+              .
             </p>
             <p className="text-sm leading-6 text-muted-foreground">
-              Buổi hoàn thành có tính phí sẽ xuất hiện ở “Buổi chưa lập bảng kê”
-              cho đến khi bạn phát hành bảng kê. Sau đó bạn có thể gửi link và
-              ghi nhận tiền đã nhận.
+              {t(
+                "Buổi hoàn thành có tính phí sẽ xuất hiện ở “Buổi chưa lập bảng kê” cho đến khi bạn phát hành bảng kê. Sau đó bạn có thể gửi link và ghi nhận tiền đã nhận.",
+              )}
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild>
                 <Link href="/app">
-                  Xem tổng quan
+                  {t("Xem tổng quan")}
                   <ArrowRight size={15} />
                 </Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href={`/app/students/${data.session?.studentId}`}>
-                  Mở sổ học viên
+                  {t("Mở sổ học viên")}
                 </Link>
               </Button>
             </div>
@@ -239,11 +259,12 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
         )}
       </Card>
       <p className="text-xs leading-6 text-muted-foreground">
-        LessonBrook chỉ tính các buổi bạn đã nhập, chưa bao gồm nợ cũ. Cần mạng
-        để lưu dữ liệu.
+        {t(
+          "LessonBrook chỉ tính các buổi bạn đã nhập, chưa bao gồm nợ cũ. Cần mạng để lưu dữ liệu.",
+        )}
       </p>
       <Link className="inline-block text-sm text-primary" href="/app">
-        Tiếp tục vào ứng dụng
+        {t("Tiếp tục vào ứng dụng")}
       </Link>
       {modal && (
         <RecordForm

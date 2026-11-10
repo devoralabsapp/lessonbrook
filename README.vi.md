@@ -6,13 +6,15 @@
 
 **Trạng thái:** bản mã nguồn public ở giai đoạn đầu, chưa có bằng chứng sử dụng rộng rãi bên ngoài. Xem [maintainer/quy trình bảo trì](MAINTAINERS.md), [roadmap](ROADMAP.md) và [changelog](CHANGELOG.md) (tiếng Anh).
 
-Sổ buổi dạy và học phí tiếng Việt cho giáo viên tự do: cá nhân, nhóm hoặc lớp học; tính theo buổi và thu sau. Bạn có thể chạy trên máy, tự triển khai hoặc fork để phát triển theo nhu cầu của mình. Phát hành theo [MIT](LICENSE).
+Sổ buổi dạy và học phí cho giáo viên tự do: cá nhân, nhóm hoặc lớp học; tính theo buổi và thu sau. Bạn có thể chạy trên máy, tự triển khai hoặc fork để phát triển theo nhu cầu của mình. Phát hành theo [MIT](LICENSE).
 
 ## Xem trước
 
 ![Màn hình tổng quan LessonBrook bằng tiếng Anh với giao diện Playful Retro Neo-Brutalism, các thẻ học phí pastel và một buổi dạy mẫu.](docs/images/dashboard-playful-retro.png)
 
-Bản xem trước giao diện tiếng Anh · Playful Retro Neo-Brutalism · Chụp local bằng Firebase Emulator, chỉ dùng dữ liệu giả. Giao diện bản community hiện dùng tiếng Việt.
+Bản xem trước giao diện tiếng Anh · Playful Retro Neo-Brutalism · Chụp local bằng Firebase Emulator, chỉ dùng dữ liệu giả.
+
+Giao diện mặc định là tiếng Anh. Dùng bộ chọn trên thanh đầu trang để chuyển sang tiếng Việt. Bạn có thể thử cả tám theme từ trang chủ trước khi đăng nhập.
 
 ## Tính năng
 

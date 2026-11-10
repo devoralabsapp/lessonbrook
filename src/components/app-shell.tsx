@@ -1,4 +1,7 @@
 "use client";
+import { useI18n } from "@/lib/i18n/client";
+
+import { LanguageSwitcher } from "./language-switcher";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -36,6 +39,7 @@ export function AppShell({
   initialTheme?: Theme;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const path = usePathname();
   const appearance = useAppearancePreview(initialTheme, path);
   const activeLink = (href: string) =>
@@ -51,7 +55,7 @@ export function AppShell({
       await api("/api/auth/logout", { method: "POST", body: {} });
       window.location.assign("/login");
     } catch {
-      setError("Chưa thể đăng xuất. Vui lòng thử lại.");
+      setError(t("Chưa thể đăng xuất. Vui lòng thử lại."));
       setBusy(false);
     }
   }
@@ -65,14 +69,14 @@ export function AppShell({
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:z-50 focus:bg-card focus:p-3"
         >
-          Đến nội dung
+          {t("Đến nội dung")}
         </a>
         <aside className="fixed inset-y-0 left-0 z-20 hidden w-[242px] flex-col border-r border-border bg-surface px-5 py-8 lg:flex">
           <div className="px-2">
             <Brand />
           </div>
           <p className="mb-3 mt-12 px-3 text-[10px] font-semibold tracking-[.2em] text-muted-foreground">
-            CUỐN SỔ CỦA BẠN
+            {t("CUỐN SỔ CỦA BẠN")}
           </p>
           <nav className="space-y-1.5">
             {links.map(({ href, label, icon: Icon }) => (
@@ -88,7 +92,7 @@ export function AppShell({
                 )}
               >
                 <Icon size={18} />
-                {label}
+                {t(label)}
                 {path === href && (
                   <ChevronRight size={14} className="ml-auto" />
                 )}
@@ -98,9 +102,9 @@ export function AppShell({
           <div className="mt-auto">
             <div className="mb-6 rounded-2xl bg-accent-soft p-4">
               <Sprout size={23} className="mb-3 text-primary" />
-              <p className="serif text-lg">Ghi một chút mỗi ngày.</p>
+              <p className="serif text-lg">{t("Ghi một chút mỗi ngày.")}</p>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Để cuối tháng, mọi buổi dạy đều có trong sổ.
+                {t("Để cuối tháng, mọi buổi dạy đều có trong sổ.")}
               </p>
             </div>
             <Link
@@ -108,7 +112,7 @@ export function AppShell({
               className="flex items-center gap-3 rounded-xl p-3 text-sm text-muted-foreground"
             >
               <Settings size={18} />
-              Cài đặt tài khoản
+              {t("Cài đặt tài khoản")}
             </Link>
             <Button
               onClick={logout}
@@ -117,11 +121,11 @@ export function AppShell({
               className="w-full justify-start px-3 text-muted-foreground"
             >
               <LogOut />
-              {busy ? "Đang đăng xuất…" : "Đăng xuất"}
+              {busy ? t("Đang đăng xuất…") : t("Đăng xuất")}
             </Button>
             {error && (
               <p role="alert" className="text-xs text-destructive">
-                {error}
+                {t(error)}
               </p>
             )}
           </div>
@@ -135,38 +139,41 @@ export function AppShell({
               <Brand compact />
             </div>
             <p className="hidden text-xs text-muted-foreground lg:block">
-              Không gian dạy học{" "}
+              {t("Không gian dạy học")}{" "}
               <span className="mx-2 text-muted-foreground">/</span>{" "}
               <span className="text-foreground">
                 {path.includes("students")
-                  ? "Học viên"
+                  ? t("Học viên")
                   : path.includes("classes")
-                    ? "Lớp học"
+                    ? t("Lớp học")
                     : path.includes("sessions") || path.includes("lessons")
-                      ? "Buổi dạy"
+                      ? t("Buổi dạy")
                       : path.includes("statements")
-                        ? "Bảng kê"
+                        ? t("Bảng kê")
                         : path.includes("settings")
-                          ? "Cài đặt"
+                          ? t("Cài đặt")
                           : path === "/onboarding"
-                            ? "Bắt đầu"
-                            : "Tổng quan"}
+                            ? t("Bắt đầu")
+                            : t("Tổng quan")}
               </span>
             </p>
-            <Link
-              href="/app/settings"
-              aria-label="Cài đặt tài khoản"
-              className="flex items-center gap-3"
-            >
-              <span className="hidden text-xs sm:block">{name}</span>
-              <span className="flex size-9 items-center justify-center rounded-full border border-border bg-accent-soft text-sm font-bold text-primary">
-                {name[0]?.toUpperCase()}
-              </span>
-            </Link>
+            <div className="ml-auto flex items-center gap-3">
+              <LanguageSwitcher />
+              <Link
+                href="/app/settings"
+                aria-label={t("Cài đặt tài khoản")}
+                className="flex items-center gap-3"
+              >
+                <span className="hidden text-xs sm:block">{name}</span>
+                <span className="flex size-9 items-center justify-center rounded-full border border-border bg-accent-soft text-sm font-bold text-primary">
+                  {name[0]?.toUpperCase()}
+                </span>
+              </Link>
+            </div>
           </header>
           {process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" && (
             <div className="bg-warning-soft px-5 py-1.5 text-center text-[11px] text-warning-foreground">
-              Firebase Emulator · Chỉ dùng dữ liệu giả
+              {t("Firebase Emulator · Chỉ dùng dữ liệu giả")}
             </div>
           )}
           <main
@@ -178,7 +185,7 @@ export function AppShell({
           </main>
         </div>
         <nav
-          aria-label="Điều hướng chính"
+          aria-label={t("Điều hướng chính")}
           className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
         >
           {links.map(({ href, label, icon: Icon }) => (
@@ -194,7 +201,7 @@ export function AppShell({
               )}
             >
               <Icon size={20} />
-              {label}
+              {t(label)}
             </Link>
           ))}
         </nav>
