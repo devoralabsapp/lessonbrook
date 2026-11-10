@@ -20,7 +20,14 @@ import { api } from "@/lib/client-api";
 import { InfoLinks } from "./info-links";
 import { useAuthReady } from "@/lib/firebase/use-auth-ready";
 import { authErrorMessage } from "@/lib/firebase/auth-errors";
-export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
+import type { Theme } from "@/domain/appearance";
+export function LoginForm({
+  serverConfigured,
+  theme,
+}: {
+  serverConfigured: boolean;
+  theme: Theme;
+}) {
   const { t } = useI18n();
   const configured = Boolean(
     serverConfigured &&
@@ -64,8 +71,11 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
     }
   }
   return (
-    <main className="grid min-h-dvh lg:grid-cols-2">
-      <section className="hidden flex-col justify-between bg-[#e8eddc] p-12 lg:flex">
+    <main
+      data-theme={theme}
+      className="grid min-h-dvh bg-background text-foreground lg:grid-cols-2"
+    >
+      <section className="hidden flex-col justify-between bg-accent-soft p-12 lg:flex">
         <Brand />
         <div className="max-w-lg">
           <BookOpen className="mb-10 text-primary" size={44} strokeWidth={1} />
@@ -74,13 +84,13 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
             <br />
             {t("cho những buổi dạy.")}
           </h1>
-          <p className="mt-6 max-w-sm text-base leading-7 text-[#667459]">
+          <p className="mt-6 max-w-sm text-base leading-7 text-foreground">
             {t(
               "Từng học viên, từng buổi học, từng đơn giá — gọn gàng trong một cuốn sổ của riêng bạn.",
             )}
           </p>
         </div>
-        <p className="text-xs text-[#667459]">
+        <p className="text-xs text-foreground">
           {t("LessonBrook · Sổ buổi dạy & học phí")}
         </p>
       </section>
@@ -111,7 +121,7 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
           {params.has("expired") && (
             <p
               role="status"
-              className="mt-5 rounded-xl bg-[#f8efd9] p-3 text-sm text-[#85641d]"
+              className="mt-5 rounded-xl bg-warning-soft p-3 text-sm text-warning-foreground"
             >
               {t("Phiên đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.")}
             </p>
@@ -137,7 +147,7 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
           {!configured && (
             <p
               role="status"
-              className="mt-4 rounded-xl bg-[#f8efd9] p-3 text-sm leading-6 text-[#85641d]"
+              className="mt-4 rounded-xl bg-warning-soft p-3 text-sm leading-6 text-warning-foreground"
             >
               {t("Ứng dụng đang được thiết lập. Đăng nhập sẽ được mở sau.")}
             </p>
@@ -190,7 +200,7 @@ export function LoginForm({ serverConfigured }: { serverConfigured: boolean }) {
             <InfoLinks />
           </div>
           {process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" && (
-            <p className="mt-6 rounded-xl bg-[#f8efd9] p-3 text-xs leading-5 text-[#85641d]">
+            <p className="mt-6 rounded-xl bg-warning-soft p-3 text-xs leading-5 text-warning-foreground">
               {t(
                 "Firebase Emulator · Môi trường thử nghiệm cục bộ. Chỉ sử dụng dữ liệu giả; đăng nhập này không xác minh tài khoản Google thật.",
               )}

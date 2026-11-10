@@ -24,6 +24,7 @@ import {
 } from "@/domain";
 import { AppError } from "./errors";
 import { teacherSettingsSchema } from "@/domain/onboarding";
+import type { Theme } from "@/domain/appearance";
 import { listPage, listScope } from "./list-page";
 import {
   searchSchema,
@@ -129,6 +130,7 @@ export async function ensureProfile(
   uid: string,
   displayName: string,
   email: string | null,
+  theme?: Theme,
 ) {
   const ref = userRef(uid);
   const profile = profileSchema.parse({
@@ -143,8 +145,13 @@ export async function ensureProfile(
   return admin().db.runTransaction(async (tx) => {
     await assertServiceAvailable(tx);
     if ((await tx.get(accountControlRef(uid))).exists) return false;
-    if (!(await tx.get(ref)).exists)
+    const existingProfile = await tx.get(ref);
+    const appearanceRef = ref.collection("preferences").doc("appearance");
+    const existingAppearance = theme ? await tx.get(appearanceRef) : undefined;
+    if (!existingProfile.exists)
       tx.create(ref, { ...profile, createdAt: now, updatedAt: now });
+    if (theme && existingAppearance?.get("theme") !== theme)
+      tx.set(appearanceRef, { theme, schemaVersion: 1, updatedAt: now });
     return true;
   });
 }

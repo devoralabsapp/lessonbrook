@@ -37,6 +37,8 @@ Session cookies are HttpOnly/Lax, Secure on HTTPS, and last up to five days. Bro
 
 ## Appearance preferences
 
+A home page theme selection is kept in a short-lived cookie and rendered on the sign-in page. After verifying a recent Google ID token, the session endpoint applies the validated selection to that account in the profile transaction and clears the cookie. Sign-ins without a selection keep the stored preference.
+
 The application shell holds a settings-visit preview separately from the saved account preference. Selecting a theme only changes the local preview. Save commits it through the existing authenticated, idempotent appearance endpoint; a failed save retains the preview for retry. Cancel, route navigation and reload restore the saved preference. Shared statements keep an explicit light palette.
 
 Retro component styles are scoped to `data-theme="playful-retro"` and exclude the `data-theme="statement"` boundary. Palette, border and shadow tokens live in globals.css; shared cards can opt into `data-tone="yellow|pink|blue|mint"`. Buttons expose their existing variant as data for theme styling. Nunito is bundled under SIL OFL 1.1 via next/font/local, with preloading disabled so unused themes do not preload it.

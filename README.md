@@ -26,7 +26,7 @@ English interface preview · Playful Retro Neo-Brutalism · Fictional sample dat
 
 All business reads and writes go through Node server APIs. The Firebase client is used only for Auth; Firestore Rules deny direct client access. Tuition data is not stored offline.
 
-Visitors can try all eight themes from **Preview theme** on the home page. This preview lasts until the page is reloaded or left. The sample ledger plays a brief entrance sequence and respects the browser’s reduced motion preference.
+Visitors can try all eight themes from **Preview theme** on the home page. A selection follows them to the sign-in page and becomes their account theme after successful sign-in. The sample ledger plays a brief entrance sequence and respects the browser’s reduced motion preference.
 
 ## Quick start
 

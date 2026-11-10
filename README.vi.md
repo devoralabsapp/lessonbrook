@@ -14,7 +14,7 @@ Sổ buổi dạy và học phí cho giáo viên tự do: cá nhân, nhóm hoặ
 
 Bản xem trước giao diện tiếng Anh · Playful Retro Neo-Brutalism · Chụp local bằng Firebase Emulator, chỉ dùng dữ liệu giả.
 
-Giao diện mặc định là tiếng Anh. Dùng bộ chọn trên thanh đầu trang để chuyển sang tiếng Việt. Bạn có thể thử cả tám theme từ trang chủ trước khi đăng nhập.
+Giao diện mặc định là tiếng Anh. Dùng bộ chọn trên thanh đầu trang để chuyển sang tiếng Việt. Bạn có thể thử cả tám theme từ trang chủ. Giao diện đã chọn sẽ đi theo bạn đến trang đăng nhập và được lưu vào tài khoản sau khi đăng nhập thành công.
 
 ## Tính năng
 
@@ -22,7 +22,7 @@ Giao diện mặc định là tiếng Anh. Dùng bộ chọn trên thanh đầu 
 - Học viên, đơn giá, lưu trữ/khôi phục; lớp tối đa 50 người và buổi nhóm với giá riêng được chụp tại thời điểm ghi.
 - Bảng kê từng học viên, phát hành/hủy, thu từng phần và vô hiệu hóa khoản thu nhập sai.
 - Link bảng kê có thời hạn/thu hồi; tổng quan, tìm kiếm, bộ lọc, CSV/ZIP/JSON và xóa tài khoản.
-- Tám giao diện: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code, Playful Retro Neo-Brutalism; bố cục tối ưu điện thoại. Command Line dùng nền đen và điểm nhấn xanh. Bấm chọn để xem thử ngay, chỉ lưu khi bấm Lưu giao diện. Hủy xem trước, rời cài đặt hoặc tải lại trang để bỏ lựa chọn chưa lưu.
+- Tám giao diện: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code, Playful Retro Neo-Brutalism; bố cục tối ưu điện thoại. Command Line dùng nền đen và điểm nhấn xanh. Trong Cài đặt, bấm chọn để xem thử rồi bấm Lưu giao diện để lưu. Hủy xem trước, rời cài đặt hoặc tải lại trang để bỏ lựa chọn chưa lưu.
 
 Mọi đọc/ghi nghiệp vụ đi qua Node server API. Firebase client chỉ dùng cho Auth; Firestore Rules chặn client trực tiếp. Không có chế độ lưu học phí offline.
 

@@ -38,8 +38,8 @@ test("visitors can preview themes on the home page without saving an account pre
   }
 
   await page.reload();
-  await expect(theme).toHaveValue("natura");
-  await expect(home).toHaveAttribute("data-theme", "natura");
+  await expect(theme).toHaveValue("playful-retro");
+  await expect(home).toHaveAttribute("data-theme", "playful-retro");
   expect(appearanceRequests).toEqual([]);
 });
 

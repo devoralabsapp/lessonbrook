@@ -7,10 +7,14 @@ import { HomeLedgerMotion } from "@/components/home-ledger-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { InfoLinks } from "@/components/info-links";
+import { getGuestTheme } from "@/lib/server/guest-theme";
 export default async function Home() {
-  const { t, locale } = await getI18n();
+  const [{ t, locale }, theme] = await Promise.all([
+    getI18n(),
+    getGuestTheme(),
+  ]);
   return (
-    <HomeAppearance>
+    <HomeAppearance initialTheme={theme}>
       <section className="mx-auto grid max-w-6xl items-center gap-14 px-6 py-16 md:grid-cols-2 md:py-24">
         <div>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-accent-soft px-3 py-1.5 text-xs font-medium">

@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { admin } from "@/lib/firebase/admin";
 import { client, googleToken, origin } from "./helpers";
 import { getSession } from "@/lib/server/repository";
+import { GUEST_THEME_COOKIE } from "@/domain/appearance";
 describe("Next HTTP + Auth/Firestore Emulator", () => {
   let a: Awaited<ReturnType<typeof client>>,
     b: Awaited<ReturnType<typeof client>>,
@@ -52,6 +53,36 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
       (await a.call("/api/auth/session", "POST", { idToken: "invalid" }))
         .status,
     ).toBe(401);
+  });
+  it("sign-in applies a valid guest theme to the verified account and preserves it on later sign-ins", async () => {
+    const c = await client();
+    const { idToken } = await googleToken();
+    await c.login(idToken);
+    expect(
+      (await c.call("/api/appearance", "PATCH", { theme: "ocean" })).status,
+    ).toBe(200);
+
+    const loginWithTheme = (theme: string) =>
+      c.call("/api/auth/session", "POST", { idToken }, randomUUID(), {
+        Cookie: `${c.csrfCookie}; ${GUEST_THEME_COOKIE}=${theme}`,
+      });
+    const savedTheme = async () =>
+      (await (await c.call("/api/appearance")).json()).theme;
+
+    const login = await loginWithTheme("visual-code");
+    expect(login.status).toBe(200);
+    expect(login.headers.getSetCookie()).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(
+          new RegExp(`^${GUEST_THEME_COOKIE}=;.*Max-Age=0`),
+        ),
+      ]),
+    );
+    expect(await savedTheme()).toBe("visual-code");
+
+    expect((await loginWithTheme("invalid")).status).toBe(200);
+    expect((await c.login(idToken)).status).toBe(200);
+    expect(await savedTheme()).toBe("visual-code");
   });
   it("chặn CSRF Unicode và request quá lớn", async () => {
     expect(

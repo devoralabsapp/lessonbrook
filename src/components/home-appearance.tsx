@@ -3,15 +3,26 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { DEFAULT_THEME, themes, type Theme } from "@/domain/appearance";
+import {
+  DEFAULT_THEME,
+  GUEST_THEME_COOKIE,
+  themes,
+  type Theme,
+} from "@/domain/appearance";
 import { useI18n } from "@/lib/i18n/client";
 import { Brand } from "./brand";
 import { LanguageSwitcher } from "./language-switcher";
 import { Button } from "./ui/button";
 
-export function HomeAppearance({ children }: { children: ReactNode }) {
+export function HomeAppearance({
+  children,
+  initialTheme = DEFAULT_THEME,
+}: {
+  children: ReactNode;
+  initialTheme?: Theme;
+}) {
   const { t } = useI18n();
-  const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
+  const [theme, setTheme] = useState<Theme>(initialTheme);
 
   return (
     <main
@@ -38,7 +49,10 @@ export function HomeAppearance({ children }: { children: ReactNode }) {
               onChange={(event) => {
                 const value = event.currentTarget.value;
                 const choice = themes.find((item) => item.id === value);
-                if (choice) setTheme(choice.id);
+                if (!choice) return;
+                const secure = location.protocol === "https:" ? "; Secure" : "";
+                document.cookie = `${GUEST_THEME_COOKIE}=${choice.id}; Path=/; SameSite=Lax; Max-Age=3600${secure}`;
+                setTheme(choice.id);
               }}
             >
               {themes.map(({ id, name }) => (

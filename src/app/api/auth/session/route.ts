@@ -11,6 +11,8 @@ import {
 import { ensureProfile } from "@/lib/server/repository";
 import { resumeDeletion } from "@/lib/server/account-deletion";
 import { deletionResponse } from "@/lib/server/deletion-http";
+import { GUEST_THEME_COOKIE } from "@/domain/appearance";
+import { getGuestTheme } from "@/lib/server/guest-theme";
 import {
   cookieOptions,
   SESSION_COOKIE,
@@ -46,10 +48,12 @@ export async function POST(request: Request) {
     const sessionCookie = await auth.createSessionCookie(idToken, {
       expiresIn: SESSION_SECONDS * 1000,
     });
+    const theme = await getGuestTheme();
     const ready = await ensureProfile(
       decoded.uid,
       decoded.name ?? "Giáo viên",
       decoded.email ?? null,
+      theme,
     );
     if (!ready) return deletionResponse(await resumeDeletion(decoded.uid));
     const response = json({ ok: true });
@@ -57,6 +61,11 @@ export async function POST(request: Request) {
       ...cookieOptions(),
       maxAge: SESSION_SECONDS,
     });
+    if (theme)
+      response.cookies.set(GUEST_THEME_COOKIE, "", {
+        ...cookieOptions(),
+        maxAge: 0,
+      });
     return response;
   } catch (error) {
     return errorResponse(error);

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { origin } from "../integration/helpers";
+import { GUEST_THEME_COOKIE } from "../../src/domain/appearance";
 
 test("popup bị chặn → đóng lỗi/thử lại với browser storage bị chặn → Google Emulator → cookie server", async ({
   page,
@@ -38,7 +39,16 @@ test("popup bị chặn → đóng lỗi/thử lại với browser storage bị 
   await context.route(/^https:\/\/apis\.google\.com\//, async (route) => {
     await route.fulfill({ response: await route.fetch({ timeout: 15000 }) });
   });
-  await page.goto("/login");
+  await page.goto("/");
+  await page
+    .getByRole("combobox", { name: "Xem thử giao diện" })
+    .selectOption("command-line");
+  await page.getByRole("link", { name: "Đăng nhập", exact: true }).click();
+  await page.waitForURL("**/login");
+  await expect(page.getByRole("main")).toHaveCSS(
+    "background-color",
+    "rgb(0, 0, 0)",
+  );
   const button = page.getByRole("button", {
     name: "Tiếp tục với Google",
   });
@@ -80,6 +90,17 @@ test("popup bị chặn → đóng lỗi/thử lại với browser storage bị 
     )?.httpOnly,
   ).toBe(true);
   expect((await context.request.get("/api/profile")).status()).toBe(200);
+  await expect(page.locator('[data-theme="command-line"]')).toBeVisible();
+  expect(
+    (await (await context.request.get("/api/appearance")).json()).theme,
+  ).toBe("command-line");
+  expect(
+    (await context.cookies()).some(
+      (cookie) => cookie.name === GUEST_THEME_COOKIE,
+    ),
+  ).toBe(false);
+  await page.reload();
+  await expect(page.locator('[data-theme="command-line"]')).toBeVisible();
   expect(
     await page.evaluate(() => {
       try {
