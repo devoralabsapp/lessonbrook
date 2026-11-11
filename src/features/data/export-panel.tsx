@@ -178,7 +178,7 @@ export function ExportPanel() {
     }
   }
   return (
-    <Card className="mt-6 space-y-4 p-6">
+    <Card className="space-y-4 p-6">
       <h2 className="serif text-2xl">{t("Lấy lại dữ liệu")}</h2>
       <p className="text-sm leading-6 text-muted-foreground">
         {t(

@@ -91,7 +91,7 @@ export function SettingsForm({
     }
   }
   return (
-    <div className="max-w-xl">
+    <div className={inApp ? "max-w-xl" : "max-w-xl lg:max-w-none"}>
       <p className="mb-2 text-xs text-muted-foreground">
         {t("KHÔNG GIAN CỦA BẠN")}
       </p>
@@ -107,73 +107,93 @@ export function SettingsForm({
       <div className="mb-6">
         <InfoLinks />
       </div>
-      <Card className="p-6">
-        {profile ? (
-          <form onSubmit={submit} {...draft.form} className="space-y-5">
-            <p className="text-xs text-muted-foreground">{profile.email}</p>
-            <label className="field-label">
-              {t("Tên giáo viên / tên lớp")}
-              <Input
-                name="displayName"
-                required
-                maxLength={100}
-                defaultValue={profile.displayName}
-              />
-            </label>
-            <p className="text-xs leading-6 text-muted-foreground">
-              {t("Tiền tệ: VND · Múi giờ: Việt Nam.")}
-              <br />
-              {t("Sổ chỉ ghi nhận các buổi bạn nhập, chưa bao gồm nợ cũ.")}
-            </p>
-            <Button disabled={busy}>
-              {busy ? t("Đang lưu…") : t("Lưu hồ sơ")}
-            </Button>
-          </form>
-        ) : (
-          !error && <p role="status">{t("Đang tải hồ sơ…")}</p>
-        )}
-        {error && (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            {t(error)}
-          </p>
-        )}
-        {message && (
-          <p role="status" className="mt-4 text-sm text-primary">
-            {t(message)}
-          </p>
-        )}
-      </Card>
-      {profile && (
-        <BankShortcutSettings
-          url={shortcutUrl}
-          inApp={inApp}
-          initialBankTransfer={profile.bankTransfer ?? null}
-          hasLegacyDetails={!!profile.bankDetails}
-        />
-      )}
-      {inApp ? (
-        <Card>
-          <Button
-            asChild
-            variant="outline"
-            className="h-auto whitespace-normal"
-          >
-            <a href={`${MOBILE_SCHEME}://data`}>
-              {t("Mở xuất dữ liệu và xóa tài khoản trong trình duyệt")}
-            </a>
-          </Button>
-        </Card>
-      ) : (
-        <>
-          <div id="account-data" />
-          {profile && (
-            <>
-              <ExportPanel />
-              <DeletePanel />
-            </>
+      <div
+        className={
+          inApp
+            ? "grid gap-6"
+            : "grid items-start gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr]"
+        }
+      >
+        <Card className="min-w-0 p-6">
+          {profile ? (
+            <form onSubmit={submit} {...draft.form} className="space-y-5">
+              <p className="break-words text-xs text-muted-foreground">
+                {profile.email}
+              </p>
+              <label className="field-label">
+                {t("Tên giáo viên / tên lớp")}
+                <Input
+                  name="displayName"
+                  required
+                  maxLength={100}
+                  defaultValue={profile.displayName}
+                />
+              </label>
+              <p className="text-xs leading-6 text-muted-foreground">
+                {t("Tiền tệ: VND · Múi giờ: Việt Nam.")}
+                <br />
+                {t("Sổ chỉ ghi nhận các buổi bạn nhập, chưa bao gồm nợ cũ.")}
+              </p>
+              <Button disabled={busy}>
+                {busy ? t("Đang lưu…") : t("Lưu hồ sơ")}
+              </Button>
+            </form>
+          ) : (
+            !error && <p role="status">{t("Đang tải hồ sơ…")}</p>
           )}
-        </>
-      )}
+          {error && (
+            <p role="alert" className="mt-4 text-sm text-destructive">
+              {t(error)}
+            </p>
+          )}
+          {message && (
+            <p role="status" className="mt-4 text-sm text-primary">
+              {t(message)}
+            </p>
+          )}
+        </Card>
+        {profile && (
+          <div
+            className={
+              inApp
+                ? "min-w-0"
+                : "min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1"
+            }
+          >
+            <BankShortcutSettings
+              url={shortcutUrl}
+              inApp={inApp}
+              initialBankTransfer={profile.bankTransfer ?? null}
+              hasLegacyDetails={!!profile.bankDetails}
+            />
+          </div>
+        )}
+        {inApp ? (
+          <Card>
+            <Button
+              asChild
+              variant="outline"
+              className="h-auto whitespace-normal"
+            >
+              <a href={`${MOBILE_SCHEME}://data`}>
+                {t("Mở xuất dữ liệu và xóa tài khoản trong trình duyệt")}
+              </a>
+            </Button>
+          </Card>
+        ) : (
+          <div
+            id="account-data"
+            className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-2"
+          >
+            {profile && (
+              <>
+                <ExportPanel />
+                <DeletePanel />
+              </>
+            )}
+          </div>
+        )}
+      </div>
       <div className="mt-5 flex flex-wrap gap-3">
         <Button variant="outline" disabled={busy} onClick={() => logout(false)}>
           {t("Đăng xuất")}

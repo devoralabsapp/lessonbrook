@@ -194,7 +194,7 @@ export function BankShortcutSettings({
 
   const expiry = connection?.expiresAt && new Date(connection.expiresAt);
   return (
-    <Card className="mt-6 space-y-4 p-6">
+    <Card className="space-y-4 p-6">
       <h2 className="serif text-xl">{t("Thông tin chuyển khoản")}</h2>
       <p className="text-sm leading-6 text-muted-foreground">
         {t(
