@@ -203,7 +203,10 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await page.getByRole("button", { name: "Xóa bộ lọc", exact: true }).click();
   await expect(classRows).toHaveCount(2);
   await expect(groupRows).toHaveCount(2);
-  const searchBy = page.getByLabel("Tìm theo", { exact: true });
+  const searchBy = page.getByRole("combobox", {
+    name: "Tìm theo",
+    exact: true,
+  });
   const studentPicker = page.getByRole("combobox", {
     name: "Học viên",
     exact: true,
