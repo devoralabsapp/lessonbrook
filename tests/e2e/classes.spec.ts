@@ -143,6 +143,14 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     page.getByText("Đơn giá đã lưu: 150.000", { exact: false }),
   ).toBeVisible();
   await page.goto("/app/sessions");
+  await expect(
+    page.getByRole("link", { name: "Ghi buổi nhóm/lớp", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .locator("form")
+      .getByRole("link", { name: "Xem buổi nhóm & lớp", exact: true }),
+  ).toHaveAttribute("href", "/app/lessons");
   await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
   await page.getByRole("dialog").getByLabel("Dạy cho").selectOption("group");
   await expect(
@@ -174,6 +182,28 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     fullPage: true,
     animations: "disabled",
   });
+  await page.goto("/app/sessions");
+  const type = page.getByLabel("Loại buổi dạy");
+  const apply = page.getByRole("button", { name: "Lọc buổi dạy", exact: true });
+  const groupRows = page.getByRole("link", {
+    name: "Buổi nhóm tự chọn",
+    exact: true,
+  });
+  const classRows = page.getByRole("link", {
+    name: "Lớp Piano chiều",
+    exact: true,
+  });
+  await type.selectOption("group");
+  await apply.click();
+  await expect(groupRows).toHaveCount(2);
+  await expect(classRows).toHaveCount(0);
+  await type.selectOption("class");
+  await apply.click();
+  await expect(classRows).toHaveCount(2);
+  await expect(groupRows).toHaveCount(0);
+  await page.getByRole("button", { name: "Xóa bộ lọc", exact: true }).click();
+  await expect(classRows).toHaveCount(2);
+  await expect(groupRows).toHaveCount(2);
 });
 
 test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại sau tải lại", async ({

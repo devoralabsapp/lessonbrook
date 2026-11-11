@@ -29,11 +29,37 @@ export const billingFilterSchema = z.enum([
   "billed",
   "free",
 ]);
+export const sessionTypeFilterSchema = z.enum([
+  "all",
+  "individual",
+  "group",
+  "class",
+  "shared",
+]);
+export const sessionTypeLabels = {
+  all: "Tất cả",
+  individual: "Buổi cá nhân",
+  group: "Buổi nhóm tự chọn",
+  class: "Buổi của lớp",
+  shared: "Buổi nhóm & lớp",
+} as const satisfies Record<z.infer<typeof sessionTypeFilterSchema>, string>;
 export function matchesSession(
   session: TeachingSession,
   status: string,
   billing: string,
+  type = "all",
 ) {
+  const sessionType = session.classId
+    ? "class"
+    : session.lessonId
+      ? "group"
+      : "individual";
+  if (
+    type === "shared"
+      ? sessionType === "individual"
+      : type !== "all" && sessionType !== type
+  )
+    return false;
   if (status !== "all" && session.status !== status) return false;
   if (billing === "unbilled")
     return (

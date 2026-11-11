@@ -23,7 +23,11 @@ import {
   statusLabels,
   vietnamToday,
 } from "@/domain";
-import { matchesSession, normalizeSearch } from "@/domain/list-filters";
+import {
+  matchesSession,
+  normalizeSearch,
+  sessionTypeLabels,
+} from "@/domain/list-filters";
 import { api } from "@/lib/client-api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -79,6 +83,7 @@ export function Workspace({
     to: "",
     studentId: "",
     status: "all",
+    type: "all",
     billing: initialBilling,
   };
   const [range, setRange] = useState(initialRange);
@@ -117,6 +122,7 @@ export function Workspace({
     if (range.from) params.set("from", range.from);
     if (range.to) params.set("to", range.to);
     if (range.status !== "all") params.set("status", range.status);
+    if (range.type !== "all") params.set("type", range.type);
     if (range.billing !== "all") params.set("billing", range.billing);
   }
   const endpoint =
@@ -233,7 +239,7 @@ export function Workspace({
           (!selectedStudent || selectedStudent === record.studentId) &&
           (!range.from || record.sessionDate >= range.from) &&
           (!range.to || record.sessionDate <= range.to) &&
-          matchesSession(record, range.status, range.billing);
+          matchesSession(record, range.status, range.billing, range.type);
         return {
           ...current,
           sessions: updatePage(
@@ -318,21 +324,6 @@ export function Workspace({
           </Button>
         </div>
       </div>
-      {mode === "sessions" && !studentId && (
-        <div className="mb-6 flex flex-wrap gap-3">
-          <Button asChild variant="outline">
-            <Link href="/app/lessons/new">{t("Ghi buổi nhóm/lớp")}</Link>
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/app/lessons">{t("Xem buổi nhóm & lớp")}</Link>
-          </Button>
-          <p className="w-full text-xs leading-5 text-muted-foreground">
-            {t(
-              "Danh sách bên dưới theo từng học viên. Một buổi nhóm có nhiều dòng học phí; mỗi người chỉ tính một lần trong bảng kê riêng.",
-            )}
-          </p>
-        </div>
-      )}
       {notice && (
         <div
           role="status"
@@ -597,6 +588,32 @@ export function Workspace({
                 <option value="free">{t("Buổi miễn phí")}</option>
               </select>
             </label>
+            <div className="col-span-2 flex flex-wrap items-end gap-3">
+              <label className="field-label min-w-0 flex-[1_1_14rem]">
+                {t("Loại buổi dạy")}
+                <select
+                  className="select-input"
+                  value={draftRange.type}
+                  onChange={(event) =>
+                    setDraftRange({ ...draftRange, type: event.target.value })
+                  }
+                >
+                  {Object.entries(sessionTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {t(label)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {!studentId && (
+                <Link
+                  className="py-2 text-sm text-primary underline underline-offset-4"
+                  href="/app/lessons"
+                >
+                  {t("Xem buổi nhóm & lớp")}
+                </Link>
+              )}
+            </div>
             <div className="col-span-2 flex flex-wrap gap-2">
               <Button variant="outline" type="submit">
                 {t("Lọc buổi dạy")}
@@ -793,6 +810,7 @@ export function Workspace({
           range.to ||
           range.studentId ||
           range.status !== "all" ||
+          range.type !== "all" ||
           range.billing !== "all" ? (
           <div className="p-8 text-center text-sm" role="status">
             {view?.sessions.nextCursor

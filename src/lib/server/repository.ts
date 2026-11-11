@@ -32,6 +32,7 @@ import {
   searchSchema,
   normalizeSearch,
   sessionStatusFilterSchema,
+  sessionTypeFilterSchema,
   billingFilterSchema,
   matchesSession,
 } from "@/domain/list-filters";
@@ -403,6 +404,7 @@ export const sessionListSchema = z
   .object({
     studentId: idSchema.optional(),
     status: sessionStatusFilterSchema.default("all"),
+    type: sessionTypeFilterSchema.default("all"),
     billing: billingFilterSchema.default("all"),
     from: dateSchema.optional(),
     to: dateSchema.optional(),
@@ -433,13 +435,15 @@ export async function listSessions(uid: string, raw: unknown) {
       to: input.to ?? null,
       status: input.status,
       billing: input.billing,
+      ...(input.type !== "all" ? { type: input.type } : {}),
     }),
     cursor: input.cursor,
     limit: input.limit,
     dto: sessionDto,
     matches:
-      input.status !== "all" || input.billing !== "all"
-        ? (session) => matchesSession(session, input.status, input.billing)
+      input.status !== "all" || input.billing !== "all" || input.type !== "all"
+        ? (session) =>
+            matchesSession(session, input.status, input.billing, input.type)
         : undefined,
   });
 }
