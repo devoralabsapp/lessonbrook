@@ -37,11 +37,12 @@ test("guest demo is read-only and a signed-in visit to home opens the dashboard"
     );
   }
   await page.getByText("DEMO-001", { exact: true }).click();
+  const details = page.locator("details[open]");
   await expect(
-    page.getByRole("heading", { name: "Payment history" }),
+    details.getByRole("heading", { name: "Payment history" }),
   ).toBeVisible();
-  await expect(page.getByText(/· Cash$/)).toBeVisible();
-  await expect(page.getByText(/· Bank transfer$/)).toBeVisible();
+  await expect(details.getByText(/· Cash$/)).toBeVisible();
+  await expect(details.getByText(/· Bank transfer$/)).toBeVisible();
   await page
     .getByRole("searchbox", { name: "Search the list" })
     .fill("DEMO-004");
