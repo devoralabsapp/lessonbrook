@@ -234,10 +234,17 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await expect(classRows).toHaveCount(0);
   const dateTile = page.locator('[data-slot="lesson-date"]').first();
   await expect(dateTile).toHaveCSS("background-color", "rgb(170, 215, 245)");
-  await expect(dateTile.locator(".lesson-date-month")).toHaveCSS(
-    "background-color",
-    "rgb(255, 219, 87)",
-  );
+  const month = dateTile.locator(".lesson-date-month");
+  await expect(month).toHaveCSS("background-color", "rgb(255, 219, 87)");
+  expect(
+    await month.evaluate((label) => {
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      const text = range.getBoundingClientRect();
+      const tile = label.closest("time")!.getBoundingClientRect();
+      return text.left - tile.left >= 4 && tile.right - text.right >= 4;
+    }),
+  ).toBe(true);
   await expect(dateTile).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}$/);
   await searchBy.selectOption("student");
   await expect(targetPicker).toHaveCount(0);

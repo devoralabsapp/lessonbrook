@@ -795,7 +795,7 @@ export function Workspace({
                   dateTime={s.sessionDate}
                   data-slot="lesson-date"
                   aria-hidden="true"
-                  className="grid w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-accent-soft text-center text-foreground"
+                  className="grid w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-accent-soft text-center text-foreground"
                 >
                   <span className="lesson-date-month whitespace-nowrap bg-primary px-1 py-1 text-[10px] leading-4 font-bold uppercase text-primary-foreground">
                     {monthLabels[locale].format(
@@ -806,7 +806,7 @@ export function Workspace({
                     {s.sessionDate.slice(8)}
                   </span>
                 </time>
-                <div className="min-w-0 basis-[calc(100%_-_4.25rem)] flex-1 sm:basis-40">
+                <div className="min-w-0 basis-[calc(100%_-_4.75rem)] flex-1 sm:basis-40">
                   <Link
                     href={`/app/students/${s.studentId}`}
                     className="break-words text-sm font-semibold"
