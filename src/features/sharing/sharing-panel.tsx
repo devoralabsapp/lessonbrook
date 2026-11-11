@@ -15,12 +15,15 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useStatementMutation } from "@/features/statements/shared";
 import { PublicStatementView } from "./public-statement";
+import { NATIVE_STATEMENT_SHARE } from "@/domain/mobile-sign-in";
 export function SharingPanel({
   statement,
   onChanged,
+  nativeShare,
 }: {
   statement: Statement;
   onChanged: () => void;
+  nativeShare: boolean;
 }) {
   const { t, locale } = useI18n();
   const [status, setStatus] = useState<{
@@ -127,21 +130,22 @@ export function SharingPanel({
       onChanged();
     }
   }
+  const shareMessage = usableLink
+    ? t(
+        "{0} gửi bảng kê học phí {1} của {2}. Tổng học phí {3}, còn phải thu {4} theo ghi nhận của giáo viên. Xem chi tiết: {5}",
+        {
+          "0": statement.teacherSnapshot.displayName,
+          "1": statement.number,
+          "2": statement.recipientSnapshot.displayName,
+          "3": formatVnd(statement.totalVnd, locale),
+          "4": formatVnd(statement.totalVnd - statement.paidVnd, locale),
+          "5": usableLink.url,
+        },
+      )
+    : "";
   async function copy(message = false) {
     if (!usableLink) return;
-    const text = message
-      ? t(
-          "{0} gửi bảng kê học phí {1} của {2}. Tổng học phí {3}, còn phải thu {4} theo ghi nhận của giáo viên. Xem chi tiết: {5}",
-          {
-            "0": statement.teacherSnapshot.displayName,
-            "1": statement.number,
-            "2": statement.recipientSnapshot.displayName,
-            "3": formatVnd(statement.totalVnd, locale),
-            "4": formatVnd(statement.totalVnd - statement.paidVnd, locale),
-            "5": usableLink.url,
-          },
-        )
-      : usableLink.url;
+    const text = message ? shareMessage : usableLink.url;
     try {
       await navigator.clipboard.writeText(text);
       setNotice(
@@ -206,6 +210,17 @@ export function SharingPanel({
             />
           </label>
           <div className="flex flex-wrap gap-3">
+            {nativeShare && (
+              <Button asChild>
+                <a
+                  href={NATIVE_STATEMENT_SHARE}
+                  data-statement-share-url={usableLink.url}
+                  data-statement-share-message={shareMessage}
+                >
+                  {t("Chia sẻ qua ứng dụng…")}
+                </a>
+              </Button>
+            )}
             <Button variant="outline" onClick={() => copy()}>
               {t("Sao chép link")}
             </Button>

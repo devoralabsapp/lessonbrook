@@ -31,4 +31,17 @@
     <string name="continue_google">Continue with Google</string>
     <string name="sign_in_unavailable">Sign-in is currently unavailable.</string>
     <string name="loading">Loading</string>
+    <string name="saving_changes">Saving changes</string>
+    <string name="unsaved_changes">Unsaved changes</string>
+    <string name="wait_for_save">Wait for the save to finish before leaving.</string>
+    <string name="discard_message">Your changes will be lost if you leave this screen.</string>
+    <string name="keep_editing">Keep editing</string>
+    <string name="discard_changes">Discard changes</string>
+    <string name="upcoming_lessons">Upcoming lessons</string>
+    <string name="no_planned_lessons">No planned lessons in the next seven days.</string>
+    <string name="group_lesson">Group lesson</string>
+    <string name="time_not_set">Time not set</string>
+    <string name="full_schedule">View full schedule</string>
+    <string name="share_statement">Share statement</string>
+    <string name="share_unavailable">Couldn’t open sharing. Use Copy message and try again.</string>
 </resources>

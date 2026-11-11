@@ -17,6 +17,12 @@ import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 import org.json.JSONException;
@@ -43,7 +49,8 @@ final class NativeWorkspace {
 
     record Snapshot(
         String displayName, String theme, String locale, boolean needsOnboarding,
-        long outstanding, long overdue, long unbilled, long unbilledCount, long received, long students
+        long outstanding, long overdue, long unbilled, long unbilledCount, long received, long students,
+        Schedule schedule
     ) {
         static Snapshot parse(JSONObject response) throws JSONException {
             JSONObject totals = response.getJSONObject("summary");
@@ -51,9 +58,31 @@ final class NativeWorkspace {
                 response.getString("displayName"), response.getString("theme"), response.getString("locale"),
                 response.getBoolean("needsOnboarding"), totals.getLong("outstandingVnd"), totals.getLong("overdueVnd"),
                 totals.getLong("unbilledVnd"), totals.getLong("unbilledCount"),
-                totals.getLong("receivedMonthVnd"), totals.getLong("activeStudents")
+                totals.getLong("receivedMonthVnd"), totals.getLong("activeStudents"),
+                Schedule.parse(response.optJSONObject("schedule"))
             );
         }
+    }
+
+    record Schedule(String today, List<Lesson> items) {
+        static Schedule parse(JSONObject data) throws JSONException {
+            if (data == null) return null;
+            var items = data.getJSONArray("items");
+            List<Lesson> lessons = new ArrayList<>();
+            for (int i = 0; i < items.length(); i++) {
+                var row = items.getJSONObject(i);
+                lessons.add(new Lesson(
+                    row.getString("id"), row.getString("kind"),
+                    row.isNull("name") ? null : row.getString("name"), row.getString("date"),
+                    row.isNull("time") ? null : row.getString("time")
+                ));
+            }
+            return new Schedule(data.getString("today"), Collections.unmodifiableList(lessons));
+        }
+    }
+
+    record Lesson(String id, String kind, String name, String date, String time) {
+        String path() { return "/app/" + ("group".equals(kind) ? "lessons/" : "sessions/") + id; }
     }
 
     record Palette(int background, int surface, int accent, boolean dark) {
@@ -124,12 +153,23 @@ final class NativeWorkspace {
         LinearLayout page = page();
         add(page, heading(text(R.string.hello, data.displayName()), 32), 0);
         LinearLayout hero = card(palette.accent(), 22, 20);
-        add(hero, label(text(R.string.outstanding_tuition), 15, palette.onAccent()), 0);
-        add(hero, bold(money(data.outstanding()), 34, palette.onAccent()), 6);
+        LinearLayout outstanding = column();
+        add(outstanding, label(text(R.string.outstanding_tuition), 15, palette.onAccent()), 0);
+        add(outstanding, bold(money(data.outstanding()) + " ›", 34, palette.onAccent()), 6);
+        action(outstanding, text(R.string.outstanding_tuition) + " " + money(data.outstanding()),
+            () -> open.accept("/app/statements?status=outstanding"));
+        add(hero, outstanding, 0);
         if (data.overdue() > 0) {
-            add(hero, label(text(R.string.overdue_amount, money(data.overdue())), 13, palette.onAccent()), 6);
+            String title = text(R.string.overdue_amount, money(data.overdue()));
+            TextView overdue = bold(title + " ›", 14, palette.onAccent());
+            overdue.setGravity(Gravity.CENTER_VERTICAL);
+            overdue.setMinimumHeight(dp(44));
+            action(overdue, title, () -> open.accept("/app/statements?status=overdue"));
+            add(hero, overdue, 4);
         }
         add(page, hero, 16);
+        add(page, button(text(R.string.record_lesson), () -> open.accept("/app/lessons/new"), true), 12);
+        if (data.schedule() != null) add(page, schedule(data.schedule(), open), 16);
 
         LinearLayout unbilled = metric(R.string.unbilled_lessons, money(data.unbilled()), R.drawable.ic_lessons);
         add(unbilled, label(text(R.string.lesson_count, numbers.format(data.unbilledCount())), 12, palette.foreground()), 6);
@@ -147,11 +187,39 @@ final class NativeWorkspace {
             add(page, received, 12);
         }
         add(page, metric(R.string.active_students, numbers.format(data.students()), R.drawable.ic_students), 12);
-        add(page, button(text(R.string.record_lesson), () -> open.accept("/app/lessons/new"), true), 16);
         if (data.needsOnboarding()) {
             add(page, button(text(R.string.get_started), () -> open.accept("/onboarding"), false), 8);
         }
         return scroll(page);
+    }
+
+    private View schedule(Schedule data, Consumer<String> open) {
+        LinearLayout section = column();
+        add(section, heading(text(R.string.upcoming_lessons), 22), 0);
+        if (data.items().isEmpty()) {
+            add(section, label(text(R.string.no_planned_lessons), 14, palette.foreground()), 8);
+            return section;
+        }
+        LinearLayout rows = card(palette.surface(), 16, 14);
+        var dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(context.getResources().getConfiguration().getLocales().get(0));
+        for (Lesson lesson : data.items()) {
+            LinearLayout row = column();
+            row.setPadding(0, dp(8), 0, dp(8));
+            String name = lesson.name() == null ? text(R.string.group_lesson) : lesson.name();
+            String day = data.today().equals(lesson.date()) ? text(R.string.today)
+                : LocalDate.parse(lesson.date()).format(dateFormat);
+            String time = lesson.time() == null ? text(R.string.time_not_set) : lesson.time();
+            String when = day + " · " + time;
+            add(row, bold(name + " ›", 15, palette.foreground()), 0);
+            add(row, label(when, 13, palette.foreground()), 3);
+            row.setMinimumHeight(dp(50));
+            action(row, name + ", " + when, () -> open.accept(lesson.path()));
+            add(rows, row, 0);
+        }
+        add(section, rows, 8);
+        add(section, button(text(R.string.full_schedule), () -> open.accept("/app/schedule"), false), 6);
+        return section;
     }
 
     View more(Consumer<String> open) {
@@ -187,17 +255,8 @@ final class NativeWorkspace {
             LinearLayout item = column();
             item.setGravity(Gravity.CENTER);
             item.setMinimumHeight(dp(56));
-            item.setContentDescription(text(tab.title));
             item.setSelected(active);
-            item.setFocusable(true);
-            item.setOnClickListener(view -> select.accept(tab));
-            item.setAccessibilityDelegate(new View.AccessibilityDelegate() {
-                @Override
-                public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfo info) {
-                    super.onInitializeAccessibilityNodeInfo(host, info);
-                    info.setClassName(Button.class.getName());
-                }
-            });
+            action(item, text(tab.title), () -> select.accept(tab));
             ImageView icon = icon(tab.icon, active ? palette.onAccent() : palette.foreground());
             if (active) {
                 icon.setBackground(shape(palette.accent(), 14));
@@ -212,6 +271,19 @@ final class NativeWorkspace {
             row.addView(item, new LinearLayout.LayoutParams(0, -1, 1));
         }
         return row;
+    }
+
+    private void action(View view, String title, Runnable action) {
+        view.setContentDescription(title);
+        view.setFocusable(true);
+        view.setOnClickListener(target -> action.run());
+        view.setAccessibilityDelegate(new View.AccessibilityDelegate() {
+            @Override
+            public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfo info) {
+                super.onInitializeAccessibilityNodeInfo(host, info);
+                info.setClassName(Button.class.getName());
+            }
+        });
     }
 
     private LinearLayout metric(int title, String value, int symbol) {

@@ -2,6 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useRef, useState } from "react";
+import { useMobileDraft } from "@/lib/use-mobile-draft";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client-api";
@@ -24,6 +25,7 @@ export function SettingsForm({ inApp }: { inApp: boolean }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const draft = useMobileDraft(busy);
   const request = useRef<{
     hash: string;
     id: string;
@@ -61,6 +63,7 @@ export function SettingsForm({ inApp }: { inApp: boolean }) {
         body,
         requestId: request.current!.id,
       });
+      draft.saved();
       setMessage(t("Đã lưu hồ sơ."));
       router.refresh();
     } catch (e) {
@@ -100,7 +103,7 @@ export function SettingsForm({ inApp }: { inApp: boolean }) {
       <AppearancePicker />
       <Card className="p-6">
         {profile ? (
-          <form onSubmit={submit} className="space-y-5">
+          <form onSubmit={submit} {...draft.form} className="space-y-5">
             <p className="text-xs text-muted-foreground">{profile.email}</p>
             <label className="field-label">
               {t("Tên giáo viên / tên lớp")}

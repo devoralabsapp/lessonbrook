@@ -29,3 +29,14 @@
 "Check your connection and try again." = "Hãy kiểm tra kết nối rồi thử lại.";
 "Sign-in is currently unavailable." = "Hiện chưa thể đăng nhập.";
 "Checking sign-in availability" = "Đang kiểm tra đăng nhập";
+"Saving changes" = "Đang lưu thay đổi";
+"Unsaved changes" = "Thay đổi chưa lưu";
+"Wait for the save to finish before leaving." = "Hãy đợi lưu xong trước khi rời màn hình.";
+"Your changes will be lost if you leave this screen." = "Nội dung đang nhập sẽ mất nếu bạn rời màn hình.";
+"Keep editing" = "Tiếp tục chỉnh sửa";
+"Discard changes" = "Bỏ thay đổi";
+"Upcoming lessons" = "Lịch dạy sắp tới";
+"No planned lessons in the next seven days." = "Không có buổi dự kiến trong lịch.";
+"Group lesson" = "Buổi nhóm tự chọn";
+"Time not set" = "Chưa đặt giờ";
+"View full schedule" = "Xem lịch đầy đủ";

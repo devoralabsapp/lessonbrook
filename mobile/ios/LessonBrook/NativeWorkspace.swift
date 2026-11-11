@@ -15,6 +15,22 @@ struct WorkspaceSnapshot: Decodable {
     let displayName: String
     let needsOnboarding: Bool
     let locale: String
+    let schedule: Schedule?
+
+    struct Schedule: Decodable {
+        let today: String
+        let items: [Lesson]
+    }
+
+    struct Lesson: Decodable, Identifiable {
+        let id: String
+        let kind: String
+        let name: String?
+        let date: String
+        let time: String?
+
+        var path: String { "/app/\(kind == "group" ? "lessons" : "sessions")/\(id)" }
+    }
 }
 
 enum WorkspaceTab: Int, CaseIterable {
@@ -105,22 +121,16 @@ struct NativeDashboard: View {
                     .font(.largeTitle.bold())
                     .accessibilityAddTraits(.isHeader)
                     .fixedSize(horizontal: false, vertical: true)
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(t("Outstanding tuition"), systemImage: "doc.text")
-                        .font(.subheadline.weight(.semibold))
-                    Text(money(snapshot.summary.outstandingVnd))
-                        .font(.system(.largeTitle, design: .rounded).bold())
-                        .monospacedDigit()
-                    if snapshot.summary.overdueVnd > 0 {
-                        Text(String(format: t("%@ overdue"), money(snapshot.summary.overdueVnd)))
-                            .font(.footnote)
-                    }
+                tuition
+                Button { open("/app/lessons/new") } label: {
+                    Label(t("Record a lesson"), systemImage: "plus.circle")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity, minHeight: 40)
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(palette.accent)
                 .foregroundStyle(palette.onAccent)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(palette.accent, in: RoundedRectangle(cornerRadius: 22))
-
+                if let schedule = snapshot.schedule { scheduleView(schedule) }
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 12) {
                         unbilled
@@ -132,14 +142,6 @@ struct NativeDashboard: View {
                     }
                 }
                 metric("Active students", value: number(snapshot.summary.activeStudents), icon: "person.2")
-                Button { open("/app/lessons/new") } label: {
-                    Label(t("Record a lesson"), systemImage: "plus.circle")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(palette.accent)
-                .foregroundStyle(palette.onAccent)
                 if snapshot.needsOnboarding {
                     Button { open("/onboarding") } label: {
                         Label(t("Get started"), systemImage: "list.bullet.clipboard")
@@ -156,6 +158,88 @@ struct NativeDashboard: View {
         .refreshable { await refresh() }
         .foregroundStyle(palette.foreground)
         .background(palette.background)
+    }
+
+    private var tuition: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button { open("/app/statements?status=outstanding") } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(t("Outstanding tuition"), systemImage: "doc.text")
+                            .font(.subheadline.weight(.semibold))
+                        Text(money(snapshot.summary.outstandingVnd))
+                            .font(.system(.largeTitle, design: .rounded).bold())
+                            .monospacedDigit()
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").accessibilityHidden(true)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if snapshot.summary.overdueVnd > 0 {
+                Button { open("/app/statements?status=overdue") } label: {
+                    Label(String(format: t("%@ overdue"), money(snapshot.summary.overdueVnd)),
+                          systemImage: "exclamationmark.circle")
+                        .font(.footnote.weight(.semibold))
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .foregroundStyle(palette.onAccent)
+        .padding(20)
+        .background(palette.accent, in: RoundedRectangle(cornerRadius: 22))
+    }
+
+    private func scheduleView(_ schedule: WorkspaceSnapshot.Schedule) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(t("Upcoming lessons")).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+            if schedule.items.isEmpty {
+                Text(t("No planned lessons in the next seven days."))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(schedule.items, id: \.path) { lesson in
+                        Button { open(lesson.path) } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "calendar").foregroundStyle(palette.accent)
+                                    .accessibilityHidden(true)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(lesson.name ?? t("Group lesson")).font(.subheadline.weight(.semibold))
+                                    Text("\(dayLabel(lesson.date, today: schedule.today)) · \(lesson.time ?? t("Time not set"))")
+                                        .font(.footnote)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.footnote).accessibilityHidden(true)
+                            }
+                            .padding(.vertical, 10)
+                            .frame(minHeight: 46)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if lesson.path != schedule.items.last?.path { Divider() }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .background(palette.surface, in: RoundedRectangle(cornerRadius: 16))
+                Button(t("View full schedule")) { open("/app/schedule") }
+                    .font(.subheadline.weight(.semibold))
+                    .tint(palette.accent)
+            }
+        }
+    }
+
+    private func dayLabel(_ date: String, today: String) -> String {
+        if date == today { return t("Today") }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let day = formatter.date(from: date) else { return date }
+        formatter.locale = Locale(identifier: snapshot.locale == "vi" ? "vi_VN" : "en_US")
+        formatter.dateStyle = .medium
+        return formatter.string(from: day)
     }
 
     private var unbilled: some View {

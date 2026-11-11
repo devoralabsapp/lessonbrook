@@ -4,7 +4,7 @@ import { vietnamToday } from "../../src/domain";
 
 test.use({ locale: "vi-VN", storageState: { cookies: [], origins: [] } });
 
-test("native workspace keeps account tools without the duplicate web tab bar", async ({
+test("native workspace opens account tools, planned lessons and filtered statements", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -33,6 +33,53 @@ test("native workspace keeps account tools without the duplicate web tab bar", a
     await expect(
       page.getByRole("button", { name: "Sign out", exact: true }),
     ).toBeVisible();
+    const create = async (path: string, data: unknown) => {
+      const result = await context.request.post(`${origin}${path}`, {
+        headers: {
+          Origin: origin,
+          "x-csrf-token": token,
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        data,
+      });
+      expect(result.ok()).toBeTruthy();
+      return result.json();
+    };
+    const student = await create("/api/students", {
+      displayName: "Alex Schedule",
+      defaultRateVnd: 200000,
+    });
+    const lesson = await create("/api/sessions", {
+      studentId: student.id,
+      sessionDate: vietnamToday(),
+      startTime: "09:00",
+      status: "planned",
+      billable: true,
+    });
+    await page.goto(`${origin}/app/schedule`);
+    await page.getByRole("link", { name: /Alex Schedule/ }).click();
+    await expect(page).toHaveURL(`${origin}/app/sessions/${lesson.id}`);
+    await page.getByRole("button", { name: "Mark complete" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.locator("form")).toHaveAttribute(
+      "data-mobile-draft",
+      "dirty",
+    );
+    await dialog
+      .getByRole("button", { name: "Save lesson", exact: true })
+      .click();
+    await expect(dialog).toHaveCount(0);
+    const saved = await context.request.get(
+      `${origin}/api/sessions/${lesson.id}`,
+    );
+    expect(await saved.json()).toMatchObject({
+      status: "completed",
+      rateVnd: 200000,
+    });
+    await page.goto(`${origin}/app/statements?status=overdue`);
+    await expect(
+      page.getByRole("combobox", { name: "Statement status" }),
+    ).toHaveValue("overdue");
   } finally {
     await context.close();
   }

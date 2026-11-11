@@ -2,6 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useState } from "react";
+import { useMobileDraft } from "@/lib/use-mobile-draft";
 import { formatVnd, vietnamToday } from "@/domain";
 import { type Statement } from "@/domain/statements";
 import { type Payment } from "@/domain/payments";
@@ -38,6 +39,7 @@ export function PaymentPanel({
   const [note, setNote] = useState("");
   const [notice, setNotice] = useState("");
   const mutation = useStatementMutation();
+  const draft = useMobileDraft(mutation.busy);
   const endpoint = `/api/statements/${statement.id}/payments`;
   const key = `${statement.version}:${revision}`;
   useEffect(() => {
@@ -99,6 +101,7 @@ export function PaymentPanel({
       privateNote: note,
     });
     if (result) {
+      draft.saved();
       setAmount("");
       setNote("");
       setNotice(t("Đã ghi nhận khoản thu. Số còn thiếu đang được cập nhật."));
@@ -145,7 +148,7 @@ export function PaymentPanel({
       )}
       {statement.status === "issued" &&
         statement.paidVnd < statement.totalVnd && (
-          <form onSubmit={record}>
+          <form onSubmit={record} {...draft.form}>
             <fieldset disabled={mutation.busy} className="space-y-4">
               <h3 className="text-sm font-semibold">
                 {t("Ghi nhận thu tiền")}

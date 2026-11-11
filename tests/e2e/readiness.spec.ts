@@ -188,7 +188,15 @@ test("360px: bàn phím vào nội dung, dialog giữ/trả focus, mất mạng 
       ),
     ).toBe(true);
   }
+  await expect(dialog.locator("form")).toHaveAttribute(
+    "data-mobile-draft",
+    "clean",
+  );
   await dialog.getByLabel("Tên học viên").fill("Học viên bàn phím");
+  await expect(dialog.locator("form")).toHaveAttribute(
+    "data-mobile-draft",
+    "dirty",
+  );
   await context.setOffline(true);
   await dialog
     .getByRole("button", { name: "Lưu học viên", exact: true })
@@ -199,6 +207,10 @@ test("360px: bàn phím vào nội dung, dialog giữ/trả focus, mất mạng 
   );
   await expect(dialog.getByLabel("Tên học viên")).toHaveValue(
     "Học viên bàn phím",
+  );
+  await expect(dialog.locator("form")).toHaveAttribute(
+    "data-mobile-draft",
+    "dirty",
   );
   await context.setOffline(false);
   await dialog

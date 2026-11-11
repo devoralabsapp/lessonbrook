@@ -4,6 +4,8 @@ import { admin } from "@/lib/firebase/admin";
 import { client, googleToken, origin } from "./helpers";
 import { getSession } from "@/lib/server/repository";
 import { GUEST_THEME_COOKIE } from "@/domain/appearance";
+import { vietnamToday } from "@/domain";
+import { addBusinessDays } from "@/domain/statements";
 describe("Next HTTP + Auth/Firestore Emulator", () => {
   let a: Awaited<ReturnType<typeof client>>,
     b: Awaited<ReturnType<typeof client>>,
@@ -63,14 +65,64 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
     const other = await client("en");
     await teacher.login((await googleToken()).idToken);
     await other.login((await googleToken()).idToken);
-    expect((await teacher.call("/api/students", "POST", student)).status).toBe(
-      200,
-    );
+    const create = async (path: string, value: unknown) => {
+      const result = await teacher.call(path, "POST", value);
+      expect(result.status).toBe(200);
+      return (await result.json()).id as string;
+    };
+    const firstStudent = await create("/api/students", student);
+    const secondStudent = await create("/api/students", {
+      ...student,
+      displayName: "Mai",
+    });
     expect(
       (await teacher.call("/api/appearance", "PATCH", { theme: "ocean" }))
         .status,
     ).toBe(200);
 
+    const today = vietnamToday();
+    const through = addBusinessDays(today, 7);
+    const session = {
+      studentId: firstStudent,
+      sessionDate: today,
+      startTime: "08:00",
+      status: "planned",
+      billable: true,
+      privateNote: "Private schedule note",
+    };
+    const single = await create("/api/sessions", session);
+    const group = await create("/api/lessons", {
+      studentIds: [firstStudent, secondStudent],
+      sessionDate: through,
+      startTime: "14:00",
+      status: "planned",
+      billable: true,
+      rateVnd: 200000,
+    });
+    await create("/api/sessions", {
+      ...session,
+      startTime: "11:00",
+      status: "cancelled",
+      billable: false,
+    });
+    await create("/api/sessions", {
+      ...session,
+      sessionDate: addBusinessDays(today, 8),
+    });
+    const schedule = {
+      today,
+      through,
+      items: [
+        {
+          id: single,
+          kind: "individual",
+          date: today,
+          time: "08:00",
+          name: "Lan",
+        },
+        { id: group, kind: "group", date: through, time: "14:00", name: null },
+      ],
+    };
     const workspace = await teacher.call("/api/mobile/workspace");
     expect(workspace.status).toBe(200);
     expect(await workspace.json()).toEqual({
@@ -79,12 +131,17 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
       displayName: "Giáo viên thử nghiệm",
       needsOnboarding: true,
       locale: "vi",
+      schedule,
     });
+    expect(await (await teacher.call("/api/mobile/schedule")).json()).toEqual(
+      schedule,
+    );
     expect(
       await (await other.call("/api/mobile/workspace")).json(),
     ).toMatchObject({
       summary: { activeStudents: 0 },
       locale: "en",
+      schedule: { items: [] },
     });
   });
   it("sign-in applies a valid guest theme to the verified account and preserves it on later sign-ins", async () => {

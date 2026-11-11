@@ -3,6 +3,10 @@ import { googleToken, origin } from "../integration/helpers";
 import { vietnamToday } from "../../src/domain";
 import { addBusinessDays } from "../../src/domain/statements";
 
+test.use({
+  userAgent: "Mozilla/5.0 LessonBrookApp/iOS NativeWorkspace/1 MobileActions/1",
+});
+
 test("360px: thu từng phần → mất response tạo link → link mới → xem không đăng nhập → sửa sổ → thu hồi", async ({
   page,
   context,
@@ -168,6 +172,17 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
   const linkInput = page.getByLabel("Link chia sẻ mới", { exact: true });
   await expect(linkInput).toBeVisible();
   const link = await linkInput.inputValue();
+  const nativeShare = page.getByRole("link", { name: "Chia sẻ qua ứng dụng…" });
+  await expect(nativeShare).toHaveAttribute(
+    "href",
+    "tech.devoralabs.lessonbrook://share-statement",
+  );
+  await expect(nativeShare).toHaveAttribute("data-statement-share-url", link);
+  expect(
+    (await nativeShare.getAttribute("data-statement-share-message"))?.endsWith(
+      link,
+    ),
+  ).toBe(true);
   expect(new URL(link).pathname).toBe("/s");
   expect(new URL(link).hash).toMatch(/^#[A-Za-z0-9_-]{43}$/);
   expect(keys[2]).not.toBe(keys[1]);

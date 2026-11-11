@@ -24,6 +24,18 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private var verifier: String?
     private var signingIn = false
     private var signedIn = false
+    private var checkingDraft = false
+
+    private static let draftState = """
+        document.querySelector('[data-mobile-draft="saving"]') ? 'saving' :
+        document.querySelector('[data-mobile-draft="dirty"]') ? 'dirty' : 'clean'
+        """
+    private static let shareData = """
+        (() => {
+            const link = document.querySelector('[data-statement-share-url]');
+            return link ? { url: link.dataset.statementShareUrl, text: link.dataset.statementShareMessage } : null;
+        })()
+        """
 
     private var cookies: WKHTTPCookieStore { WKWebsiteDataStore.default().httpCookieStore }
     private var palette: WorkspacePalette { WorkspacePalette(snapshot?.theme ?? "natura") }
@@ -233,12 +245,17 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
     func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
         guard let next = WorkspaceTab(rawValue: item.tag) else { return }
-        if let path = next.path { openPage(path) }
-        else if next == .more { showMore() }
-        else { showToday() }
+        tabBar.selectedItem = tabs.items?[selectedTab.rawValue]
+        beforeLeavingPage { [self] in
+            if let path = next.path { openPage(path) }
+            else if next == .more { showMore() }
+            else { showToday() }
+        }
     }
 
     private func openPage(_ path: String) {
+        guard let url = URL(string: path, relativeTo: MobileSignIn.origin)?.absoluteURL,
+              MobileSignIn.isFirstParty(url) else { return }
         request?.cancel()
         returnTab = screen == .more ? .more : .today
         webURL = nil
@@ -251,8 +268,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
         let configuration = WKWebViewConfiguration()
         configuration.applicationNameForUserAgent = NativeGoogleSignIn.isConfigured
-            ? "LessonBrookApp/iOS NativeGoogleSignIn/1 NativeWorkspace/1"
-            : "LessonBrookApp/iOS NativeWorkspace/1"
+            ? "LessonBrookApp/iOS NativeGoogleSignIn/1 NativeWorkspace/1 MobileActions/1"
+            : "LessonBrookApp/iOS NativeWorkspace/1 MobileActions/1"
         let web = WKWebView(frame: .zero, configuration: configuration)
         web.navigationDelegate = self
         web.translatesAutoresizingMaskIntoConstraints = false
@@ -264,10 +281,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             DispatchQueue.main.async { self?.track(web) }
         }
         configureChrome()
-        web.load(URLRequest(url: MobileSignIn.origin.appending(path: path)))
+        web.load(URLRequest(url: url))
     }
 
     @objc private func goBack() {
+        beforeLeavingPage { [self] in goBackFromPage() }
+    }
+
+    private func goBackFromPage() {
         if let webView, webView.canGoBack {
             webView.goBack()
         } else if webRoot == "/account/deletion" {
@@ -276,6 +297,35 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             showMore()
         } else {
             showToday()
+        }
+    }
+
+    private func beforeLeavingPage(_ leave: @escaping () -> Void) {
+        guard !checkingDraft, presentedViewController == nil else { return }
+        guard let web = webView, let url = web.url, MobileSignIn.isFirstParty(url),
+              url.path.hasPrefix("/app/") || url.path == "/onboarding"
+        else { return leave() }
+        checkingDraft = true
+        web.evaluateJavaScript(Self.draftState) { [weak self, weak web] value, _ in
+            guard let self else { return }
+            checkingDraft = false
+            guard let web, web === webView, web.url == url else { return }
+            if value as? String == "clean" { return leave() }
+            let saving = value as? String == "saving"
+            let alert = UIAlertController(
+                title: t(saving ? "Saving changes" : "Unsaved changes"),
+                message: t(saving ? "Wait for the save to finish before leaving."
+                                  : "Your changes will be lost if you leave this screen."),
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: t(saving ? "OK" : "Keep editing"), style: .cancel))
+            if !saving {
+                alert.addAction(UIAlertAction(title: t("Discard changes"), style: .destructive) { [weak self, weak web] _ in
+                    guard let self, let web, web === webView, web.url == url else { return }
+                    leave()
+                })
+            }
+            present(alert, animated: true)
         }
     }
 
@@ -311,13 +361,35 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         }
         if action.navigationType == .linkActivated, action.sourceFrame.isMainFrame,
            let source = action.sourceFrame.request.url, MobileSignIn.isFirstParty(source) {
-            if url.absoluteString == "\(MobileSignIn.scheme)://data" {
+            if url.absoluteString == "\(MobileSignIn.scheme)://share-statement",
+               let current = webView.url, MobileSignIn.isFirstParty(current),
+               current.path.hasPrefix("/app/statements/"), webView === self.webView,
+               action.targetFrame?.isMainFrame != false {
+                shareStatement(from: webView, at: current)
+            } else if url.absoluteString == "\(MobileSignIn.scheme)://data" {
                 UIApplication.shared.open(URL(string: "/login?next=data", relativeTo: MobileSignIn.origin)!.absoluteURL)
             } else if ["https", "http", "mailto"].contains(url.scheme ?? "") {
                 UIApplication.shared.open(url)
             }
         }
         decisionHandler(.cancel)
+    }
+
+    private func shareStatement(from web: WKWebView, at source: URL) {
+        web.evaluateJavaScript(Self.shareData) { [weak self, weak web] value, _ in
+            guard let self, let web, web === webView, web.url == source,
+                  presentedViewController == nil,
+                  let data = value as? [String: String], let address = data["url"],
+                  let text = data["text"], text.utf8.count <= 4096, text.hasSuffix(address),
+                  let url = URL(string: address), MobileSignIn.isFirstParty(url),
+                  url.path == "/s", url.query == nil,
+                  let token = url.fragment, token.range(of: #"^[A-Za-z0-9_-]{43}$"#, options: .regularExpression) != nil
+            else { return }
+            let picker = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+            picker.popoverPresentationController?.sourceView = web
+            picker.popoverPresentationController?.sourceRect = CGRect(x: web.bounds.midX, y: web.bounds.midY, width: 1, height: 1)
+            present(picker, animated: true)
+        }
     }
 
     private func startSignIn() {
@@ -436,7 +508,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
     private func pageTab(_ path: String) -> WorkspaceTab {
         if path.hasPrefix("/app/students") { return .students }
-        if path.hasPrefix("/app/sessions") || path.hasPrefix("/app/lessons") { return .lessons }
+        if path.hasPrefix("/app/sessions") || path.hasPrefix("/app/lessons") || path == "/app/schedule" { return .lessons }
         if path.hasPrefix("/app/statements") { return .tuition }
         return .more
     }
@@ -444,6 +516,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func pageTitle(_ path: String) -> String {
         switch path {
         case "/app/lessons/new": return t("Record a lesson")
+        case "/app/schedule": return t("Upcoming lessons")
         case "/app/classes": return t("Classes")
         case "/app/settings": return t("Account settings")
         case "/account/deletion": return t("Account deletion")

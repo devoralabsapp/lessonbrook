@@ -3,6 +3,7 @@ import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useRef, useState } from "react";
+import { useMobileDraft } from "@/lib/use-mobile-draft";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, X } from "lucide-react";
 import {
@@ -21,10 +22,18 @@ type Props = {
   kind: "student" | "session";
   record?: Student | TeachingSession;
   student?: Student;
+  initialStatus?: TeachingSession["status"];
   onClose: () => void;
   onSaved: (message: string) => void;
 };
-export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
+export function RecordForm({
+  kind,
+  record,
+  student,
+  initialStatus,
+  onClose,
+  onSaved,
+}: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -37,7 +46,13 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
   const s = kind === "student" ? (record as Student | undefined) : undefined;
   const lesson =
     kind === "session" ? (record as TeachingSession | undefined) : undefined;
-  const [status, setStatus] = useState(lesson?.status ?? "completed");
+  const draft = useMobileDraft(
+    busy,
+    initialStatus !== undefined && initialStatus !== lesson?.status,
+  );
+  const [status, setStatus] = useState(
+    initialStatus ?? lesson?.status ?? "completed",
+  );
   const [billable, setBillable] = useState(lesson?.billable ?? true);
   const [selected, setSelected] = useState(
     lesson?.studentId ?? (student?.archivedAt ? "" : student?.id) ?? "",
@@ -193,6 +208,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
           requestId: request.current!.id,
         },
       );
+      draft.saved();
       const name =
         students.find((s) => s.id === selected)?.displayName ??
         lesson?.studentName ??
@@ -254,7 +270,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
           <X />
         </Button>
       </div>
-      <form onSubmit={submit} className="space-y-4 p-6">
+      <form onSubmit={submit} {...draft.form} className="space-y-4 p-6">
         <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
           {kind === "student" ? (
             <>
@@ -335,6 +351,7 @@ export function RecordForm({ kind, record, student, onClose, onSaved }: Props) {
                   <Input
                     type="search"
                     value={studentSearch}
+                    data-draft-ignore
                     onChange={(event) => setStudentSearch(event.target.value)}
                     maxLength={100}
                     placeholder={t("Có dấu hoặc không dấu")}

@@ -31,4 +31,17 @@
     <string name="continue_google">Tiếp tục với Google</string>
     <string name="sign_in_unavailable">Hiện chưa thể đăng nhập.</string>
     <string name="loading">Đang tải</string>
+    <string name="saving_changes">Đang lưu thay đổi</string>
+    <string name="unsaved_changes">Thay đổi chưa lưu</string>
+    <string name="wait_for_save">Hãy đợi lưu xong trước khi rời màn hình.</string>
+    <string name="discard_message">Nội dung đang nhập sẽ mất nếu bạn rời màn hình.</string>
+    <string name="keep_editing">Tiếp tục chỉnh sửa</string>
+    <string name="discard_changes">Bỏ thay đổi</string>
+    <string name="upcoming_lessons">Lịch dạy sắp tới</string>
+    <string name="no_planned_lessons">Không có buổi dự kiến trong lịch.</string>
+    <string name="group_lesson">Buổi nhóm tự chọn</string>
+    <string name="time_not_set">Chưa đặt giờ</string>
+    <string name="full_schedule">Xem lịch đầy đủ</string>
+    <string name="share_statement">Chia sẻ bảng kê</string>
+    <string name="share_unavailable">Không mở được chia sẻ. Hãy thử sao chép tin nhắn.</string>
 </resources>

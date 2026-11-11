@@ -2,6 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useState } from "react";
+import { useMobileDraft } from "@/lib/use-mobile-draft";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -69,6 +70,7 @@ export function StatementEditor({
   } | null>(null);
   const [moreBusy, setMoreBusy] = useState(false);
   const mutation = useStatementMutation();
+  const draft = useMobileDraft(mutation.busy);
   const validRange =
     dateSchema.safeParse(periodStart).success &&
     dateSchema.safeParse(periodEnd).success &&
@@ -174,6 +176,7 @@ export function StatementEditor({
       },
     );
     if (result) {
+      draft.saved();
       if (onSaved) onSaved(result.id);
       else {
         router.push(`/app/statements/${result.id}`);
@@ -196,12 +199,13 @@ export function StatementEditor({
           )}
         </p>
       </div>
-      <form onSubmit={save}>
+      <form onSubmit={save} {...draft.form}>
         <fieldset disabled={mutation.busy} className="min-w-0 space-y-5">
           <Card className="space-y-5 p-5 sm:p-7">
             <StudentPicker
               value={studentId}
               onChange={(id) => {
+                draft.changed();
                 setStudentId(id);
                 resetSelection();
               }}
@@ -250,7 +254,8 @@ export function StatementEditor({
                   variant="outline"
                   size="sm"
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    draft.changed();
                     setSelected((current) => {
                       const next = new Map(current);
                       for (const session of page.items) {
@@ -261,8 +266,8 @@ export function StatementEditor({
                           next.set(session.id, toItem(session));
                       }
                       return next;
-                    })
-                  }
+                    });
+                  }}
                 >
                   {t("Chọn các buổi đang hiện")}
                 </Button>
@@ -354,7 +359,10 @@ export function StatementEditor({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={resetSelection}
+                  onClick={() => {
+                    draft.changed();
+                    resetSelection();
+                  }}
                 >
                   {t("Bỏ chọn tất cả")}
                 </Button>
@@ -381,13 +389,14 @@ export function StatementEditor({
                           "0": formatDate(item.sessionDate, locale),
                           "1": index + 1,
                         })}
-                        onClick={() =>
+                        onClick={() => {
+                          draft.changed();
                           setSelected((current) => {
                             const next = new Map(current);
                             next.delete(item.sessionId);
                             return next;
-                          })
-                        }
+                          });
+                        }}
                       >
                         {t("Bỏ chọn")}
                       </Button>

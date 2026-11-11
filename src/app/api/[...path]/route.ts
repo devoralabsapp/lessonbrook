@@ -23,6 +23,7 @@ import {
   confirmOnboardingProfile,
 } from "@/lib/server/onboarding";
 import { requireUser } from "@/lib/server/session";
+import { getUpcomingSchedule } from "@/lib/server/upcoming-schedule";
 import { exportPage, startExport } from "@/lib/server/data-export";
 import {
   archiveStudent,
@@ -68,16 +69,26 @@ async function handle(request: Request, context: Context) {
       const query = Object.fromEntries(new URL(request.url).searchParams);
       if (resource === "mobile" && id === "workspace" && path.length === 2) {
         z.object({}).strict().parse(query);
-        const [summary, appearance, onboarding, { locale }] = await Promise.all(
-          [getSummary(uid), getAppearance(uid), getOnboarding(uid), getI18n()],
-        );
+        const [summary, appearance, onboarding, { locale }, schedule] =
+          await Promise.all([
+            getSummary(uid),
+            getAppearance(uid),
+            getOnboarding(uid),
+            getI18n(),
+            getUpcomingSchedule(uid),
+          ]);
         return json({
           summary,
           theme: appearance.theme,
           displayName: onboarding.profile.displayName,
           needsOnboarding: !onboarding.completed,
           locale,
+          schedule: { ...schedule, items: schedule.items.slice(0, 8) },
         });
+      }
+      if (resource === "mobile" && id === "schedule" && path.length === 2) {
+        z.object({}).strict().parse(query);
+        return json(await getUpcomingSchedule(uid));
       }
       if (resource === "appearance" && path.length === 1) {
         z.object({}).strict().parse(query);

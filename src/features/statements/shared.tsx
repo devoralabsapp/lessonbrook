@@ -197,6 +197,7 @@ export function StudentPicker({
         <input
           type="checkbox"
           checked={archived}
+          data-draft-ignore
           onChange={(event) => setArchived(event.target.checked)}
         />
         {t("Hiện học viên đã lưu trữ")}

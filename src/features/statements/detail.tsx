@@ -12,7 +12,14 @@ import { StatementEditor } from "./editor";
 import { formatDate, useStatementMutation } from "./shared";
 import { PaymentPanel } from "@/features/payments/payment-panel";
 import { SharingPanel } from "@/features/sharing/sharing-panel";
-export function StatementDetail({ id }: { id: string }) {
+import { useMobileDraft } from "@/lib/use-mobile-draft";
+export function StatementDetail({
+  id,
+  nativeShare,
+}: {
+  id: string;
+  nativeShare: boolean;
+}) {
   const { t, locale } = useI18n();
   const [data, setData] = useState<Statement | null>(null);
   const [error, setError] = useState("");
@@ -20,6 +27,7 @@ export function StatementDetail({ id }: { id: string }) {
   const [editing, setEditing] = useState(false);
   const [reason, setReason] = useState("");
   const mutation = useStatementMutation();
+  const cancellationDraft = useMobileDraft(mutation.busy);
   useEffect(() => {
     let active = true;
     api<Statement>(`/api/statements/${encodeURIComponent(id)}`)
@@ -87,6 +95,7 @@ export function StatementDetail({ id }: { id: string }) {
       reason,
     });
     if (result) {
+      cancellationDraft.saved();
       setData(null);
       setRevision((value) => value + 1);
     }
@@ -232,6 +241,7 @@ export function StatementDetail({ id }: { id: string }) {
           />
           <SharingPanel
             statement={data}
+            nativeShare={nativeShare}
             onChanged={() => setRevision((value) => value + 1)}
           />
           <Card className="p-5">
@@ -239,7 +249,11 @@ export function StatementDetail({ id }: { id: string }) {
               <summary className="cursor-pointer text-sm font-semibold">
                 {t("Hủy bảng kê")}
               </summary>
-              <form onSubmit={cancel} className="mt-4 space-y-4">
+              <form
+                onSubmit={cancel}
+                {...cancellationDraft.form}
+                className="mt-4 space-y-4"
+              >
                 <p className="text-xs leading-5 text-muted-foreground">
                   {t(
                     "Chỉ hủy khi không còn khoản thu hợp lệ. Bản cũ và lịch sử được giữ; các buổi sẽ được giải phóng để lập bảng kê lại.",

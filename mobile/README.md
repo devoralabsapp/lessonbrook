@@ -4,6 +4,12 @@ The iOS and Android apps have native sign-in screens, a Today dashboard, a botto
 
 Today shows the current outstanding, unbilled, received, and student totals. Pull down to refresh on iOS or use the refresh button on Android. Open **More → Account settings** to change language or save a theme. Returning to Today applies the saved preferences to the native screens.
 
+Tap the outstanding or overdue amount to open the corresponding statement filter. Upcoming lessons shows planned lessons from today through seven days ahead. Open a lesson to update it, or use **View full schedule** for the complete date range.
+
+Switching tabs or using the app's Back button while editing a marked form asks whether to keep editing or discard the changes. While a save is in progress, wait for it to finish before leaving.
+
+After reviewing a statement and creating its share link, use **Share via app…** to open the phone's share menu. You choose the destination and send the message there.
+
 ## iOS
 
 Open `ios/LessonBrook.xcodeproj` in Xcode 26 or later, choose an iPhone or iPad simulator, and click **Run**. The app targets iOS 16 and later. Xcode resolves Firebase Auth and Google Sign-In via Swift Package Manager. The checked-in project can be regenerated from `ios/project.yml` using XcodeGen 2.46.0.

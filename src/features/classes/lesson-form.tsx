@@ -2,6 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useState } from "react";
+import { useMobileDraft } from "@/lib/use-mobile-draft";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -38,6 +39,7 @@ export function LessonForm({
   const { t, locale } = useI18n();
   const router = useRouter();
   const mutation = useStatementMutation();
+  const draft = useMobileDraft(mutation.busy);
   const [mode, setMode] = useState(
     initialClassId || record?.classId || initialMode === "class"
       ? "class"
@@ -110,13 +112,14 @@ export function LessonForm({
       },
     );
     if (result) {
+      draft.saved();
       if (onSaved) onSaved();
       else router.push(`/app/lessons/${result.id}`);
     }
   }
   return (
     <Card className="p-5 sm:p-6">
-      <form onSubmit={submit} className="space-y-5">
+      <form onSubmit={submit} {...draft.form} className="space-y-5">
         <fieldset disabled={mutation.busy} className="min-w-0 space-y-5">
           {!record && (
             <label className="field-label">
@@ -219,7 +222,13 @@ export function LessonForm({
               </p>
             </div>
           ) : mode === "group" ? (
-            <MemberPicker value={members} onChange={setMembers} />
+            <MemberPicker
+              value={members}
+              onChange={(value) => {
+                draft.changed();
+                setMembers(value);
+              }}
+            />
           ) : classReady && classData ? (
             <fieldset className="space-y-2">
               <legend className="mb-3 text-sm font-semibold">

@@ -2,6 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useRef, useState } from "react";
+import { useMobileDraft } from "@/lib/use-mobile-draft";
 import type { Student } from "@/domain";
 import { MAX_VND } from "@/domain";
 import type { TeachingClass } from "@/domain/classes";
@@ -26,6 +27,7 @@ export function ClassForm({
   const [members, setMembers] = useState<Student[]>(record?.students ?? []);
   const [selectionError, setSelectionError] = useState("");
   const mutation = useStatementMutation();
+  const draft = useMobileDraft(mutation.busy);
   useEffect(() => {
     const el = dialog.current,
       trigger = document.activeElement;
@@ -55,7 +57,10 @@ export function ClassForm({
         studentIds: members.map((s) => s.id),
       },
     );
-    if (result) onSaved(result.id);
+    if (result) {
+      draft.saved();
+      onSaved(result.id);
+    }
   }
   return (
     <dialog
@@ -66,7 +71,7 @@ export function ClassForm({
         if (!mutation.busy) onClose();
       }}
     >
-      <form onSubmit={submit} className="space-y-5 p-6">
+      <form onSubmit={submit} {...draft.form} className="space-y-5 p-6">
         <h2 id="class-title" className="serif text-2xl">
           {record ? t("Sửa lớp học") : t("Thêm lớp học")}
         </h2>
@@ -99,7 +104,13 @@ export function ClassForm({
               "Cùng một đơn giá cho mỗi người tham gia. Đổi giá hoặc thành viên lớp chỉ ảnh hưởng buổi mới; học phí cũ được giữ nguyên. Một học viên có thể ở nhiều lớp.",
             )}
           </p>
-          <MemberPicker value={members} onChange={setMembers} />
+          <MemberPicker
+            value={members}
+            onChange={(value) => {
+              draft.changed();
+              setMembers(value);
+            }}
+          />
           <label className="field-label">
             {t("Ghi chú riêng")}
             <textarea

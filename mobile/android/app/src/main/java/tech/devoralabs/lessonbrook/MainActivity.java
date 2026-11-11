@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
     private enum Screen { WELCOME, TODAY, MORE, PAGE }
@@ -39,6 +40,16 @@ public final class MainActivity extends Activity {
     private static final String SESSION = "chotcong_session";
     private static final String LOCALE = "chotcong_locale";
     private static final String DELETION = "/account/deletion";
+    private static final String DRAFT_STATE = """
+        document.querySelector('[data-mobile-draft="saving"]') ? 'saving' :
+        document.querySelector('[data-mobile-draft="dirty"]') ? 'dirty' : 'clean'
+        """;
+    private static final String SHARE_DATA = """
+        (() => {
+            const link = document.querySelector('[data-statement-share-url]');
+            return link ? { url: link.dataset.statementShareUrl, text: link.dataset.statementShareMessage } : null;
+        })()
+        """;
 
     private final ExecutorService network = Executors.newFixedThreadPool(2);
     private LinearLayout root;
@@ -60,6 +71,8 @@ public final class MainActivity extends Activity {
     private boolean signedIn;
     private boolean webFailed;
     private View webError;
+    private boolean checkingDraft;
+    private AlertDialog draftAlert;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -159,6 +172,10 @@ public final class MainActivity extends Activity {
     }
 
     private void selectTab(NativeWorkspace.Tab target) {
+        beforeLeavingPage(() -> openTab(target));
+    }
+
+    private void openTab(NativeWorkspace.Tab target) {
         if (target.path != null) openPage(target.path);
         else if (target == NativeWorkspace.Tab.MORE) showMore();
         else showToday();
@@ -306,7 +323,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " LessonBrookApp/Android NativeWorkspace/1");
+        settings.setUserAgentString(settings.getUserAgentString() + " LessonBrookApp/Android NativeWorkspace/1 MobileActions/1");
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -316,7 +333,10 @@ public final class MainActivity extends Activity {
                 String current = view.getUrl();
                 if (view == webView && request.isForMainFrame() && request.hasGesture() && !request.isRedirect()
                     && current != null && MobileSignIn.isFirstParty(Uri.parse(current))) {
-                    if ((MobileSignIn.SCHEME + "://data").equals(url.toString())) {
+                    if ((MobileSignIn.SCHEME + "://share-statement").equals(url.toString())) {
+                        String path = Uri.parse(current).getPath();
+                        if (path != null && path.startsWith("/app/statements/")) shareStatement(view, current);
+                    } else if ((MobileSignIn.SCHEME + "://data").equals(url.toString())) {
                         openBrowser(Uri.parse(MobileSignIn.ORIGIN + "/login?next=data"));
                     } else if ("https".equals(url.getScheme()) || "http".equals(url.getScheme())
                         || "mailto".equals(url.getScheme())) {
@@ -357,6 +377,26 @@ public final class MainActivity extends Activity {
             @Override
             public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 if (request.isForMainFrame() && response.getStatusCode() >= 500) showLoadError(view);
+            }
+        });
+    }
+
+    private void shareStatement(WebView view, String source) {
+        view.evaluateJavascript(SHARE_DATA, value -> {
+            if (isDestroyed() || view != webView || !source.equals(view.getUrl()) || value == null) return;
+            try {
+                JSONObject data = new JSONObject(value);
+                String address = data.getString("url");
+                String text = data.getString("text");
+                Uri link = Uri.parse(address);
+                String token = link.getFragment();
+                if (!MobileSignIn.isFirstParty(link) || !"/s".equals(link.getPath()) || link.getQuery() != null
+                    || token == null || !token.matches("[A-Za-z0-9_-]{43}") || text.length() > 4096
+                    || !text.endsWith(address)) return;
+                Intent share = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text);
+                startActivity(Intent.createChooser(share, workspace().text(R.string.share_statement)));
+            } catch (JSONException | ActivityNotFoundException error) {
+                Toast.makeText(this, workspace().text(R.string.share_unavailable), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -498,7 +538,8 @@ public final class MainActivity extends Activity {
 
     private static NativeWorkspace.Tab pageTab(String path) {
         if (path.startsWith("/app/students")) return NativeWorkspace.Tab.STUDENTS;
-        if (path.startsWith("/app/sessions") || path.startsWith("/app/lessons")) return NativeWorkspace.Tab.LESSONS;
+        if (path.startsWith("/app/sessions") || path.startsWith("/app/lessons") || path.equals("/app/schedule"))
+            return NativeWorkspace.Tab.LESSONS;
         if (path.startsWith("/app/statements")) return NativeWorkspace.Tab.TUITION;
         return NativeWorkspace.Tab.MORE;
     }
@@ -506,6 +547,7 @@ public final class MainActivity extends Activity {
     private static int pageTitle(String path) {
         return switch (path) {
             case "/app/lessons/new" -> R.string.record_lesson;
+            case "/app/schedule" -> R.string.upcoming_lessons;
             case "/app/classes" -> R.string.classes;
             case "/app/settings" -> R.string.account_settings;
             case DELETION -> R.string.account_deletion;
@@ -517,9 +559,11 @@ public final class MainActivity extends Activity {
 
     private boolean goBack() {
         if (screen == Screen.PAGE) {
-            if (webView != null && webView.canGoBack()) webView.goBack();
-            else if (DELETION.equals(webRoot)) showWelcome(false);
-            else selectTab(returnTab);
+            beforeLeavingPage(() -> {
+                if (webView != null && webView.canGoBack()) webView.goBack();
+                else if (DELETION.equals(webRoot)) showWelcome(false);
+                else openTab(returnTab);
+            });
             return true;
         }
         if (screen == Screen.MORE) {
@@ -527,6 +571,38 @@ public final class MainActivity extends Activity {
             return true;
         }
         return false;
+    }
+
+    private void beforeLeavingPage(Runnable leave) {
+        if (checkingDraft || (draftAlert != null && draftAlert.isShowing())) return;
+        WebView web = webView;
+        String location = web == null ? null : web.getUrl();
+        Uri url = location == null ? null : Uri.parse(location);
+        String path = url == null ? null : url.getPath();
+        if (path == null || !MobileSignIn.isFirstParty(url)
+            || !(path.startsWith("/app/") || path.equals("/onboarding"))) {
+            leave.run();
+            return;
+        }
+        checkingDraft = true;
+        web.evaluateJavascript(DRAFT_STATE, value -> {
+            checkingDraft = false;
+            if (isDestroyed() || web != webView || !location.equals(web.getUrl())) return;
+            if ("\"clean\"".equals(value)) {
+                leave.run();
+                return;
+            }
+            boolean saving = "\"saving\"".equals(value);
+            NativeWorkspace ui = workspace();
+            AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                .setTitle(ui.text(saving ? R.string.saving_changes : R.string.unsaved_changes))
+                .setMessage(ui.text(saving ? R.string.wait_for_save : R.string.discard_message))
+                .setNegativeButton(ui.text(saving ? android.R.string.ok : R.string.keep_editing), null);
+            if (!saving) dialog.setPositiveButton(ui.text(R.string.discard_changes), (ignored, choice) -> {
+                if (web == webView && location.equals(web.getUrl())) leave.run();
+            });
+            draftAlert = dialog.show();
+        });
     }
 
     @Override
