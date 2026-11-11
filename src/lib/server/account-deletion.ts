@@ -14,6 +14,7 @@ import { accountControlRef, accountKey } from "./account-access";
 import { userRef } from "./repository";
 import { AppError } from "./errors";
 import { assertServiceAvailable } from "./maintenance";
+import { bankShortcutRef } from "./bank-shortcut";
 export const DELETION_COOKIE = "chotcong_deletion";
 export const DELETION_SECONDS = 7 * 86400;
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -80,6 +81,7 @@ async function issueProof(uid: string, requestId?: string) {
         throw new AppError(404, "Không có yêu cầu xóa đang thực hiện.");
       if (!(await tx.get(userRef(uid))).exists)
         throw new AppError(404, "Không tìm thấy tài khoản.");
+      tx.delete(bankShortcutRef(uid));
       tx.create(
         ref,
         deletionJobSchema.parse({

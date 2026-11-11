@@ -112,7 +112,7 @@ export default async function HelpPage() {
         <h2 className="serif text-2xl">{t("Cuốn sổ theo màu bạn thích")}</h2>
         <p>
           {t(
-            "Vào “Cài đặt tài khoản” → “Giao diện của bạn”, chọn Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code hoặc Playful Retro Neo-Brutalism để xem thử ngay. Command Line dùng nền đen với điểm nhấn xanh. Bấm “Lưu giao diện” để lưu theo tài khoản và dùng trên các thiết bị. Nếu chưa lưu, bấm “Hủy xem trước”, rời cài đặt hoặc tải lại trang để trở về lựa chọn đã lưu. Trang bảng kê gửi cho người nhận giữ cách trình bày riêng.",
+            "Bấm nút bảng màu trên thanh đầu trang và chọn theme để xem thử ngay. Bấm “Lưu giao diện” để áp dụng cho tài khoản trên các thiết bị. Đóng bảng chọn, chuyển trang hoặc tải lại sẽ bỏ lựa chọn chưa lưu.",
           )}
         </p>
       </section>

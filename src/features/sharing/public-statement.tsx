@@ -94,6 +94,12 @@ export function PublicStatementView({
           <p className="whitespace-pre-wrap break-words text-sm leading-6">
             {s.bankDetails}
           </p>
+          {s.transferReference && s.remainingVnd > 0 && (
+            <p className="mt-3 break-words text-sm">
+              {t("Nội dung chuyển khoản:")}{" "}
+              <strong>{s.transferReference}</strong>
+            </p>
+          )}
         </section>
       )}
       <footer className="space-y-2 border-t border-border p-5 text-xs leading-5 text-muted-foreground">

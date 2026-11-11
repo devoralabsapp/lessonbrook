@@ -405,6 +405,12 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   }
   await page.goto("/app/settings");
   await expect(
+    page.getByRole("heading", { name: "Bank transfer details" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Choose a theme", exact: true })
+    .click();
+  await expect(
     page.getByRole("heading", { name: "Your appearance" }),
   ).toBeVisible();
   await expect(page.getByLabel("Type DELETE ACCOUNT to confirm")).toBeVisible();
@@ -444,6 +450,20 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     .getByRole("button", { name: "Cancel preview", exact: true })
     .click();
   await expect(page.locator('[data-theme="playful-retro"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(saveAppearance).toHaveCount(0);
+  await page
+    .getByLabel("Account number in the notification")
+    .fill("12345678901234");
+  await page
+    .getByRole("button", { name: "Create shortcut key", exact: true })
+    .click();
+  const authorization = page.getByLabel("Authorization header value");
+  await expect(authorization).toHaveValue(
+    /^Bearer [a-f0-9]{64}\.[a-f0-9]{64}$/,
+  );
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  await expect(authorization).toHaveCount(0);
 
   expect(
     await page.evaluate(

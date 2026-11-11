@@ -13,6 +13,7 @@ import { formatDate, useStatementMutation } from "./shared";
 import { PaymentPanel } from "@/features/payments/payment-panel";
 import { SharingPanel } from "@/features/sharing/sharing-panel";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
+type StatementDetailData = Statement & { transferReference: string | null };
 export function StatementDetail({
   id,
   nativeShare,
@@ -21,7 +22,7 @@ export function StatementDetail({
   nativeShare: boolean;
 }) {
   const { t, locale } = useI18n();
-  const [data, setData] = useState<Statement | null>(null);
+  const [data, setData] = useState<StatementDetailData | null>(null);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -30,7 +31,7 @@ export function StatementDetail({
   const cancellationDraft = useMobileDraft(mutation.busy);
   useEffect(() => {
     let active = true;
-    api<Statement>(`/api/statements/${encodeURIComponent(id)}`)
+    api<StatementDetailData>(`/api/statements/${encodeURIComponent(id)}`)
       .then((statement) => {
         if (active) {
           setData(statement);
@@ -203,6 +204,12 @@ export function StatementDetail({
               {data.bankSnapshot}
             </p>
           </div>
+        )}
+        {data.transferReference && data.paidVnd < data.totalVnd && (
+          <p className="break-words border-t border-border px-5 py-4 text-sm sm:px-7">
+            {t("Nội dung chuyển khoản:")}{" "}
+            <strong>{data.transferReference}</strong>
+          </p>
         )}
       </Card>
       {mutation.error && (

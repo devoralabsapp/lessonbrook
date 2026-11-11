@@ -1,5 +1,5 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { FieldPath, Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 import { idSchema, vietnamToday } from "@/domain";
@@ -17,6 +17,10 @@ import {
 import { AppError } from "./errors";
 import { decode, dto, encode, operation, userRef } from "./repository";
 import { getStatement, statementDto } from "./statements-repository";
+import {
+  assertBankShortcutActive,
+  transferReferenceFor,
+} from "./bank-shortcut";
 export const paymentDto = (doc: FirebaseFirestore.DocumentSnapshot) => {
   if (doc.exists) paymentDocumentSchema.parse(doc.data());
   return paymentSchema.parse(dto(doc));
@@ -38,6 +42,68 @@ function audit(
     schemaVersion: 1,
   });
 }
+function writePayment(
+  tx: FirebaseFirestore.Transaction,
+  root: FirebaseFirestore.DocumentReference,
+  statementDoc: FirebaseFirestore.DocumentSnapshot,
+  input: z.infer<typeof paymentInputSchema>,
+  meta: {
+    requestId: string;
+    paymentId: string;
+    eventId: string;
+    now: Timestamp;
+    bankNotice?: boolean;
+  },
+) {
+  const statement = statementDto(statementDoc);
+  const { requestId, paymentId, eventId, now } = meta;
+  if (statement.status !== "issued")
+    throw new AppError(409, "Chỉ ghi nhận tiền cho bảng kê đã phát hành.");
+  if (input.receivedDate > vietnamToday(now.toDate()))
+    throw new AppError(400, "Ngày nhận tiền không được nằm trong tương lai.");
+  const remainingVnd = statement.totalVnd - statement.paidVnd;
+  if (meta.bankNotice && input.amountVnd !== remainingVnd)
+    throw new AppError(
+      409,
+      "Số tiền trong thông báo không khớp khoản còn phải thu.",
+    );
+  if (input.amountVnd > remainingVnd)
+    throw new AppError(
+      409,
+      "Số tiền vượt khoản còn phải thu. Hãy tải lại bảng kê để đối chiếu.",
+    );
+  if (statement.activePaymentCount >= MAX_ACTIVE_PAYMENTS)
+    throw new AppError(
+      409,
+      "Bản thử nghiệm hỗ trợ tối đa 100 khoản thu hợp lệ cho một bảng kê.",
+    );
+  const data = paymentDocumentSchema.parse({
+    ...input,
+    statementId: statement.id,
+    studentId: statement.studentId,
+    recordedAt: now,
+    voidedAt: null,
+    voidReason: null,
+    requestId,
+    schemaVersion: 1,
+  });
+  tx.create(root.collection("payments").doc(paymentId), data);
+  tx.update(statementDoc.ref, {
+    paidVnd: statementMoneySchema.parse(statement.paidVnd + input.amountVnd),
+    activePaymentCount: statement.activePaymentCount + 1,
+    version: statementVersionSchema.parse(statement.version + 1),
+    updatedAt: now,
+  });
+  audit(
+    tx,
+    root,
+    eventId,
+    paymentId,
+    meta.bankNotice ? "recorded_from_bank_notice" : "recorded",
+    now,
+  );
+  return { id: paymentId };
+}
 export async function recordPayment(
   uid: string,
   statementId: string,
@@ -55,46 +121,58 @@ export async function recordPayment(
     { statementId, ...input },
     async (tx, root, now) => {
       const ref = root.collection("statements").doc(statementId);
-      const statement = statementDto(await tx.get(ref));
-      if (statement.status !== "issued")
-        throw new AppError(409, "Chỉ ghi nhận tiền cho bảng kê đã phát hành.");
-      if (input.receivedDate > vietnamToday(now.toDate()))
-        throw new AppError(
-          400,
-          "Ngày nhận tiền không được nằm trong tương lai.",
-        );
-      if (input.amountVnd > statement.totalVnd - statement.paidVnd)
-        throw new AppError(
-          409,
-          "Số tiền vượt khoản còn phải thu. Hãy tải lại bảng kê để đối chiếu.",
-        );
-      if (statement.activePaymentCount >= MAX_ACTIVE_PAYMENTS)
-        throw new AppError(
-          409,
-          "Bản thử nghiệm hỗ trợ tối đa 100 khoản thu hợp lệ cho một bảng kê.",
-        );
-      const data = {
-        ...input,
-        statementId,
-        studentId: statement.studentId,
-        recordedAt: now,
-        voidedAt: null,
-        voidReason: null,
+      return writePayment(tx, root, await tx.get(ref), input, {
         requestId,
-        schemaVersion: 1,
-      };
-      paymentDocumentSchema.parse(data);
-      tx.create(root.collection("payments").doc(paymentId), data);
-      tx.update(ref, {
-        paidVnd: statementMoneySchema.parse(
-          statement.paidVnd + input.amountVnd,
-        ),
-        activePaymentCount: statement.activePaymentCount + 1,
-        version: statementVersionSchema.parse(statement.version + 1),
-        updatedAt: now,
+        paymentId,
+        eventId,
+        now,
       });
-      audit(tx, root, eventId, paymentId, "recorded", now);
-      return { id: paymentId };
+    },
+  );
+}
+export async function recordBankPayment(
+  uid: string,
+  keyHash: string,
+  reference: string,
+  amountVnd: number,
+) {
+  const payload = { reference, amountVnd };
+  const digest = createHash("sha256")
+    .update(JSON.stringify(payload))
+    .digest("hex");
+  // UUID-shaped key stays stable across Shortcuts retries, including after a payment is voided.
+  const requestId = `${digest.slice(0, 8)}-${digest.slice(8, 12)}-4${digest.slice(13, 16)}-8${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
+  const paymentId = randomUUID(),
+    eventId = randomUUID();
+  const number = reference.slice(0, reference.lastIndexOf("-"));
+  return operation<true>(
+    uid,
+    "bank-transfer",
+    requestId,
+    payload,
+    async (tx, root, now) => {
+      await assertBankShortcutActive(tx, uid, keyHash);
+      const matches = await tx.get(
+        root.collection("statements").where("number", "==", number).limit(2),
+      );
+      if (
+        matches.size !== 1 ||
+        transferReferenceFor(statementDto(matches.docs[0])) !== reference
+      )
+        throw new AppError(404, "Không tìm thấy bảng kê khớp mã chuyển khoản.");
+      const input = paymentInputSchema.parse({
+        amountVnd,
+        receivedDate: vietnamToday(now.toDate()),
+        method: "transfer",
+      });
+      const result = writePayment(tx, root, matches.docs[0], input, {
+        requestId,
+        paymentId,
+        eventId,
+        now,
+        bankNotice: true,
+      });
+      return { ...result, record: true };
     },
   );
 }

@@ -21,7 +21,7 @@ import { Button } from "./ui/button";
 import { api, csrfToken } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useAppearancePreview } from "@/lib/use-appearance-preview";
-import { AppearanceContext } from "./appearance";
+import { AppearanceContext, AppearancePicker } from "./appearance";
 import { DEFAULT_THEME, type Theme } from "@/domain/appearance";
 const links = [
   { href: "/app", label: "Tổng quan", icon: LayoutDashboard },
@@ -140,10 +140,15 @@ export function AppShell({
           </aside>
         )}
         <div className={embedded ? undefined : "lg:ml-[242px]"}>
-          {!embedded && (
+          {embedded ? (
+            <header className="relative flex justify-end gap-3 px-5 pt-3 sm:px-9">
+              {path === "/app/settings" && <LanguageSwitcher />}
+              <AppearancePicker key={path} />
+            </header>
+          ) : (
             <header
               data-slot="workspace-header"
-              className="flex h-[82px] items-center justify-between border-b border-border bg-surface/80 px-5 sm:px-9"
+              className="relative flex h-[82px] items-center justify-between border-b border-border bg-surface/80 px-4 sm:px-9"
             >
               <div className="lg:hidden">
                 <Brand compact />
@@ -167,8 +172,9 @@ export function AppShell({
                               : t("Tổng quan")}
                 </span>
               </p>
-              <div className="ml-auto flex items-center gap-3">
-                <LanguageSwitcher />
+              <div className="ml-auto flex items-center gap-2 sm:gap-3">
+                <LanguageSwitcher compact />
+                <AppearancePicker key={path} />
                 <Link
                   href="/app/settings"
                   aria-label={t("Cài đặt tài khoản")}

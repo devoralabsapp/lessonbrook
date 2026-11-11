@@ -1,8 +1,15 @@
 import { getI18n } from "@/lib/i18n/server";
 import { z } from "zod";
+import { cookies } from "next/headers";
 import { requestIdSchema } from "@/domain";
 import { AppError } from "@/lib/server/errors";
 import { getAppearance, saveAppearance } from "@/lib/server/appearance";
+import {
+  connectBankShortcut,
+  disconnectBankShortcut,
+  getBankShortcut,
+  transferReferenceFor,
+} from "@/lib/server/bank-shortcut";
 import {
   archiveClass,
   getClass,
@@ -22,7 +29,7 @@ import {
   getOnboarding,
   confirmOnboardingProfile,
 } from "@/lib/server/onboarding";
-import { requireUser } from "@/lib/server/session";
+import { requireUser, SESSION_COOKIE } from "@/lib/server/session";
 import { getUpcomingSchedule } from "@/lib/server/upcoming-schedule";
 import { exportPage, startExport } from "@/lib/server/data-export";
 import {
@@ -61,7 +68,7 @@ export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
 async function handle(request: Request, context: Context) {
   try {
-    const { uid } = await requireUser();
+    const { uid, exp } = await requireUser();
     const { path } = await context.params;
     const [resource, id, action] = path;
     if (path.length > 3) throw new AppError(404, "Không tìm thấy chức năng.");
@@ -110,6 +117,8 @@ async function handle(request: Request, context: Context) {
         return json(await exportPage(uid, id, query, (await getI18n()).locale));
       if (path.length === 1 && resource === "profile")
         return json(await getProfile(uid));
+      if (path.length === 1 && resource === "bank-shortcut")
+        return json(await getBankShortcut(uid));
       if (path.length === 1 && resource === "summary")
         return json(await getSummary(uid));
       if (resource === "statements" && path.length === 3) {
@@ -121,10 +130,17 @@ async function handle(request: Request, context: Context) {
       }
       if (resource === "statements" && path.length === 2 && id === "eligible")
         return json(await listEligibleSessions(uid, query));
-      if (resource === "statements" && path.length <= 2)
-        return json(
-          id ? await getStatement(uid, id) : await listStatements(uid, query),
-        );
+      if (resource === "statements" && path.length <= 2) {
+        if (!id) return json(await listStatements(uid, query));
+        const statement = await getStatement(uid, id);
+        return json({
+          ...statement,
+          transferReference:
+            statement.status === "issued"
+              ? transferReferenceFor(statement)
+              : null,
+        });
+      }
       if (path.length <= 2 && resource === "students")
         return json(
           id ? await getStudent(uid, id) : await listStudents(uid, query),
@@ -139,6 +155,29 @@ async function handle(request: Request, context: Context) {
         request.headers.get("idempotency-key"),
       );
       const body = await jsonBody(request);
+      if (resource === "bank-shortcut" && request.method === "POST") {
+        if (path.length === 1) {
+          const session = (await cookies()).get(SESSION_COOKIE)?.value;
+          if (!session)
+            throw new AppError(
+              401,
+              "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+            );
+          return json(
+            await connectBankShortcut(
+              uid,
+              session,
+              exp * 1000,
+              body,
+              requestId,
+            ),
+          );
+        }
+        if (path.length === 2 && id === "disconnect") {
+          z.object({}).strict().parse(body);
+          return json(await disconnectBankShortcut(uid, requestId));
+        }
+      }
       if (
         resource === "appearance" &&
         path.length === 1 &&

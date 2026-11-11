@@ -12,7 +12,7 @@ const languages: { value: Locale; label: string }[] = [
   { value: "vi", label: "Tiếng Việt" },
 ];
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   const { locale } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -104,10 +104,15 @@ export function LanguageSwitcher() {
           setActive(selected);
           setOpen(!open);
         }}
-        className="gap-2 px-3 text-xs font-medium"
+        className={cn(
+          "gap-2 px-3 text-xs font-medium",
+          compact && "max-sm:size-11 max-sm:p-0",
+        )}
       >
         <Globe2 aria-hidden="true" className="text-muted-foreground" />
-        <span>{languages[selected].label}</span>
+        <span className={compact ? "max-sm:hidden" : undefined}>
+          {languages[selected].label}
+        </span>
         {busy ? (
           <LoaderCircle
             aria-hidden="true"
@@ -118,6 +123,7 @@ export function LanguageSwitcher() {
             aria-hidden="true"
             className={cn(
               "text-muted-foreground transition-transform",
+              compact && "max-sm:hidden",
               open && "rotate-180",
             )}
           />

@@ -22,7 +22,8 @@ English interface preview · Playful Retro Neo-Brutalism · Fictional sample dat
 - Students, default rates, archiving/restoring, classes of up to 50 students, and group lessons with saved price snapshots.
 - Per-student statements, issue/void workflows, partial payments, and voiding incorrect payment records.
 - Expiring and revocable statement links; dashboard, search, filters, CSV/ZIP/JSON export, and account deletion.
-- Eight themes: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code, and Playful Retro Neo-Brutalism, with mobile-friendly layouts. Command Line uses black panels and green accents. Playful Retro adds cream, yellow/pink/blue/mint cards, bold outlines, hard shadows, pill controls and self-hosted Nunito (SIL OFL 1.1). Select any theme in account settings for an instant preview; only Save appearance persists it. Cancel preview, leave settings or reload to discard an unsaved choice.
+- Eight themes with mobile-friendly layouts: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code, and the default Playful Retro Neo-Brutalism. Command Line uses black panels and green accents. Playful Retro adds cream and pastel cards, bold outlines, hard shadows, pill controls and self-hosted Nunito (SIL OFL 1.1). Preview themes from the palette button in the workspace header and select **Save appearance** to keep your choice across devices.
+- Optional iPhone Shortcut for recording matching bank transfer notifications. Teachers can record cash in the statement. See [Shortcut setup](mobile/README.md#bank-transfer-notifications).
 
 All business reads and writes go through Node server APIs. The Firebase client is used only for Auth; Firestore Rules deny direct client access. Tuition data is not stored offline.
 

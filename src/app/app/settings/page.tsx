@@ -1,18 +1,14 @@
 import { SettingsForm } from "@/components/settings-form";
-import { hasNativeWorkspace, isMobileApp } from "@/domain/mobile-sign-in";
+import { isMobileApp } from "@/domain/mobile-sign-in";
 import { headers } from "next/headers";
-import { LanguageSwitcher } from "@/components/language-switcher";
+import { appOrigin } from "@/lib/server/session";
 
 export default async function Page() {
   const userAgent = (await headers()).get("user-agent");
   return (
-    <>
-      {hasNativeWorkspace(userAgent) && (
-        <div className="mb-4 flex justify-end">
-          <LanguageSwitcher />
-        </div>
-      )}
-      <SettingsForm inApp={isMobileApp(userAgent)} />
-    </>
+    <SettingsForm
+      inApp={isMobileApp(userAgent)}
+      shortcutUrl={`${appOrigin()}/api/bank-notifications`}
+    />
   );
 }

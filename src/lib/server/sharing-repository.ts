@@ -16,6 +16,7 @@ import {
 } from "@/domain/sharing";
 import { statementVersionSchema, type Statement } from "@/domain/statements";
 import { AppError } from "./errors";
+import { transferReferenceFor } from "./bank-shortcut";
 import { maintenanceRef } from "./maintenance";
 import { accountControlRef, assertAccountWritable } from "./account-access";
 import { operation, userRef } from "./repository";
@@ -72,6 +73,9 @@ async function publicSnapshot(
       amountVnd,
     })),
     bankDetails: statement.bankSnapshot,
+    ...(statement.bankSnapshot && {
+      transferReference: transferReferenceFor(statement),
+    }),
     updatedAt: statement.updatedAt,
   });
 }

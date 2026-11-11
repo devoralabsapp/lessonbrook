@@ -184,6 +184,11 @@ test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại
   });
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/app/settings");
+  const chooseTheme = page.getByRole("button", {
+    name: "Chọn theme",
+    exact: true,
+  });
+  await chooseTheme.click();
   const backgrounds = new Set<string>();
   let savedTheme = "playful-retro";
   let appearanceWrites = 0;
@@ -224,6 +229,7 @@ test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại
     );
     await page.reload();
     await expect(page.locator(`[data-theme="${id}"]`)).toBeVisible();
+    await chooseTheme.click();
     await expect(page.getByRole("radio", { name, exact: false })).toBeChecked();
     // Read persisted colours after reload, outside the save button transition.
     if (
@@ -330,7 +336,12 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
     (await (await context.request.get("/api/appearance")).json()).theme;
   const shell = (theme: string) => page.locator(`[data-theme="${theme}"]`);
   const save = page.getByRole("button", { name: "Lưu giao diện", exact: true });
+  const chooseTheme = page.getByRole("button", {
+    name: "Chọn theme",
+    exact: true,
+  });
   await page.goto("/app/settings");
+  await chooseTheme.click();
   await expect(save).toBeDisabled();
   await page.getByRole("radio", { name: "Command Line", exact: false }).check();
   await expect(shell("command-line")).toBeVisible();
@@ -365,6 +376,7 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
     .getByRole("link", { name: "Cài đặt tài khoản", exact: true })
     .click();
   await page.waitForURL("**/app/settings");
+  await chooseTheme.click();
   await expect(
     page.getByRole("radio", {
       name: "Playful Retro Neo-Brutalism",
@@ -376,6 +388,7 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   await expect(shell("playful-retro")).toBeVisible();
   expect(await stored()).toBe("playful-retro");
   expect(writes).toBe(0);
+  await chooseTheme.click();
   let fail = true;
   const keys: string[] = [];
   await page.route("**/api/appearance", async (route) => {
@@ -407,6 +420,8 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   expect(keys[0]).toBe(keys[1]);
   await page.reload();
   await expect(shell("visual-code")).toBeVisible();
+  await expect(save).toHaveCount(0);
+  await chooseTheme.click();
   await expect(save).toBeDisabled();
 });
 
@@ -545,6 +560,7 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
   });
   await profileSave.hover();
   await expect(profileSave).toHaveCSS("transform", "none");
+  await page.getByRole("button", { name: "Chọn theme", exact: true }).click();
   await expect(save).toHaveCSS("transform", "none");
   expect(
     await save.evaluate((el) => getComputedStyle(el).transitionProperty),

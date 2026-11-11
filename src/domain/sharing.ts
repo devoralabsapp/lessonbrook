@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dateSchema } from ".";
 import { statementMoneySchema, statementVersionSchema } from "./statements";
 import { MAX_ACTIVE_PAYMENTS } from "./payments";
+import { transferReferenceSchema } from "./bank-notification";
 export const shareTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 export const shareCreateInputSchema = z
   .object({
@@ -38,6 +39,7 @@ export const publicStatementSchema = z
       )
       .max(MAX_ACTIVE_PAYMENTS),
     bankDetails: z.string().max(500).nullable(),
+    transferReference: transferReferenceSchema.optional(),
     updatedAt: z.string().datetime(),
   })
   .strict();

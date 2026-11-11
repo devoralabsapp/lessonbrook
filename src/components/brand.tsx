@@ -11,7 +11,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       data-slot="brand"
       className={
         compact
-          ? "inline-flex min-h-11 items-center gap-2"
+          ? "inline-flex min-h-11 items-center gap-1.5 min-[380px]:gap-2"
           : "inline-flex items-center gap-3"
       }
       aria-label={t("LessonBrook — trang tổng quan")}
@@ -29,7 +29,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
         <span
           className={
             compact
-              ? "block text-base font-bold tracking-tight"
+              ? "block text-sm font-bold tracking-tight min-[380px]:text-base"
               : "block text-lg font-bold tracking-tight"
           }
         >

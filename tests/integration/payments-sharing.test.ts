@@ -180,6 +180,7 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
         "remainingVnd",
         "payments",
         "bankDetails",
+        "transferReference",
         "updatedAt",
       ].sort(),
     );

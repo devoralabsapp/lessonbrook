@@ -22,7 +22,8 @@ Giao diện mặc định là tiếng Anh. Dùng bộ chọn trên thanh đầu 
 - Học viên, đơn giá, lưu trữ/khôi phục; lớp tối đa 50 người và buổi nhóm với giá riêng được chụp tại thời điểm ghi.
 - Bảng kê từng học viên, phát hành/hủy, thu từng phần và vô hiệu hóa khoản thu nhập sai.
 - Link bảng kê có thời hạn/thu hồi; tổng quan, tìm kiếm, bộ lọc, CSV/ZIP/JSON và xóa tài khoản.
-- Tám giao diện: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code, Playful Retro Neo-Brutalism; bố cục tối ưu điện thoại. Command Line dùng nền đen và điểm nhấn xanh. Trong Cài đặt, bấm chọn để xem thử rồi bấm Lưu giao diện để lưu. Hủy xem trước, rời cài đặt hoặc tải lại trang để bỏ lựa chọn chưa lưu.
+- Tám giao diện tối ưu điện thoại gồm Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code và Playful Retro Neo-Brutalism mặc định. Command Line dùng nền đen và điểm nhấn xanh. Xem thử từ nút bảng màu trên thanh đầu trang rồi bấm **Lưu giao diện** để dùng lựa chọn trên các thiết bị.
+- Có thể dùng Phím tắt trên iPhone để ghi nhận thông báo chuyển khoản khớp bảng kê. Giáo viên tự ghi nhận tiền mặt trong bảng kê. Xem [cách thiết lập Phím tắt](mobile/README.md#bank-transfer-notifications).
 
 Mọi đọc/ghi nghiệp vụ đi qua Node server API. Firebase client chỉ dùng cho Auth; Firestore Rules chặn client trực tiếp. Không có chế độ lưu học phí offline.
 

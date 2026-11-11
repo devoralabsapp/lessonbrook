@@ -39,10 +39,12 @@ Session cookies are HttpOnly/Lax, Secure on HTTPS, and last up to five days. Bro
 
 A home page theme selection is kept in a short-lived cookie and rendered on the sign-in page. After verifying a recent Google ID token, the session endpoint applies the validated selection to that account in the profile transaction and clears the cookie. Sign-ins without a selection keep the stored preference.
 
-The application shell holds a settings-visit preview separately from the saved account preference. Selecting a theme only changes the local preview. Save commits it through the existing authenticated, idempotent appearance endpoint; a failed save retains the preview for retry. Cancel, route navigation and reload restore the saved preference. Shared statements keep an explicit light palette.
+The application shell holds a preview from the header picker separately from the saved account preference. Save commits it through the authenticated, idempotent appearance endpoint. Cancel, dismissing the picker, route navigation and reload restore the saved preference. Shared statements keep an explicit light palette.
 
 Retro component styles are scoped to `data-theme="playful-retro"` and exclude the `data-theme="statement"` boundary. Palette, border and shadow tokens live in globals.css; shared cards can opt into `data-tone="yellow|pink|blue|mint"`. Buttons expose their existing variant as data for theme styling. Nunito is bundled under SIL OFL 1.1 via next/font/local, with preloading disabled so unused themes do not preload it.
 
 ## Limits
 
-There are no automatic bank payments, recurring schedules, prepaid packages, or multi-staff center permissions. The manifest provides a launch shortcut, without a service worker or offline cache. Emulator tests do not prove cloud indexes, IAM, OAuth, or installation on real devices. Cloud checks need isolated staging and fake data.
+An optional iPhone Shortcut can forward incoming bank notices. Its scoped key unlocks an encrypted Firebase session that the server verifies for revocation and expiration on every request. The payment transaction checks the connection again and matches the account, a unique issued-statement reference, and the full outstanding balance. The server retains the normal transfer record and idempotency hash, without the notice text or bank balance.
+
+Recurring schedules, prepaid packages and multi-staff permissions are outside the current scope. The manifest provides a launch shortcut. Emulator tests do not prove cloud indexes, IAM, OAuth, or installation on real devices. Cloud checks need isolated staging and fake data.

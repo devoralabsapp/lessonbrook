@@ -11,10 +11,16 @@ import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { ExportPanel } from "@/features/data/export-panel";
 import { DeletePanel } from "@/features/account/delete-panel";
+import { BankShortcutSettings } from "@/features/payments/bank-shortcut-settings";
 import { InfoLinks } from "./info-links";
-import { AppearancePicker } from "./appearance";
 import { MOBILE_SCHEME } from "@/domain/mobile-sign-in";
-export function SettingsForm({ inApp }: { inApp: boolean }) {
+export function SettingsForm({
+  inApp,
+  shortcutUrl,
+}: {
+  inApp: boolean;
+  shortcutUrl: string;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const [profile, setProfile] = useState<{
@@ -100,7 +106,6 @@ export function SettingsForm({ inApp }: { inApp: boolean }) {
       <div className="mb-6">
         <InfoLinks />
       </div>
-      <AppearancePicker />
       <Card className="p-6">
         {profile ? (
           <form onSubmit={submit} {...draft.form} className="space-y-5">
@@ -114,16 +119,29 @@ export function SettingsForm({ inApp }: { inApp: boolean }) {
                 defaultValue={profile.displayName}
               />
             </label>
-            <label className="field-label">
-              {t("Thông tin nhận chuyển khoản (tùy chọn)")}
-              <textarea
-                className="select-input"
-                name="bankDetails"
-                rows={3}
-                maxLength={500}
-                defaultValue={profile.bankDetails}
-              />
-            </label>
+            <section
+              aria-labelledby="bank-transfer-title"
+              className="min-w-0 space-y-2 border-t border-border pt-4"
+            >
+              <h2 id="bank-transfer-title" className="serif text-xl">
+                {t("Thông tin chuyển khoản")}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  "Thông tin này được thêm vào bảng kê khi bạn chọn hiển thị chi tiết chuyển khoản.",
+                )}
+              </p>
+              <label className="field-label">
+                {t("Thông tin nhận chuyển khoản (tùy chọn)")}
+                <textarea
+                  className="select-input"
+                  name="bankDetails"
+                  rows={3}
+                  maxLength={500}
+                  defaultValue={profile.bankDetails}
+                />
+              </label>
+            </section>
             <p className="text-xs leading-6 text-muted-foreground">
               {t("Tiền tệ: VND · Múi giờ: Việt Nam.")}
               <br />
@@ -147,6 +165,7 @@ export function SettingsForm({ inApp }: { inApp: boolean }) {
           </p>
         )}
       </Card>
+      {profile && <BankShortcutSettings url={shortcutUrl} />}
       {inApp ? (
         <Card>
           <Button
