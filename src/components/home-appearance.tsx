@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { Brand } from "./brand";
 import { LanguageSwitcher } from "./language-switcher";
 import { Button } from "./ui/button";
+import { ThemedSelect } from "./ui/themed-select";
 
 export function HomeAppearance({
   children,
@@ -42,26 +43,17 @@ export function HomeAppearance({
         </div>
         <label className="flex w-full flex-col gap-1.5 text-sm font-semibold sm:flex-row sm:items-center sm:justify-end sm:gap-3 lg:w-auto">
           <span>{t("Xem thử giao diện")}</span>
-          <span className="w-full sm:w-68 sm:shrink-0">
-            <select
-              className="select-input"
-              value={theme}
-              onChange={(event) => {
-                const value = event.currentTarget.value;
-                const choice = themes.find((item) => item.id === value);
-                if (!choice) return;
-                const secure = location.protocol === "https:" ? "; Secure" : "";
-                document.cookie = `${GUEST_THEME_COOKIE}=${choice.id}; Path=/; SameSite=Lax; Max-Age=3600${secure}`;
-                setTheme(choice.id);
-              }}
-            >
-              {themes.map(({ id, name }) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </span>
+          <ThemedSelect
+            label={t("Xem thử giao diện")}
+            className="w-full sm:w-68 sm:shrink-0"
+            value={theme}
+            options={themes.map(({ id, name }) => ({ value: id, label: name }))}
+            onChange={(choice) => {
+              const secure = location.protocol === "https:" ? "; Secure" : "";
+              document.cookie = `${GUEST_THEME_COOKIE}=${choice}; Path=/; SameSite=Lax; Max-Age=3600${secure}`;
+              setTheme(choice);
+            }}
+          />
         </label>
       </header>
       {children}

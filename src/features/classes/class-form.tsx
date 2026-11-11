@@ -13,6 +13,7 @@ import {
 } from "@/domain/classes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThemedSelect } from "@/components/ui/themed-select";
 import { useStatementMutation } from "@/features/statements/shared";
 import { MemberPicker } from "./shared";
 export type ClassDetail = TeachingClass & {
@@ -145,19 +146,17 @@ export function ClassForm({
                   <span className={index ? "sr-only" : undefined}>
                     {t("Ngày trong tuần")}
                   </span>
-                  <select
-                    className="select-input"
-                    value={slot.weekday}
-                    onChange={(e) =>
-                      updateSlot(slot.key, { weekday: Number(e.target.value) })
+                  <ThemedSelect
+                    label={t("Ngày trong tuần")}
+                    value={String(slot.weekday)}
+                    onChange={(value) =>
+                      updateSlot(slot.key, { weekday: Number(value) })
                     }
-                  >
-                    {weekdays.map((day, index) => (
-                      <option key={day} value={index + 1}>
-                        {t(day)}
-                      </option>
-                    ))}
-                  </select>
+                    options={weekdays.map((day, index) => ({
+                      value: String(index + 1),
+                      label: t(day),
+                    }))}
+                  />
                 </label>
                 <label className="field-label min-w-0">
                   <span className={index ? "sr-only" : undefined}>

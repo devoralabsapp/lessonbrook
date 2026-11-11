@@ -13,6 +13,7 @@ import {
 import { api, ApiError } from "@/lib/client-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ThemedSelect } from "@/components/ui/themed-select";
 type Work = {
   choice: string;
   requestId: string;
@@ -186,19 +187,19 @@ export function ExportPanel() {
       </p>
       <label className="field-label">
         {t("Loại dữ liệu")}
-        <select
-          className="select-input"
+        <ThemedSelect
+          label={t("Loại dữ liệu")}
           disabled={busy}
           value={choice}
-          onChange={(event) => setChoice(event.target.value as Dataset | "all")}
-        >
-          <option value="all">{t("Toàn bộ dữ liệu (ZIP)")}</option>
-          {DATASETS.map((dataset) => (
-            <option key={dataset} value={dataset}>
-              {t(datasetLabels[dataset])} — CSV
-            </option>
-          ))}
-        </select>
+          onChange={setChoice}
+          options={[
+            { value: "all", label: t("Toàn bộ dữ liệu (ZIP)") },
+            ...DATASETS.map((dataset) => ({
+              value: dataset,
+              label: `${t(datasetLabels[dataset])} — CSV`,
+            })),
+          ]}
+        />
       </label>
       <Button variant="outline" disabled={busy} onClick={download}>
         {busy ? t("Đang tải dữ liệu…") : t("Tải dữ liệu về máy")}

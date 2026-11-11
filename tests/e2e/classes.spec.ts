@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext } from "@playwright/test";
 import { googleToken, origin } from "../integration/helpers";
+import { chooseOption } from "./select";
 async function login(context: BrowserContext) {
   const token = await googleToken();
   const csrf = (await (await context.request.get("/api/auth/csrf")).json())
@@ -43,10 +44,10 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     await dialog
       .getByRole("button", { name: "Thêm giờ học", exact: true })
       .click();
-    await dialog
-      .getByLabel("Ngày trong tuần")
-      .nth(index)
-      .selectOption(String(day));
+    await chooseOption(
+      dialog.getByRole("combobox", { name: "Ngày trong tuần" }).nth(index),
+      String(day),
+    );
     await dialog.getByLabel("Giờ bắt đầu").nth(index).fill("20:00");
   }
   await dialog
@@ -114,10 +115,15 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     page.getByText("300.000", { exact: false }).first(),
   ).toBeVisible();
   await page.getByRole("button", { name: "Sửa Minh", exact: true }).click();
-  await page
+  const recordStatus = page
     .getByRole("dialog")
-    .getByRole("combobox", { name: "Trạng thái", exact: true })
-    .selectOption("cancelled");
+    .getByRole("combobox", { name: "Trạng thái", exact: true });
+  await recordStatus.press("ArrowDown");
+  await expect(page.getByRole("dialog").getByRole("listbox")).toBeVisible();
+  await recordStatus.press("Escape");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(recordStatus).toBeFocused();
+  await chooseOption(recordStatus, "cancelled");
   await page.getByRole("button", { name: "Lưu buổi dạy", exact: true }).click();
   await expect(page.getByText("Đã hủy", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -150,7 +156,17 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     page.getByRole("link", { name: "Xem buổi nhóm & lớp", exact: true }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
-  await page.getByRole("dialog").getByLabel("Dạy cho").selectOption("group");
+  const recordDialog = page.getByRole("dialog");
+  const requiredStudent = recordDialog.getByRole("combobox", { name: "Học viên *" });
+  await recordDialog.getByRole("button", { name: "Lưu buổi dạy" }).click();
+  await expect(requiredStudent).toHaveAttribute("aria-invalid", "true");
+  await expect(requiredStudent).toBeFocused();
+  await expect(recordDialog.getByRole("listbox")).toBeVisible();
+  await requiredStudent.press("Escape");
+  await chooseOption(
+    recordDialog.getByRole("combobox", { name: "Dạy cho" }),
+    "group",
+  );
   await expect(
     page.getByRole("heading", { name: "Ghi buổi nhóm/lớp", exact: true }),
   ).toBeVisible();
@@ -182,7 +198,7 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     animations: "disabled",
   });
   await page.goto("/app/sessions");
-  const type = page.getByLabel("Loại buổi dạy");
+  const type = page.getByRole("combobox", { name: "Loại buổi dạy" });
   const apply = page.getByRole("button", { name: "Lọc buổi dạy", exact: true });
   const groupRows = page.getByRole("link", {
     name: "Buổi nhóm tự chọn",
@@ -192,11 +208,11 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     name: "Lớp Piano chiều",
     exact: true,
   });
-  await type.selectOption("group");
+  await chooseOption(type, "group");
   await apply.click();
   await expect(groupRows).toHaveCount(2);
   await expect(classRows).toHaveCount(0);
-  await type.selectOption("class");
+  await chooseOption(type, "class");
   await apply.click();
   await expect(classRows).toHaveCount(2);
   await expect(groupRows).toHaveCount(0);
@@ -216,19 +232,21 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     exact: true,
   });
   await expect(page.getByRole("searchbox")).toHaveCount(0);
-  await studentPicker.selectOption({ label: "Lan" });
+  await studentPicker.click();
+  await page.getByRole("option", { name: "Lan", exact: true }).click();
   await apply.click();
   await expect(classRows).toHaveCount(1);
   await expect(groupRows).toHaveCount(1);
-  await searchBy.selectOption("group-class");
+  await chooseOption(searchBy, "group-class");
   await expect(studentPicker).toHaveCount(0);
-  await targetPicker.selectOption(
+  await chooseOption(
+    targetPicker,
     `class:${new URL(classUrl).pathname.split("/").at(-1)}`,
   );
   await apply.click();
   await expect(classRows).toHaveCount(2);
   await expect(groupRows).toHaveCount(0);
-  await targetPicker.selectOption(`group:${groupId}`);
+  await chooseOption(targetPicker, `group:${groupId}`);
   await apply.click();
   await expect(groupRows).toHaveCount(2);
   await expect(classRows).toHaveCount(0);
@@ -246,12 +264,35 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     }),
   ).toBe(true);
   await expect(dateTile).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}$/);
-  await searchBy.selectOption("student");
+  await chooseOption(searchBy, "student");
   await expect(targetPicker).toHaveCount(0);
-  await expect(studentPicker).toHaveValue("");
+  await expect(studentPicker).toHaveText("Tất cả học viên");
   await apply.click();
   await expect(groupRows).toHaveCount(2);
   await expect(classRows).toHaveCount(2);
+
+  await page.goto("/app/classes");
+  const classSearch = page.getByRole("searchbox", { name: "Tìm tên lớp" });
+  const classStatus = page.getByRole("combobox", { name: "Trạng thái lớp học" });
+  const classLink = page.getByRole("link", { name: /Piano chiều/ });
+  await expect(classLink).toContainText("3 học viên");
+  await classSearch.fill("không có lớp này");
+  await expect(classLink).toHaveCount(0);
+  await classSearch.fill("Piano chieu");
+  await expect(classLink).toBeVisible();
+  await page.getByRole("button", { name: "Sửa", exact: true }).click();
+  const classForm = page.getByRole("dialog");
+  await expect(classForm.getByLabel("Tên lớp")).toHaveValue("Piano chiều");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Lưu trữ", exact: true }).click();
+  await expect(page.getByText("Đã lưu trữ lớp.")).toBeVisible();
+  await expect(classLink).toHaveCount(0);
+  await chooseOption(classStatus, "true");
+  await expect(classLink).toBeVisible();
+  await page.getByRole("button", { name: "Khôi phục", exact: true }).click();
+  await expect(page.getByText("Đã khôi phục lớp.")).toBeVisible();
+  await chooseOption(classStatus, "false");
+  await expect(classLink).toBeVisible();
 });
 
 test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại sau tải lại", async ({
@@ -269,17 +310,22 @@ test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại
   const size = await status.boundingBox();
   expect(size!.height).toBeGreaterThanOrEqual(40);
   expect(size!.height).toBeLessThanOrEqual(46);
-  const css = await status.evaluate((el) => {
-    const s = getComputedStyle(el);
-    return {
-      appearance: s.appearance,
-      position: s.backgroundPosition,
-      padding: parseFloat(s.paddingRight),
-    };
-  });
-  expect(css.appearance).toBe("none");
-  expect(css.padding).toBeGreaterThanOrEqual(36);
-  expect(css.position).toContain("14px");
+  const menu = page.getByRole("listbox", { name: "Trạng thái bảng kê" });
+  for (const width of [1440, 360]) {
+    await page.setViewportSize({ width, height: 800 });
+    await status.click();
+    await expect(menu).toHaveCSS("background-color", "rgb(255, 253, 247)");
+    await expect(menu).toHaveCSS("border-top-width", "2px");
+    await expect(menu.getByRole("option", { selected: true })).toHaveCSS(
+      "background-color",
+      "rgb(255, 219, 87)",
+    );
+    const rect = (await menu.boundingBox())!;
+    expect(rect.x).toBeGreaterThan(0);
+    expect(rect.x + rect.width).toBeLessThan(width);
+    await status.press("Escape");
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({
     path: "/tmp/chotcong-024-statements-desktop.png",
     fullPage: true,

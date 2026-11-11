@@ -35,6 +35,7 @@ import { Card } from "./ui/card";
 import { RecordForm } from "./record-form";
 import { StudentPicker } from "@/features/statements/shared";
 import { LessonTargetPicker } from "@/features/classes/lesson-target-picker";
+import { ThemedSelect } from "@/components/ui/themed-select";
 import { useDebounced } from "@/lib/use-debounced";
 import { GettingStartedCard } from "@/features/onboarding/guide";
 import type { OnboardingState } from "@/domain/onboarding";
@@ -495,15 +496,16 @@ export function Workspace({
             </p>
           </div>
           {mode === "students" ? (
-            <select
-              aria-label={t("Trạng thái học viên")}
-              className="select-input !w-auto !py-2 !text-xs"
+            <ThemedSelect
+              label={t("Trạng thái học viên")}
+              toolbar
               value={String(archived)}
-              onChange={(e) => setArchived(e.target.value === "true")}
-            >
-              <option value="false">{t("Đang học")}</option>
-              <option value="true">{t("Đã lưu trữ")}</option>
-            </select>
+              onChange={(value) => setArchived(value === "true")}
+              options={[
+                { value: "false", label: t("Đang học") },
+                { value: "true", label: t("Đã lưu trữ") },
+              ]}
+            />
           ) : mode === "overview" ? (
             <Link
               href="/app/sessions"
@@ -568,11 +570,10 @@ export function Workspace({
               <div className="col-span-2 grid min-w-0 items-start gap-x-3 gap-y-2.5 sm:grid-cols-2">
                 <label className="field-label">
                   {t("Tìm theo")}
-                  <select
-                    className="select-input"
+                  <ThemedSelect
+                    label={t("Tìm theo")}
                     value={searchBy}
-                    onChange={(event) => {
-                      const next = event.target.value;
+                    onChange={(next) => {
                       setSearchBy(next);
                       setDraftRange((current) => ({
                         ...current,
@@ -581,12 +582,11 @@ export function Workspace({
                         type: next === "group-class" ? "shared" : "all",
                       }));
                     }}
-                  >
-                    <option value="student">{t("Tìm theo học viên")}</option>
-                    <option value="group-class">
-                      {t("Tìm theo nhóm/lớp")}
-                    </option>
-                  </select>
+                    options={[
+                      { value: "student", label: t("Tìm theo học viên") },
+                      { value: "group-class", label: t("Tìm theo nhóm/lớp") },
+                    ]}
+                  />
                 </label>
                 {searchBy === "student" ? (
                   <StudentPicker
@@ -611,52 +611,52 @@ export function Workspace({
               className={`field-label min-w-0 ${searchBy === "group-class" ? "sm:col-span-2" : ""}`}
             >
               {t("Trạng thái buổi")}
-              <select
-                className="select-input"
+              <ThemedSelect
+                label={t("Trạng thái buổi")}
                 value={draftRange.status}
-                onChange={(event) =>
-                  setDraftRange({ ...draftRange, status: event.target.value })
+                onChange={(status) =>
+                  setDraftRange({ ...draftRange, status })
                 }
-              >
-                <option value="all">{t("Tất cả")}</option>
-                <option value="planned">{t("Dự kiến")}</option>
-                <option value="completed">{t("Đã dạy")}</option>
-                <option value="cancelled">{t("Đã hủy")}</option>
-              </select>
+                options={[
+                  { value: "all", label: t("Tất cả") },
+                  { value: "planned", label: t("Dự kiến") },
+                  { value: "completed", label: t("Đã dạy") },
+                  { value: "cancelled", label: t("Đã hủy") },
+                ]}
+              />
             </label>
             <label
               className={`field-label min-w-0 ${searchBy === "group-class" ? "sm:col-span-2" : ""}`}
             >
               {t("Học phí")}
-              <select
-                className="select-input"
+              <ThemedSelect
+                label={t("Học phí")}
                 value={draftRange.billing}
-                onChange={(event) =>
-                  setDraftRange({ ...draftRange, billing: event.target.value })
+                onChange={(billing) =>
+                  setDraftRange({ ...draftRange, billing })
                 }
-              >
-                <option value="all">{t("Tất cả")}</option>
-                <option value="unbilled">{t("Chưa lập bảng kê")}</option>
-                <option value="billed">{t("Đã lập bảng kê")}</option>
-                <option value="free">{t("Buổi miễn phí")}</option>
-              </select>
+                options={[
+                  { value: "all", label: t("Tất cả") },
+                  { value: "unbilled", label: t("Chưa lập bảng kê") },
+                  { value: "billed", label: t("Đã lập bảng kê") },
+                  { value: "free", label: t("Buổi miễn phí") },
+                ]}
+              />
             </label>
             {searchBy === "student" && (
               <label className="field-label col-span-2 min-w-0">
                 {t("Loại buổi dạy")}
-                <select
-                  className="select-input"
+                <ThemedSelect
+                  label={t("Loại buổi dạy")}
                   value={draftRange.type}
-                  onChange={(event) =>
-                    setDraftRange({ ...draftRange, type: event.target.value })
+                  onChange={(type) =>
+                    setDraftRange({ ...draftRange, type })
                   }
-                >
-                  {Object.entries(sessionTypeLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {t(label)}
-                    </option>
-                  ))}
-                </select>
+                  options={Object.entries(sessionTypeLabels).map(([value, label]) => ({
+                    value,
+                    label: t(label),
+                  }))}
+                />
               </label>
             )}
             <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-4">

@@ -7,6 +7,7 @@ import { api } from "@/lib/client-api";
 import { useDebounced } from "@/lib/use-debounced";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ThemedSelect } from "@/components/ui/themed-select";
 export type Page<T> = {
   items: T[];
   nextCursor: string | null;
@@ -171,32 +172,33 @@ export function StudentPicker({
           />
         </label>
       )}
-      <label className="field-label">
-        {t("Học viên")}
-        <select
-          className="select-input"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          required={!optional}
-        >
-          <option value="">
-            {optional ? t("Tất cả học viên") : t("Chọn học viên")}
-          </option>
-          {value && !page?.items.some((student) => student.id === value) && (
-            <option value={value}>
-              {selected?.id === value
-                ? selected.displayName
-                : t("Học viên đã chọn")}
-            </option>
-          )}
-          {page?.items.map((student) => (
-            <option key={student.id} value={student.id}>
-              {student.displayName}
-              {student.archivedAt ? t(" · Đã lưu trữ") : ""}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ThemedSelect
+        label={t("Học viên")}
+        field
+        value={value}
+        onChange={onChange}
+        required={!optional}
+        options={[
+          {
+            value: "",
+            label: optional ? t("Tất cả học viên") : t("Chọn học viên"),
+          },
+          ...(value && !page?.items.some((student) => student.id === value)
+            ? [{
+                value,
+                label: selected?.id === value
+                  ? selected.displayName
+                  : t("Học viên đã chọn"),
+              }]
+            : []),
+          ...(page?.items.map((student) => ({
+            value: student.id,
+            label:
+              student.displayName +
+              (student.archivedAt ? t(" · Đã lưu trữ") : ""),
+          })) ?? []),
+        ]}
+      />
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
         <input
           type="checkbox"

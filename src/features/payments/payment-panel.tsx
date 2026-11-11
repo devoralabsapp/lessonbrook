@@ -10,6 +10,7 @@ import { api } from "@/lib/client-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { ThemedSelect } from "@/components/ui/themed-select";
 import {
   formatDate,
   type Page,
@@ -181,14 +182,18 @@ export function PaymentPanel({
               </div>
               <label className="field-label">
                 {t("Cách nhận")}
-                <select
-                  className="select-input"
+                <ThemedSelect
+                  label={t("Cách nhận")}
                   value={method}
-                  onChange={(event) => setMethod(event.target.value)}
-                >
-                  <option value="transfer">{t("Chuyển khoản")}</option>
-                  <option value="cash">{t("Tiền mặt")}</option>
-                </select>
+                  onChange={(value) => {
+                    draft.changed();
+                    setMethod(value);
+                  }}
+                  options={[
+                    { value: "transfer", label: t("Chuyển khoản") },
+                    { value: "cash", label: t("Tiền mặt") },
+                  ]}
+                />
               </label>
               <label className="field-label">
                 {t("Ghi chú khoản thu (riêng)")}

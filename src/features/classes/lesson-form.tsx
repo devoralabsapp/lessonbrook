@@ -17,6 +17,7 @@ import { api } from "@/lib/client-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ThemedSelect } from "@/components/ui/themed-select";
 import { useStatementMutation } from "@/features/statements/shared";
 import type { ClassDetail } from "./class-form";
 import { LoadError, MemberPicker, usePaged } from "./shared";
@@ -128,50 +129,49 @@ export function LessonForm({
           {!record && (
             <label className="field-label">
               {t("Dạy cho")}
-              <select
-                className="select-input"
+              <ThemedSelect
+                label={t("Dạy cho")}
                 value={mode}
-                onChange={(e) => {
-                  setMode(e.target.value);
+                onChange={(value) => {
+                  draft.changed();
+                  setMode(value);
                   setMembers([]);
                   setClassData(null);
                   setSelectionError("");
                 }}
-              >
-                <option value="group">{t("Nhóm học viên tự chọn")}</option>
-                <option value="class">{t("Một lớp học")}</option>
-              </select>
+                options={[
+                  { value: "group", label: t("Nhóm học viên tự chọn") },
+                  { value: "class", label: t("Một lớp học") },
+                ]}
+              />
             </label>
           )}
           {mode === "class" && !record && (
             <div className="space-y-3">
-              <label className="field-label">
-                {t("Lớp học *")}
-                <select
-                  className="select-input"
-                  value={classId}
-                  required
-                  onChange={(e) => {
-                    setClassId(e.target.value);
-                    setClassData(null);
-                    setMembers([]);
-                    setClassError("");
-                  }}
-                >
-                  <option value="">{t("Chọn lớp")}</option>
-                  {classId &&
-                    !classes.page?.items.some((c) => c.id === classId) && (
-                      <option value={classId}>
-                        {classData?.displayName ?? t("Lớp đang chọn")}
-                      </option>
-                    )}
-                  {classes.page?.items.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <ThemedSelect
+                label={t("Lớp học *")}
+                field
+                value={classId}
+                required
+                onChange={(value) => {
+                  draft.changed();
+                  setClassId(value);
+                  setClassData(null);
+                  setMembers([]);
+                  setClassError("");
+                }}
+                options={[
+                  { value: "", label: t("Chọn lớp") },
+                  ...(classId &&
+                  !classes.page?.items.some((item) => item.id === classId)
+                    ? [{ value: classId, label: classData?.displayName ?? t("Lớp đang chọn") }]
+                    : []),
+                  ...(classes.page?.items.map((item) => ({
+                    value: item.id,
+                    label: item.displayName,
+                  })) ?? []),
+                ]}
+              />
               {classes.page?.nextCursor && (
                 <Button
                   type="button"
@@ -345,17 +345,19 @@ export function LessonForm({
             <div className="space-y-3">
               <label className="field-label">
                 {t("Trạng thái chung")}
-                <select
-                  className="select-input"
+                <ThemedSelect
+                  label={t("Trạng thái chung")}
                   value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as TeachingSession["status"])
-                  }
-                >
-                  <option value="completed">{t("Đã dạy")}</option>
-                  <option value="planned">{t("Dự kiến")}</option>
-                  <option value="cancelled">{t("Đã hủy")}</option>
-                </select>
+                  onChange={(value) => {
+                    draft.changed();
+                    setStatus(value);
+                  }}
+                  options={[
+                    { value: "completed", label: t("Đã dạy") },
+                    { value: "planned", label: t("Dự kiến") },
+                    { value: "cancelled", label: t("Đã hủy") },
+                  ]}
+                />
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input

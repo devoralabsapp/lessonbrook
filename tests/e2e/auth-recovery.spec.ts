@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { origin } from "../integration/helpers";
 import { GUEST_THEME_COOKIE } from "../../src/domain/appearance";
+import { chooseOption } from "./select";
 
 test("popup bị chặn → đóng lỗi/thử lại với browser storage bị chặn → Google Emulator → cookie server", async ({
   page,
@@ -40,9 +41,10 @@ test("popup bị chặn → đóng lỗi/thử lại với browser storage bị 
     await route.fulfill({ response: await route.fetch({ timeout: 15000 }) });
   });
   await page.goto("/");
-  await page
-    .getByRole("combobox", { name: "Xem thử giao diện" })
-    .selectOption("command-line");
+  await chooseOption(
+    page.getByRole("combobox", { name: "Xem thử giao diện" }),
+    "command-line",
+  );
   await page.getByRole("link", { name: "Đăng nhập", exact: true }).click();
   await page.waitForURL("**/login");
   await expect(page.getByRole("main")).toHaveCSS(

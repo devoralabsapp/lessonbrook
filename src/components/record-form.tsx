@@ -18,6 +18,7 @@ import { useDebounced } from "@/lib/use-debounced";
 import { api } from "@/lib/client-api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { ThemedSelect } from "./ui/themed-select";
 type Props = {
   kind: "student" | "session";
   record?: Student | TeachingSession;
@@ -76,7 +77,7 @@ export function RecordForm({
     const trigger = document.activeElement;
     el?.showModal();
     el?.querySelector<HTMLElement>(
-      "input:not(:disabled), select:not(:disabled), textarea:not(:disabled)",
+      'input:not(:disabled):not([aria-hidden="true"]), textarea:not(:disabled)',
     )?.focus({ preventScroll: true });
     return () => {
       el?.close();
@@ -338,22 +339,19 @@ export function RecordForm({
               {!lesson && (
                 <label className="field-label">
                   {t("Dạy cho")}
-                  <select
-                    className="select-input"
+                  <ThemedSelect
+                    label={t("Dạy cho")}
                     value="single"
-                    onChange={(event) => {
-                      if (event.target.value !== "single") {
-                        onClose();
-                        router.push(
-                          `/app/lessons/new?mode=${event.target.value}`,
-                        );
-                      }
+                    onChange={(value) => {
+                      onClose();
+                      router.push(`/app/lessons/new?mode=${value}`);
                     }}
-                  >
-                    <option value="single">{t("Một học viên")}</option>
-                    <option value="group">{t("Nhóm học viên tự chọn")}</option>
-                    <option value="class">{t("Một lớp học")}</option>
-                  </select>
+                    options={[
+                      { value: "single", label: t("Một học viên") },
+                      { value: "group", label: t("Nhóm học viên tự chọn") },
+                      { value: "class", label: t("Một lớp học") },
+                    ]}
+                  />
                 </label>
               )}
               {!lesson && (
@@ -369,35 +367,28 @@ export function RecordForm({
                   />
                 </label>
               )}
-              <label className="field-label">
-                {t("Học viên *")}
-                <select
-                  required
-                  disabled={!!lesson}
-                  className="select-input"
-                  value={selected}
-                  onChange={(e) => {
-                    setSelected(e.target.value);
-                    const found = students.find((s) => s.id === e.target.value);
-                    if (found) setRate(found.defaultRateVnd);
-                  }}
-                >
-                  <option value="">{t("Chọn học viên")}</option>
-                  {lesson &&
-                    !students.some((s) => s.id === lesson.studentId) && (
-                      <option value={lesson.studentId}>
-                        {lesson.studentName}
-                      </option>
-                    )}
-                  {students
+              <ThemedSelect
+                label={t("Học viên *")}
+                field
+                required
+                disabled={!!lesson}
+                value={selected}
+                onChange={(value) => {
+                  draft.changed();
+                  setSelected(value);
+                  const found = students.find((s) => s.id === value);
+                  if (found) setRate(found.defaultRateVnd);
+                }}
+                options={[
+                  { value: "", label: t("Chọn học viên") },
+                  ...(lesson && !students.some((s) => s.id === lesson.studentId)
+                    ? [{ value: lesson.studentId, label: lesson.studentName }]
+                    : []),
+                  ...students
                     .filter((s) => !s.archivedAt || s.id === lesson?.studentId)
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.displayName}
-                      </option>
-                    ))}
-                </select>
-              </label>
+                    .map((s) => ({ value: s.id, label: s.displayName })),
+                ]}
+              />
               {(cursor || studentsError) && (
                 <Button
                   type="button"
@@ -440,19 +431,20 @@ export function RecordForm({
                 </label>
                 <label className="field-label">
                   {t("Trạng thái")}
-                  <select
-                    className="select-input"
+                  <ThemedSelect
+                    label={t("Trạng thái")}
                     value={status}
-                    onChange={(e) => {
-                      const v = e.target.value as TeachingSession["status"];
-                      setStatus(v);
-                      if (v === "cancelled") setBillable(false);
+                    onChange={(value) => {
+                      draft.changed();
+                      setStatus(value);
+                      if (value === "cancelled") setBillable(false);
                     }}
-                  >
-                    <option value="completed">{t("Đã dạy")}</option>
-                    <option value="planned">{t("Dự kiến")}</option>
-                    <option value="cancelled">{t("Đã hủy")}</option>
-                  </select>
+                    options={[
+                      { value: "completed", label: t("Đã dạy") },
+                      { value: "planned", label: t("Dự kiến") },
+                      { value: "cancelled", label: t("Đã hủy") },
+                    ]}
+                  />
                 </label>
                 <label className="field-label">
                   {t("Giờ bắt đầu (tùy chọn)")}

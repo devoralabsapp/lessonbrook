@@ -2,6 +2,7 @@
 
 import type { GroupLesson, TeachingClass } from "@/domain/classes";
 import { Button } from "@/components/ui/button";
+import { ThemedSelect } from "@/components/ui/themed-select";
 import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 import { LoadError, usePaged } from "./shared";
@@ -42,32 +43,25 @@ export function LessonTargetPicker({
       moreLabel: t("Tải thêm buổi nhóm/lớp"),
     },
   ];
+  const items = options.flatMap(({ label, items }) =>
+    items?.map((item) => ({ ...item, group: label })) ?? [],
+  );
   return (
     <div className="space-y-2">
       <label className="field-label">
         {t("Nhóm hoặc lớp")}
-        <select
-          className="select-input"
+        <ThemedSelect
+          label={t("Nhóm hoặc lớp")}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">{t("Tất cả nhóm và lớp")}</option>
-          {value &&
-            !options.some(({ items }) =>
-              items?.some((item) => item.value === value),
-            ) && <option value={value}>{t("Nhóm hoặc lớp đã chọn")}</option>}
-          {options.map(({ label, items }) =>
-            items?.length ? (
-              <optgroup key={label} label={label}>
-                {items.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null,
-          )}
-        </select>
+          onChange={onChange}
+          options={[
+            { value: "", label: t("Tất cả nhóm và lớp") },
+            ...(value && !items.some((item) => item.value === value)
+              ? [{ value, label: t("Nhóm hoặc lớp đã chọn") }]
+              : []),
+            ...items,
+          ]}
+        />
       </label>
       {options.some(({ list }) => !list.page && !list.error) && (
         <p role="status" className="text-xs text-muted-foreground">

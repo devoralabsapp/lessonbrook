@@ -79,7 +79,7 @@ test("native workspace opens account tools, planned lessons and filtered stateme
     await page.goto(`${origin}/app/statements?status=overdue`);
     await expect(
       page.getByRole("combobox", { name: "Statement status" }),
-    ).toHaveValue("overdue");
+    ).toHaveText("Overdue");
   } finally {
     await context.close();
   }
@@ -127,16 +127,22 @@ test("visitors can preview themes on the home page without saving an account pre
   await page.goto("/");
   const theme = page.getByRole("combobox", { name: "Preview theme" });
   const home = page.getByRole("main");
-  await expect(theme).toHaveValue("playful-retro");
-  await expect(theme.locator("option")).toHaveCount(8);
-
-  await theme.selectOption("command-line");
+  await expect(theme).toHaveText("Playful Retro Neo-Brutalism");
+  await theme.click();
+  const themeMenu = page.getByRole("listbox", { name: "Preview theme" });
+  await expect(themeMenu.getByRole("option")).toHaveCount(8);
+  await themeMenu.getByRole("option", { name: "Command Line", exact: true }).click();
   await expect(home).toHaveCSS("background-color", "rgb(0, 0, 0)");
   await expect(home.locator('[data-slot="card"]')).toHaveCSS(
     "background-color",
     "rgb(13, 13, 13)",
   );
-  await theme.selectOption("playful-retro");
+  await theme.click();
+  await expect(themeMenu).toHaveCSS("background-color", "rgb(13, 13, 13)");
+  await expect(themeMenu).toHaveCSS("color", "rgb(229, 229, 229)");
+  await themeMenu
+    .getByRole("option", { name: "Playful Retro Neo-Brutalism", exact: true })
+    .click();
   await expect(home).toHaveCSS("background-color", "rgb(255, 246, 230)");
   for (const width of [360, 1280]) {
     await page.setViewportSize({ width, height: 800 });
@@ -149,7 +155,7 @@ test("visitors can preview themes on the home page without saving an account pre
   }
 
   await page.reload();
-  await expect(theme).toHaveValue("playful-retro");
+  await expect(theme).toHaveText("Playful Retro Neo-Brutalism");
   await expect(home).toHaveAttribute("data-theme", "playful-retro");
   expect(appearanceRequests).toEqual([]);
 });

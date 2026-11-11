@@ -2,6 +2,7 @@ import { expect, test, type BrowserContext } from "@playwright/test";
 import { Firestore } from "firebase-admin/firestore";
 import { googleToken, origin } from "../integration/helpers";
 import { vietnamToday } from "../../src/domain";
+import { chooseOption } from "./select";
 async function login(context: BrowserContext) {
   const token = await googleToken();
   const { token: csrf } = await (
@@ -88,7 +89,7 @@ test("360px: hướng dẫn lần đầu → mất response xác nhận → ti�
     .click();
   await expect(
     page.getByRole("combobox", { name: "Học phí", exact: true }),
-  ).toHaveValue("unbilled");
+  ).toHaveText("Chưa lập bảng kê");
   await expect(
     page.getByRole("link", { name: "An buổi đầu", exact: true }),
   ).toBeVisible();
@@ -165,7 +166,10 @@ test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi
     );
     await expect(page.getByRole("link", { name: /Lan gốc/ })).toHaveCount(0);
     await page.unroute("**/api/students?**");
-    await page.getByLabel("Trạng thái học viên").selectOption("true");
+    await chooseOption(
+      page.getByRole("combobox", { name: "Trạng thái học viên" }),
+      "true",
+    );
     await expect(
       page.getByText("Không tìm thấy học viên phù hợp."),
     ).toBeVisible();
@@ -181,12 +185,14 @@ test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi
         billable,
       });
     await page.goto("/app/sessions");
-    await page
-      .getByRole("combobox", { name: "Trạng thái buổi", exact: true })
-      .selectOption("completed");
-    await page
-      .getByRole("combobox", { name: "Học phí", exact: true })
-      .selectOption("free");
+    await chooseOption(
+      page.getByRole("combobox", { name: "Trạng thái buổi", exact: true }),
+      "completed",
+    );
+    await chooseOption(
+      page.getByRole("combobox", { name: "Học phí", exact: true }),
+      "free",
+    );
     await page.getByRole("button", { name: "Lọc buổi dạy" }).click();
     await expect(page.getByText("Không tính phí", { exact: true })).toHaveCount(
       1,

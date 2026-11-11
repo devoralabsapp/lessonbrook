@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { googleToken, origin } from "../integration/helpers";
 import { vietnamToday } from "../../src/domain";
 import { addBusinessDays } from "../../src/domain/statements";
+import { chooseOption } from "./select";
 
 test.use({
   userAgent: "Mozilla/5.0 LessonBrookApp/iOS NativeWorkspace/1 MobileActions/1",
@@ -105,15 +106,16 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
     page.getByLabel("Số tiền nhận (VND)", { exact: true }),
   ).toHaveValue("");
   await page.goto("/app/statements?status=partial");
-  await expect(page.getByLabel("Trạng thái bảng kê")).toHaveValue("partial");
+  const status = page.getByRole("combobox", { name: "Trạng thái bảng kê" });
+  await expect(status).toHaveText("Thu một phần");
   await expect(
     page.getByRole("link", { name: /Lan thu học phí/ }),
   ).toBeVisible();
-  await page.getByLabel("Trạng thái bảng kê").selectOption("paid");
+  await chooseOption(status, "paid");
   await expect(
     page.getByRole("heading", { name: "Chưa có bảng kê trong danh sách này." }),
   ).toBeVisible();
-  await page.getByLabel("Trạng thái bảng kê").selectOption("overdue");
+  await chooseOption(status, "overdue");
   await page.getByRole("link", { name: /Lan thu học phí/ }).click();
   const beginPreview = async () => {
     await page

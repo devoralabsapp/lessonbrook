@@ -9,6 +9,7 @@ import { statementFilterLabels } from "@/domain/list-filters";
 import { api } from "@/lib/client-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ThemedSelect } from "@/components/ui/themed-select";
 import { type Page, StudentPicker, formatDate } from "./shared";
 export function StatementsList({
   initialStudentId = "",
@@ -106,17 +107,15 @@ export function StatementsList({
         <StudentPicker value={studentId} onChange={setStudentId} optional />
         <label className="field-label">
           {t("Trạng thái bảng kê")}
-          <select
-            className="select-input"
+          <ThemedSelect
+            label={t("Trạng thái bảng kê")}
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            {Object.entries(statementFilterLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {t(label)}
-              </option>
-            ))}
-          </select>
+            onChange={setStatus}
+            options={Object.entries(statementFilterLabels).map(([value, label]) => ({
+              value,
+              label: t(label),
+            }))}
+          />
         </label>
       </Card>
       {error?.key === key ? (
