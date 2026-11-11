@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { admin } from "@/lib/firebase/admin";
 import { client, googleToken, origin } from "./helpers";
@@ -83,6 +83,64 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
     expect((await loginWithTheme("invalid")).status).toBe(200);
     expect((await c.login(idToken)).status).toBe(200);
     expect(await savedTheme()).toBe("visual-code");
+  });
+  it("hands a Google session to only the app with the matching proof and preserves its theme", async () => {
+    const browser = await client();
+    const app = await client();
+    const googleSubject = randomUUID();
+    const { idToken } = await googleToken(googleSubject);
+    const verifier = randomBytes(32).toString("base64url");
+    const mobileChallenge = createHash("sha256")
+      .update(verifier)
+      .digest("base64url");
+    const issue = await browser.call("/api/auth/session", "POST", {
+      idToken,
+      mobileChallenge,
+    });
+    expect(issue.status).toBe(200);
+    expect(issue.headers.getSetCookie()).toEqual([]);
+    const { mobileCode: code } = await issue.json();
+    expect(code).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect((await browser.call("/api/profile")).status).toBe(401);
+
+    const redeem = (proof: string) =>
+      app.call(
+        "/api/auth/mobile",
+        "POST",
+        { code, verifier: proof },
+        randomUUID(),
+        { Cookie: `${app.csrfCookie}; ${GUEST_THEME_COOKIE}=playful-retro` },
+      );
+    expect((await redeem(randomBytes(32).toString("base64url"))).status).toBe(
+      401,
+    );
+    const attempts = await Promise.all([redeem(verifier), redeem(verifier)]);
+    expect(attempts.map((response) => response.status).sort()).toEqual([
+      200, 401,
+    ]);
+    const session = attempts
+      .find((response) => response.ok)!
+      .headers.getSetCookie()[0];
+    expect(session).toMatch(/^chotcong_session=.+;.*HttpOnly;.*SameSite=lax/);
+    const headers = { Cookie: `${app.csrfCookie}; ${session.split(";")[0]}` };
+    const profile = await app.call(
+      "/api/profile",
+      "GET",
+      undefined,
+      randomUUID(),
+      headers,
+    );
+    expect(await profile.json()).toMatchObject({
+      email: `${googleSubject}@example.test`,
+    });
+    const appearance = await app.call(
+      "/api/appearance",
+      "GET",
+      undefined,
+      randomUUID(),
+      headers,
+    );
+    expect(await appearance.json()).toMatchObject({ theme: "playful-retro" });
   });
   it("chặn CSRF Unicode và request quá lớn", async () => {
     expect(

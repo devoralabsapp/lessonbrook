@@ -1,0 +1,26 @@
+name: LessonBrook
+options:
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  LessonBrook:
+    type: application
+    platform: iOS
+    sources:
+      - LessonBrook
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: tech.devoralabs.lessonbrook
+        INFOPLIST_FILE: LessonBrook/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+schemes:
+  LessonBrook:
+    build:
+      targets:
+        LessonBrook: all

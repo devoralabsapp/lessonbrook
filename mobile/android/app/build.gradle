@@ -1,0 +1,22 @@
+plugins {
+    id 'com.android.application' version '8.9.1'
+}
+
+android {
+    namespace 'tech.devoralabs.lessonbrook'
+    compileSdk 35
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        applicationId 'tech.devoralabs.lessonbrook'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

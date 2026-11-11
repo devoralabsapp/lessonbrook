@@ -13,6 +13,8 @@ import { resumeDeletion } from "@/lib/server/account-deletion";
 import { deletionResponse } from "@/lib/server/deletion-http";
 import { GUEST_THEME_COOKIE } from "@/domain/appearance";
 import { getGuestTheme } from "@/lib/server/guest-theme";
+import { mobileProofSchema } from "@/domain/mobile-sign-in";
+import { issueMobileSignIn } from "@/lib/server/mobile-sign-in";
 import {
   cookieOptions,
   SESSION_COOKIE,
@@ -27,8 +29,11 @@ export async function POST(request: Request) {
         503,
         "Ứng dụng đang được thiết lập. Vui lòng quay lại sau.",
       );
-    const { idToken } = z
-      .object({ idToken: z.string().min(1).max(12000) })
+    const { idToken, mobileChallenge } = z
+      .object({
+        idToken: z.string().min(1).max(12000),
+        mobileChallenge: mobileProofSchema.optional(),
+      })
       .strict()
       .parse(await jsonBody(request));
     const { auth } = admin();
@@ -48,7 +53,7 @@ export async function POST(request: Request) {
     const sessionCookie = await auth.createSessionCookie(idToken, {
       expiresIn: SESSION_SECONDS * 1000,
     });
-    const theme = await getGuestTheme();
+    const theme = mobileChallenge ? undefined : await getGuestTheme();
     const ready = await ensureProfile(
       decoded.uid,
       decoded.name ?? "Giáo viên",
@@ -56,6 +61,10 @@ export async function POST(request: Request) {
       theme,
     );
     if (!ready) return deletionResponse(await resumeDeletion(decoded.uid));
+    if (mobileChallenge)
+      return json({
+        mobileCode: await issueMobileSignIn(sessionCookie, mobileChallenge),
+      });
     const response = json({ ok: true });
     response.cookies.set(SESSION_COOKIE, sessionCookie, {
       ...cookieOptions(),

@@ -79,11 +79,15 @@ Stop this project's web server and emulators before `test:emulator`. The runner 
 
 Development and production builds both use Webpack. `typecheck` runs Next type generation before TypeScript. Version-matched framework documentation is available in `node_modules/next/dist/docs/`.
 
+## Mobile apps
+
+LessonBrook for iOS and Android uses the same ledger, themes, and languages as the web app. Both apps require an internet connection. See [mobile build and self-hosting instructions](mobile/README.md).
+
 ## Self-hosting
 
 Read [DEPLOYMENT](docs/DEPLOYMENT.md). You need your own Firebase project, Google provider, database/Rules/indexes, HTTPS hostname, and IAM permissions. The source supports Vercel OIDC/WIF to avoid private keys. Cloud scripts are templates: configure and review their targets before using them with real data.
 
-This public edition is independent of any existing deployment. It excludes account data, actual environment files, private Git history, operational screenshots, and another deployment's cloud identifiers. Deploying the app does not by itself verify Google OAuth, IAM, HTTPS cookies, cloud indexes, or installation on real devices.
+You can run this public edition on your own deployment. It excludes account data, actual environment files, private Git history, operational screenshots, and another deployment's cloud identifiers. Deploying the app does not by itself verify Google OAuth, IAM, HTTPS cookies, cloud indexes, or installation on real devices.
 
 ## Development
 

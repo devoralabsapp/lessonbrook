@@ -12,7 +12,8 @@ import { ExportPanel } from "@/features/data/export-panel";
 import { DeletePanel } from "@/features/account/delete-panel";
 import { InfoLinks } from "./info-links";
 import { AppearancePicker } from "./appearance";
-export function SettingsForm() {
+import { MOBILE_SCHEME } from "@/domain/mobile-sign-in";
+export function SettingsForm({ inApp }: { inApp: boolean }) {
   const { t } = useI18n();
   const router = useRouter();
   const [profile, setProfile] = useState<{
@@ -143,10 +144,27 @@ export function SettingsForm() {
           </p>
         )}
       </Card>
-      {profile && (
+      {inApp ? (
+        <Card>
+          <Button
+            asChild
+            variant="outline"
+            className="h-auto whitespace-normal"
+          >
+            <a href={`${MOBILE_SCHEME}://data`}>
+              {t("Mở xuất dữ liệu và xóa tài khoản trong trình duyệt")}
+            </a>
+          </Button>
+        </Card>
+      ) : (
         <>
-          <ExportPanel />
-          <DeletePanel />
+          <div id="account-data" />
+          {profile && (
+            <>
+              <ExportPanel />
+              <DeletePanel />
+            </>
+          )}
         </>
       )}
       <div className="mt-5 flex flex-wrap gap-3">

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LessonBrook</string>
+    <string name="back">Back</string>
+    <string name="reload">Reload</string>
+    <string name="try_again">Try again</string>
+    <string name="load_error">LessonBrook couldn’t load. Check your connection and try again.</string>
+    <string name="sign_in_error">Couldn’t sign in</string>
+    <string name="sign_in_retry">Return to LessonBrook and start Google sign-in again.</string>
+    <string name="browser_error">No browser is available to open this link.</string>
+</resources>

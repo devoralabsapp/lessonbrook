@@ -33,3 +33,12 @@ credentials*.json
 *.cckey
 
 docs/screenshots/
+
+# Native build outputs and signing files
+mobile/android/.gradle/
+mobile/android/**/build/
+mobile/android/local.properties
+mobile/ios/DerivedData/
+xcuserdata/
+*.jks
+*.keystore

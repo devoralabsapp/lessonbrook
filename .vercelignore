@@ -28,3 +28,4 @@ backup-data/
 credentials*.json
 *.log
 *.har
+/mobile/
