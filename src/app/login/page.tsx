@@ -6,7 +6,7 @@ import { LoginForm } from "@/components/login-form";
 import { hasFirebaseServerConfig } from "@/lib/firebase/server-config";
 import { getGuestTheme } from "@/lib/server/guest-theme";
 import { DEFAULT_THEME } from "@/domain/appearance";
-import { isMobileApp } from "@/domain/mobile-sign-in";
+import { hasNativeGoogleSignIn, isMobileApp } from "@/domain/mobile-sign-in";
 export const runtime = "nodejs";
 export default async function LoginPage() {
   await connection();
@@ -15,12 +15,14 @@ export default async function LoginPage() {
     getGuestTheme(),
     headers(),
   ]);
+  const userAgent = requestHeaders.get("user-agent");
   return (
     <Suspense fallback={<p className="p-8">{t("Đang tải…")}</p>}>
       <LoginForm
         serverConfigured={hasFirebaseServerConfig()}
         theme={theme ?? DEFAULT_THEME}
-        inApp={isMobileApp(requestHeaders.get("user-agent"))}
+        inApp={isMobileApp(userAgent)}
+        nativeGoogleSignIn={hasNativeGoogleSignIn(userAgent)}
       />
     </Suspense>
   );

@@ -1,7 +1,15 @@
 import UIKit
 
 @main
-final class AppDelegate: UIResponder, UIApplicationDelegate {}
+final class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        NativeGoogleSignIn.configure()
+        return true
+    }
+}
 
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -25,7 +33,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     private func open(_ contexts: Set<UIOpenURLContext>) {
-        for context in contexts {
+        for context in contexts where !NativeGoogleSignIn.handle(context.url) {
             browser.finishSignIn(context.url)
         }
     }

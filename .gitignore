@@ -39,6 +39,8 @@ mobile/android/.gradle/
 mobile/android/**/build/
 mobile/android/local.properties
 mobile/ios/DerivedData/
+mobile/ios/Config/*.local.xcconfig
+GoogleService-Info.plist
 xcuserdata/
 *.jks
 *.keystore

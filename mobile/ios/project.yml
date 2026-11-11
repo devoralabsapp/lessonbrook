@@ -5,20 +5,51 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.1"
+    CURRENT_PROJECT_VERSION: "2"
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    exactVersion: "13.1.1"
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    exactVersion: "10.1.0"
 targets:
   LessonBrook:
     type: application
     platform: iOS
     sources:
       - LessonBrook
+    configFiles:
+      Debug: Config/Local.xcconfig
+      Release: Config/Local.xcconfig
+    dependencies:
+      - package: Firebase
+        products:
+          - FirebaseCore
+          - FirebaseAuth
+      - package: GoogleSignIn
+        product: GoogleSignIn
+    postBuildScripts:
+      - name: Copy local Firebase configuration
+        script: |
+          set -eu
+          config="$SRCROOT/Config/GoogleService-Info.plist"
+          destination="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/GoogleService-Info.plist"
+          if [ -f "$config" ]; then
+            /usr/bin/install -m 644 "$config" "$destination"
+          else
+            /bin/rm -f "$destination"
+          fi
+        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: tech.devoralabs.lessonbrook
         INFOPLIST_FILE: LessonBrook/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
+        OTHER_LDFLAGS: "$(inherited) -ObjC"
+        ENABLE_USER_SCRIPT_SANDBOXING: "NO"
 schemes:
   LessonBrook:
     build:

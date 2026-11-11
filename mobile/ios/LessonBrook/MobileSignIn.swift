@@ -7,9 +7,16 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
     static let sessionName = "chotcong_session"
     static let guestThemeName = "chotcong_guest_theme"
 
+    struct Session {
+        let cookie: HTTPCookie
+        var needsAccountDeletion: Bool { cookie.name == "chotcong_deletion" }
+    }
+
     private enum Failure: Error { case invalidResponse }
     private struct CSRF: Decodable { let token: String }
     private struct Proof: Encodable { let code: String; let verifier: String }
+    private struct GoogleProof: Encodable { let idToken: String }
+    private struct SessionResponse: Decodable { let redirect: String? }
 
     static func isFirstParty(_ url: URL) -> Bool {
         url.scheme == origin.scheme && url.host == origin.host
@@ -35,7 +42,23 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         return (verifier, url.url!)
     }
 
-    func exchange(code: String, verifier: String, theme: HTTPCookie?) async throws -> HTTPCookie {
+    func exchange(code: String, verifier: String, theme: HTTPCookie?) async throws -> Session {
+        let (_, response) = try await post(
+            path: "api/auth/mobile", body: Proof(code: code, verifier: verifier), theme: theme
+        )
+        return Session(cookie: try cookie(Self.sessionName, from: response))
+    }
+
+    func exchange(idToken: String, theme: HTTPCookie?) async throws -> Session {
+        let (data, response) = try await post(
+            path: "api/auth/session", body: GoogleProof(idToken: idToken), theme: theme
+        )
+        let result = try JSONDecoder().decode(SessionResponse.self, from: data)
+        let name = result.redirect == "/account/deletion" ? "chotcong_deletion" : Self.sessionName
+        return Session(cookie: try cookie(name, from: response))
+    }
+
+    private func post(path: String, body: some Encodable, theme: HTTPCookie?) async throws -> (Data, URLResponse) {
         let config = URLSessionConfiguration.ephemeral
         config.httpShouldSetCookies = false
         config.urlCache = nil
@@ -47,7 +70,7 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         let (data, csrfResponse) = try await session.data(from: Self.origin.appending(path: "api/auth/csrf"))
         let token = try JSONDecoder().decode(CSRF.self, from: data).token
         let csrf = try cookie("chotcong_csrf", from: csrfResponse)
-        var request = URLRequest(url: Self.origin.appending(path: "api/auth/mobile"))
+        var request = URLRequest(url: Self.origin.appending(path: path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(Self.origin.absoluteString, forHTTPHeaderField: "Origin")
@@ -56,9 +79,8 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         for (name, value) in HTTPCookie.requestHeaderFields(with: cookies) {
             request.setValue(value, forHTTPHeaderField: name)
         }
-        request.httpBody = try JSONEncoder().encode(Proof(code: code, verifier: verifier))
-        let (_, response) = try await session.data(for: request)
-        return try cookie(Self.sessionName, from: response)
+        request.httpBody = try JSONEncoder().encode(body)
+        return try await session.data(for: request)
     }
 
     func urlSession(
@@ -76,7 +98,8 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
               let header = http.value(forHTTPHeaderField: "Set-Cookie"),
               let cookie = HTTPCookie.cookies(withResponseHeaderFields: ["Set-Cookie": header], for: Self.origin)
                 .first(where: { $0.name == name }),
-              cookie.domain == Self.origin.host, cookie.path == "/", cookie.isHTTPOnly, cookie.isSecure
+              !cookie.value.isEmpty, cookie.domain == Self.origin.host,
+              cookie.path == "/", cookie.isHTTPOnly, cookie.isSecure
         else { throw Failure.invalidResponse }
         return cookie
     }

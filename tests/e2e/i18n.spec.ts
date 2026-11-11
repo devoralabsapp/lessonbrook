@@ -4,6 +4,36 @@ import { vietnamToday } from "../../src/domain";
 
 test.use({ locale: "vi-VN", storageState: { cookies: [], origins: [] } });
 
+test("configured iOS presents the native Google action while Android keeps browser sign-in", async ({
+  browser,
+}) => {
+  const mobile = [
+    {
+      agent: "LessonBrookApp/iOS NativeGoogleSignIn/1",
+      label: "Continue with Google",
+    },
+    {
+      agent: "LessonBrookApp/Android",
+      label: "Sign in with Google in browser",
+    },
+  ];
+  for (const { agent, label } of mobile) {
+    const context = await browser.newContext({
+      userAgent: `Mozilla/5.0 ${agent}`,
+    });
+    try {
+      const page = await context.newPage();
+      await page.goto(`${origin}/login`);
+      await expect(page.getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        "tech.devoralabs.lessonbrook://start",
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 test("visitors can preview themes on the home page without saving an account preference", async ({
   page,
 }) => {

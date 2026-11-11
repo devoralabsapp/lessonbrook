@@ -26,10 +26,12 @@ export function LoginForm({
   serverConfigured,
   theme,
   inApp,
+  nativeGoogleSignIn,
 }: {
   serverConfigured: boolean;
   theme: Theme;
   inApp: boolean;
+  nativeGoogleSignIn: boolean;
 }) {
   const { t } = useI18n();
   const configured = Boolean(
@@ -44,6 +46,9 @@ export function LoginForm({
   const preparation = useAuthReady(configured && !inApp && !mobileCode);
   const running = useRef(false);
   const params = useSearchParams();
+  const mobileSignInLabel = nativeGoogleSignIn
+    ? t("Tiếp tục với Google")
+    : t("Đăng nhập Google trong trình duyệt");
   async function login() {
     if (running.current || !preparation.ready) return;
     running.current = true;
@@ -149,9 +154,7 @@ export function LoginForm({
                     : `${MOBILE_SCHEME}://start`
                 }
               >
-                {mobileCode
-                  ? t("Mở LessonBrook")
-                  : t("Đăng nhập Google trong trình duyệt")}
+                {mobileCode ? t("Mở LessonBrook") : mobileSignInLabel}
                 <ArrowRight className="ml-auto" />
               </a>
             </Button>

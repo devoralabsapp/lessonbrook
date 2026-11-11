@@ -1,12 +1,20 @@
 # LessonBrook for iOS and Android
 
-Version 0.1.0 is available as source. The mobile apps load the responsive LessonBrook interface in WKWebView on iOS and WebView on Android. They use the same account, lesson data, themes, and English and Vietnamese options as the web app. The ledger needs an internet connection.
+The mobile apps load the responsive LessonBrook interface in WKWebView on iOS and WebView on Android. They use the same account, lesson data, themes, and English and Vietnamese options as the web app. The ledger needs an internet connection.
 
 ## iOS
 
-Open `ios/LessonBrook.xcodeproj` in Xcode, choose an iPhone or iPad simulator, and click **Run**. The app targets iOS 16 and later. There are no third-party Swift dependencies. The checked-in project can be regenerated from `ios/project.yml` using XcodeGen 2.46.0.
+Open `ios/LessonBrook.xcodeproj` in Xcode 26 or later, choose an iPhone or iPad simulator, and click **Run**. The app targets iOS 16 and later. Xcode resolves Firebase Auth and Google Sign-In via Swift Package Manager. The checked-in project can be regenerated from `ios/project.yml` using XcodeGen 2.46.0.
 
-To run on a physical device, select your Apple development team in **Signing & Capabilities** and use a bundle identifier and callback scheme you control.
+To run on a physical device, select your Apple development team in **Signing & Capabilities** and use a bundle identifier and callback scheme you control. You can also set `DEVELOPMENT_TEAM` in the ignored file `ios/Config/Signing.local.xcconfig`.
+
+To enable native Google sign-in, register the matching bundle identifier as an iOS app in the Firebase project used by the web deployment. Enable the Google provider and obtain the iOS configuration with its OAuth client ID. Then run this command from the repository root.
+
+```sh
+mobile/ios/configure-firebase.sh /path/to/GoogleService-Info.plist
+```
+
+The command installs the configuration and callback scheme locally. Without an iOS configuration, the app uses the browser sign-in flow. See [Firebase's Apple sign-in guide](https://firebase.google.com/docs/auth/ios/google-signin).
 
 ## Android
 
@@ -20,6 +28,8 @@ cd android
 The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install it through Android Studio or with `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Android release builds need your own signing configuration.
 
 ## Sign-in and account settings
+
+On a configured iOS build, tap **Continue with Google** and select your account in the Google sign-in sheet. LessonBrook exchanges the Firebase token for the usual HttpOnly server session and opens the ledger. Android and unconfigured iOS builds use these steps.
 
 1. Tap **Sign in with Google in browser** in the app.
 2. Finish Google sign-in in the system browser, then tap **Open LessonBrook** to return. If the attempt expires or the app was closed during sign-in, start again from the app.

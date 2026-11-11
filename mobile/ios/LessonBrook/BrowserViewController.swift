@@ -4,7 +4,8 @@ import WebKit
 final class BrowserViewController: UIViewController, WKNavigationDelegate {
     private let webView: WKWebView = {
         let config = WKWebViewConfiguration()
-        config.applicationNameForUserAgent = "LessonBrookApp/iOS"
+        config.applicationNameForUserAgent = NativeGoogleSignIn.isConfigured
+            ? "LessonBrookApp/iOS NativeGoogleSignIn/1" : "LessonBrookApp/iOS"
         return WKWebView(frame: .zero, configuration: config)
     }()
     private let errorPanel = UIStackView()
@@ -113,6 +114,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate {
 
     private func startSignIn() {
         guard !signingIn else { return }
+        if NativeGoogleSignIn.isConfigured {
+            signIn { theme in
+                guard let token = try await NativeGoogleSignIn.firebaseIDToken(presenting: self) else { return nil }
+                return try await MobileSignIn().exchange(idToken: token, theme: theme)
+            }
+            return
+        }
         let attempt = MobileSignIn.begin()
         verifier = attempt.verifier
         UIApplication.shared.open(attempt.url) { [weak self] opened in
@@ -124,6 +132,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate {
         guard let code = MobileSignIn.callbackCode(url), !signingIn else { return }
         guard let verifier else { return signInError() }
         self.verifier = nil
+        signIn { theme in
+            try await MobileSignIn().exchange(code: code, verifier: verifier, theme: theme)
+        }
+    }
+
+    private func signIn(_ authenticate: @escaping (HTTPCookie?) async throws -> MobileSignIn.Session?) {
         signingIn = true
         activity.startAnimating()
         Task {
@@ -133,13 +147,21 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate {
             }
             do {
                 let store = webView.configuration.websiteDataStore.httpCookieStore
-                let theme = await store.allCookies().first {
-                    $0.name == MobileSignIn.guestThemeName && $0.domain == MobileSignIn.origin.host
+                let cookies = await store.allCookies().filter {
+                    $0.domain == MobileSignIn.origin.host
                 }
-                let cookie = try await MobileSignIn().exchange(code: code, verifier: verifier, theme: theme)
-                await store.setCookie(cookie)
-                if let theme { await store.deleteCookie(theme) }
-                load(MobileSignIn.origin.appending(path: "app"))
+                let theme = cookies.first { $0.name == MobileSignIn.guestThemeName }
+                guard let session = try await authenticate(theme) else { return }
+                await store.setCookie(session.cookie)
+                if session.needsAccountDeletion {
+                    if let existing = cookies.first(where: { $0.name == MobileSignIn.sessionName }) {
+                        await store.deleteCookie(existing)
+                    }
+                    load(MobileSignIn.origin.appending(path: "account/deletion"))
+                } else {
+                    if let theme { await store.deleteCookie(theme) }
+                    load(MobileSignIn.origin.appending(path: "app"))
+                }
             } catch {
                 signInError()
             }
