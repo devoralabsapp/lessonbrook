@@ -428,6 +428,16 @@ dialog::backdrop {
 [data-theme="playful-retro"] [data-tone="mint"] {
   background: var(--retro-mint);
 }
+[data-theme="playful-retro"] [data-slot="lesson-date"] {
+  background: var(--retro-blue);
+  border: var(--retro-outline);
+  box-shadow: 2px 2px 0 var(--retro-ink);
+}
+[data-theme="playful-retro"] .lesson-date-month {
+  background: var(--retro-yellow);
+  border-bottom: var(--retro-outline);
+  color: var(--retro-ink);
+}
 [data-theme="playful-retro"] :is(h1, h2, h3):not([data-theme="statement"] *) {
   font-weight: 800;
   letter-spacing: -0.025em;

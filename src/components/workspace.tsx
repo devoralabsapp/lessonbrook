@@ -34,6 +34,7 @@ import { Input } from "./ui/input";
 import { Card } from "./ui/card";
 import { RecordForm } from "./record-form";
 import { StudentPicker } from "@/features/statements/shared";
+import { LessonTargetPicker } from "@/features/classes/lesson-target-picker";
 import { useDebounced } from "@/lib/use-debounced";
 import { GettingStartedCard } from "@/features/onboarding/guide";
 import type { OnboardingState } from "@/domain/onboarding";
@@ -50,6 +51,10 @@ type Summary = {
   unbilledVnd: number;
 };
 type Mode = "overview" | "students" | "sessions";
+const monthLabels = {
+  en: new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" }),
+  vi: new Intl.DateTimeFormat("vi-VN", { month: "short", timeZone: "UTC" }),
+};
 const compare = (a: string, b: string) => (a === b ? 0 : a < b ? -1 : 1);
 function updatePage<T extends { id: string }>(
   page: Page<T>,
@@ -77,11 +82,13 @@ export function Workspace({
   const [revision, setRevision] = useState(0);
   const [archived, setArchived] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchBy, setSearchBy] = useState("student");
   const queryText = useDebounced(search);
   const initialRange = {
     from: "",
     to: "",
     studentId: "",
+    target: "",
     status: "all",
     type: "all",
     billing: initialBilling,
@@ -113,12 +120,15 @@ export function Workspace({
   const [moreBusy, setMoreBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState("");
   const params = new URLSearchParams();
+  const [targetKind, targetId] = range.target.split(":");
   if (mode === "students") {
     params.set("archived", String(archived));
     if (queryText.trim()) params.set("q", queryText.trim());
   } else {
     if (studentId || range.studentId)
       params.set("studentId", studentId || range.studentId);
+    if (targetId)
+      params.set(targetKind === "class" ? "classId" : "lessonId", targetId);
     if (range.from) params.set("from", range.from);
     if (range.to) params.set("to", range.to);
     if (range.status !== "all") params.set("status", range.status);
@@ -237,6 +247,9 @@ export function Workspace({
         const selectedStudent = studentId || range.studentId;
         const matches =
           (!selectedStudent || selectedStudent === record.studentId) &&
+          (!targetId ||
+            targetId ===
+              (targetKind === "class" ? record.classId : record.lessonId)) &&
           (!range.from || record.sessionDate >= range.from) &&
           (!range.to || record.sessionDate <= range.to) &&
           matchesSession(record, range.status, range.billing, range.type);
@@ -464,7 +477,9 @@ export function Workspace({
         </div>
       )}
       <Card className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
+        <div
+          className={`flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 sm:px-6 ${mode === "sessions" ? "py-3" : "py-5"}`}
+        >
           <div>
             <h2 className="text-sm font-semibold">
               {mode === "overview"
@@ -519,11 +534,12 @@ export function Workspace({
               event.preventDefault();
               setRange(draftRange);
             }}
-            className="grid grid-cols-2 items-end gap-3 border-b border-border bg-surface p-4"
+            className="grid grid-cols-2 items-start gap-x-3 gap-y-2.5 border-b border-border bg-surface p-3 sm:grid-cols-4 sm:px-5"
           >
             <label className="field-label min-w-0">
               {t("Từ ngày")}
               <Input
+                className="h-[42px]"
                 name="from"
                 type="date"
                 min="1900-01-01"
@@ -537,6 +553,7 @@ export function Workspace({
             <label className="field-label min-w-0">
               {t("Đến ngày")}
               <Input
+                className="h-[42px]"
                 name="to"
                 type="date"
                 min="1900-01-01"
@@ -548,17 +565,51 @@ export function Workspace({
               />
             </label>
             {!studentId && (
-              <div className="col-span-2 min-w-0">
-                <StudentPicker
-                  value={draftRange.studentId}
-                  onChange={(value) =>
-                    setDraftRange({ ...draftRange, studentId: value })
-                  }
-                  optional
-                />
+              <div className="col-span-2 grid min-w-0 items-start gap-x-3 gap-y-2.5 sm:grid-cols-2">
+                <label className="field-label">
+                  {t("Tìm theo")}
+                  <select
+                    className="select-input"
+                    value={searchBy}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setSearchBy(next);
+                      setDraftRange((current) => ({
+                        ...current,
+                        studentId: "",
+                        target: "",
+                        type: next === "group-class" ? "shared" : "all",
+                      }));
+                    }}
+                  >
+                    <option value="student">{t("Tìm theo học viên")}</option>
+                    <option value="group-class">
+                      {t("Tìm theo nhóm/lớp")}
+                    </option>
+                  </select>
+                </label>
+                {searchBy === "student" ? (
+                  <StudentPicker
+                    value={draftRange.studentId}
+                    onChange={(value) =>
+                      setDraftRange({ ...draftRange, studentId: value })
+                    }
+                    optional
+                    showSearch={false}
+                  />
+                ) : (
+                  <LessonTargetPicker
+                    value={draftRange.target}
+                    onChange={(value) =>
+                      setDraftRange({ ...draftRange, target: value })
+                    }
+                  />
+                )}
               </div>
             )}
-            <label className="field-label min-w-0">
+            <label
+              className={`field-label min-w-0 ${searchBy === "group-class" ? "sm:col-span-2" : ""}`}
+            >
               {t("Trạng thái buổi")}
               <select
                 className="select-input"
@@ -573,7 +624,9 @@ export function Workspace({
                 <option value="cancelled">{t("Đã hủy")}</option>
               </select>
             </label>
-            <label className="field-label min-w-0">
+            <label
+              className={`field-label min-w-0 ${searchBy === "group-class" ? "sm:col-span-2" : ""}`}
+            >
               {t("Học phí")}
               <select
                 className="select-input"
@@ -588,8 +641,8 @@ export function Workspace({
                 <option value="free">{t("Buổi miễn phí")}</option>
               </select>
             </label>
-            <div className="col-span-2 flex flex-wrap items-end gap-3">
-              <label className="field-label min-w-0 flex-[1_1_14rem]">
+            {searchBy === "student" && (
+              <label className="field-label col-span-2 min-w-0">
                 {t("Loại buổi dạy")}
                 <select
                   className="select-input"
@@ -605,22 +658,15 @@ export function Workspace({
                   ))}
                 </select>
               </label>
-              {!studentId && (
-                <Link
-                  className="py-2 text-sm text-primary underline underline-offset-4"
-                  href="/app/lessons"
-                >
-                  {t("Xem buổi nhóm & lớp")}
-                </Link>
-              )}
-            </div>
-            <div className="col-span-2 flex flex-wrap gap-2">
-              <Button variant="outline" type="submit">
+            )}
+            <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-4">
+              <Button variant="outline" type="submit" size="sm">
                 {t("Lọc buổi dạy")}
               </Button>
               <Button
                 variant="ghost"
                 type="button"
+                size="sm"
                 onClick={() => {
                   const today = vietnamToday();
                   applyRange({ ...draftRange, from: today, to: today });
@@ -631,6 +677,7 @@ export function Workspace({
               <Button
                 variant="ghost"
                 type="button"
+                size="sm"
                 onClick={() => {
                   const today = vietnamToday();
                   const [year, month] = today.split("-").map(Number);
@@ -649,7 +696,11 @@ export function Workspace({
               <Button
                 variant="ghost"
                 type="button"
-                onClick={() => applyRange({ ...initialRange, billing: "all" })}
+                size="sm"
+                onClick={() => {
+                  setSearchBy("student");
+                  applyRange({ ...initialRange, billing: "all" });
+                }}
               >
                 {t("Xóa bộ lọc")}
               </Button>
@@ -738,18 +789,24 @@ export function Workspace({
             {view.sessions.items.map((s) => (
               <div
                 key={s.id}
-                className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
+                className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
               >
-                <div className="flex w-11 shrink-0 flex-col items-center rounded-xl border border-border bg-surface py-1.5">
-                  <span className="text-[9px] text-muted-foreground">
-                    {t("THÁNG ")}
-                    {s.sessionDate.slice(5, 7)}
+                <time
+                  dateTime={s.sessionDate}
+                  data-slot="lesson-date"
+                  aria-hidden="true"
+                  className="grid w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-accent-soft text-center text-foreground"
+                >
+                  <span className="lesson-date-month whitespace-nowrap bg-primary px-1 py-1 text-[10px] leading-4 font-bold uppercase text-primary-foreground">
+                    {monthLabels[locale].format(
+                      new Date(`${s.sessionDate}T00:00:00Z`),
+                    )}
                   </span>
-                  <span className="text-lg font-semibold leading-6">
+                  <span className="py-1 text-xl leading-6 font-extrabold tabular-nums">
                     {s.sessionDate.slice(8)}
                   </span>
-                </div>
-                <div className="min-w-0 basis-[calc(100%_-_4rem)] flex-1 sm:basis-40">
+                </time>
+                <div className="min-w-0 basis-[calc(100%_-_4.25rem)] flex-1 sm:basis-40">
                   <Link
                     href={`/app/students/${s.studentId}`}
                     className="break-words text-sm font-semibold"
@@ -809,6 +866,7 @@ export function Workspace({
         ) : range.from ||
           range.to ||
           range.studentId ||
+          range.target ||
           range.status !== "all" ||
           range.type !== "all" ||
           range.billing !== "all" ? (

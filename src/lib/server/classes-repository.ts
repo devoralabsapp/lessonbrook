@@ -109,7 +109,7 @@ export async function archiveClass(
 }
 const classListSchema = z
   .object({
-    archived: z.enum(["true", "false"]).default("false"),
+    archived: z.enum(["true", "false", "all"]).default("false"),
     q: searchSchema,
     cursor: z.string().optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -128,7 +128,8 @@ export async function listClasses(uid: string, raw: unknown) {
     limit: input.limit,
     dto: classDto,
     matches: (item) =>
-      Boolean(item.archivedAt) === (input.archived === "true") &&
+      (input.archived === "all" ||
+        Boolean(item.archivedAt) === (input.archived === "true")) &&
       normalizeSearch(item.displayName).includes(input.q),
   });
 }
@@ -308,6 +309,7 @@ export async function saveLesson(
 const lessonListSchema = z
   .object({
     classId: idSchema.optional(),
+    type: z.enum(["all", "group"]).default("all"),
     cursor: z.string().optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20),
   })
@@ -322,12 +324,18 @@ export async function listLessons(uid: string, raw: unknown) {
       .orderBy("sessionDate", "desc")
       .orderBy(FieldPath.documentId(), "desc"),
     orderField: "sessionDate",
-    scope: listScope(uid, "lessons", { classId: input.classId ?? null }),
+    scope: listScope(uid, "lessons", {
+      classId: input.classId ?? null,
+      ...(input.type !== "all" ? { type: input.type } : {}),
+    }),
     limit: input.limit,
     cursor: input.cursor,
     dto: lessonDto,
-    matches: input.classId
-      ? (item) => item.classId === input.classId
-      : undefined,
+    matches:
+      input.classId || input.type === "group"
+        ? (item) =>
+            (!input.classId || item.classId === input.classId) &&
+            (input.type !== "group" || item.classId === null)
+        : undefined,
   });
 }

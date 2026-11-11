@@ -71,10 +71,12 @@ export function StudentPicker({
   value,
   onChange,
   optional = false,
+  showSearch = true,
 }: {
   value: string;
   onChange: (id: string) => void;
   optional?: boolean;
+  showSearch?: boolean;
 }) {
   const { t } = useI18n();
   const [archived, setArchived] = useState(false);
@@ -157,16 +159,18 @@ export function StudentPicker({
   }
   return (
     <div className="space-y-3">
-      <label className="field-label">
-        {t("Tìm tên học viên")}
-        <Input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          maxLength={100}
-          placeholder={t("Có dấu hoặc không dấu")}
-        />
-      </label>
+      {showSearch && (
+        <label className="field-label">
+          {t("Tìm tên học viên")}
+          <Input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            maxLength={100}
+            placeholder={t("Có dấu hoặc không dấu")}
+          />
+        </label>
+      )}
       <label className="field-label">
         {t("Học viên")}
         <select

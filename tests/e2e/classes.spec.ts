@@ -147,10 +147,8 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     page.getByRole("link", { name: "Ghi buổi nhóm/lớp", exact: true }),
   ).toHaveCount(0);
   await expect(
-    page
-      .locator("form")
-      .getByRole("link", { name: "Xem buổi nhóm & lớp", exact: true }),
-  ).toHaveAttribute("href", "/app/lessons");
+    page.getByRole("link", { name: "Xem buổi nhóm & lớp", exact: true }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
   await page.getByRole("dialog").getByLabel("Dạy cho").selectOption("group");
   await expect(
@@ -168,6 +166,7 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await expect(
     page.getByText("240.000", { exact: false }).first(),
   ).toBeVisible();
+  const groupId = new URL(page.url()).pathname.split("/").at(-1);
   const nameBox = await page
     .getByRole("link", { name: "Lan", exact: true })
     .boundingBox();
@@ -204,6 +203,45 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await page.getByRole("button", { name: "Xóa bộ lọc", exact: true }).click();
   await expect(classRows).toHaveCount(2);
   await expect(groupRows).toHaveCount(2);
+  const searchBy = page.getByLabel("Tìm theo", { exact: true });
+  const studentPicker = page.getByRole("combobox", {
+    name: "Học viên",
+    exact: true,
+  });
+  const targetPicker = page.getByRole("combobox", {
+    name: "Nhóm hoặc lớp",
+    exact: true,
+  });
+  await expect(page.getByRole("searchbox")).toHaveCount(0);
+  await studentPicker.selectOption({ label: "Lan" });
+  await apply.click();
+  await expect(classRows).toHaveCount(1);
+  await expect(groupRows).toHaveCount(1);
+  await searchBy.selectOption("group-class");
+  await expect(studentPicker).toHaveCount(0);
+  await targetPicker.selectOption(
+    `class:${new URL(classUrl).pathname.split("/").at(-1)}`,
+  );
+  await apply.click();
+  await expect(classRows).toHaveCount(2);
+  await expect(groupRows).toHaveCount(0);
+  await targetPicker.selectOption(`group:${groupId}`);
+  await apply.click();
+  await expect(groupRows).toHaveCount(2);
+  await expect(classRows).toHaveCount(0);
+  const dateTile = page.locator('[data-slot="lesson-date"]').first();
+  await expect(dateTile).toHaveCSS("background-color", "rgb(170, 215, 245)");
+  await expect(dateTile.locator(".lesson-date-month")).toHaveCSS(
+    "background-color",
+    "rgb(255, 219, 87)",
+  );
+  await expect(dateTile).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}$/);
+  await searchBy.selectOption("student");
+  await expect(targetPicker).toHaveCount(0);
+  await expect(studentPicker).toHaveValue("");
+  await apply.click();
+  await expect(groupRows).toHaveCount(2);
+  await expect(classRows).toHaveCount(2);
 });
 
 test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại sau tải lại", async ({

@@ -403,6 +403,8 @@ export async function getSession(uid: string, id: string) {
 export const sessionListSchema = z
   .object({
     studentId: idSchema.optional(),
+    classId: idSchema.optional(),
+    lessonId: idSchema.optional(),
     status: sessionStatusFilterSchema.default("all"),
     type: sessionTypeFilterSchema.default("all"),
     billing: billingFilterSchema.default("all"),
@@ -436,13 +438,21 @@ export async function listSessions(uid: string, raw: unknown) {
       status: input.status,
       billing: input.billing,
       ...(input.type !== "all" ? { type: input.type } : {}),
+      ...(input.classId ? { classId: input.classId } : {}),
+      ...(input.lessonId ? { lessonId: input.lessonId } : {}),
     }),
     cursor: input.cursor,
     limit: input.limit,
     dto: sessionDto,
     matches:
-      input.status !== "all" || input.billing !== "all" || input.type !== "all"
+      input.status !== "all" ||
+      input.billing !== "all" ||
+      input.type !== "all" ||
+      input.classId ||
+      input.lessonId
         ? (session) =>
+            (!input.classId || session.classId === input.classId) &&
+            (!input.lessonId || session.lessonId === input.lessonId) &&
             matchesSession(session, input.status, input.billing, input.type)
         : undefined,
   });
