@@ -26,12 +26,14 @@ export type LessonDetailData = GroupLesson & {
 export function LessonForm({
   initialClassId = "",
   initialMode = "group",
+  scheduledSlot,
   record,
   onSaved,
   onCancel,
 }: {
   initialClassId?: string;
   initialMode?: string;
+  scheduledSlot?: { date: string; time: string };
   record?: LessonDetailData;
   onSaved?: () => void;
   onCancel?: () => void;
@@ -53,7 +55,9 @@ export function LessonForm({
   const [members, setMembers] = useState<Student[]>([]);
   const [selectionError, setSelectionError] = useState("");
   const [rate, setRate] = useState(record?.rateVnd ?? 200000);
-  const [status, setStatus] = useState<TeachingSession["status"]>("completed");
+  const [status, setStatus] = useState<TeachingSession["status"]>(
+    scheduledSlot ? "planned" : "completed",
+  );
   const [billable, setBillable] = useState(true);
   const [applyStatus, setApplyStatus] = useState(!record);
   useEffect(() => {
@@ -276,7 +280,9 @@ export function LessonForm({
                 required
                 min="1900-01-01"
                 max="2100-12-31"
-                defaultValue={record?.sessionDate ?? vietnamToday()}
+                defaultValue={
+                  record?.sessionDate ?? scheduledSlot?.date ?? vietnamToday()
+                }
               />
             </label>
             <label className="field-label">
@@ -284,7 +290,7 @@ export function LessonForm({
               <Input
                 name="startTime"
                 type="time"
-                defaultValue={record?.startTime ?? ""}
+                defaultValue={record?.startTime ?? scheduledSlot?.time ?? ""}
               />
             </label>
             <label className="field-label">

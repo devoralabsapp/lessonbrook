@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { admin } from "@/lib/firebase/admin";
 import { sessionInputSchema, vietnamToday } from "@/domain";
+import { addBusinessDays } from "@/domain/statements";
 import { client, googleToken, origin } from "./helpers";
 describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
   let a: Awaited<ReturnType<typeof client>>,
@@ -48,6 +49,76 @@ describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
       rateVnd: 150000,
       privateNote: "Ghi chú lớp riêng",
     });
+  });
+  it("projects weekly slots without writes, preserves them on old edits and skips recorded or archived slots", async () => {
+    const path = `/api/classes/${classId}`;
+    const today = vietnamToday();
+    const tomorrow = addBusinessDays(today, 1);
+    const weekday = (date: string) =>
+      new Date(`${date}T00:00:00Z`).getUTCDay() || 7;
+    const weeklySchedule = [
+      { weekday: weekday(today), time: "20:00" },
+      { weekday: weekday(tomorrow), time: "18:30" },
+    ];
+    const edit = {
+      displayName: "Piano chung",
+      studentIds: ids,
+      rateVnd: 150000,
+    };
+    expect(
+      (
+        await a.call(path, "PATCH", {
+          ...edit,
+          weeklySchedule: [...weeklySchedule, weeklySchedule[0]],
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (await a.call(path, "PATCH", { ...edit, weeklySchedule })).status,
+    ).toBe(200);
+    expect((await a.call(path, "PATCH", edit)).status).toBe(200);
+    const schedule = async () => (await a.call("/api/mobile/schedule")).json();
+    const upcoming = await schedule();
+    expect(upcoming.items).toEqual([]);
+    expect(upcoming.recurring).toEqual(
+      expect.arrayContaining([
+        {
+          id: classId,
+          name: "Piano chung",
+          kind: "recurring",
+          date: today,
+          time: "20:00",
+        },
+        {
+          id: classId,
+          name: "Piano chung",
+          kind: "recurring",
+          date: tomorrow,
+          time: "18:30",
+        },
+      ]),
+    );
+    expect(
+      (await (await b.call("/api/mobile/schedule")).json()).recurring,
+    ).toBeUndefined();
+    expect(
+      (await root().collection("sessions").count().get()).data().count,
+    ).toBe(0);
+    const lessonId = await created(
+      "/api/lessons",
+      group({ sessionDate: today, startTime: "20:00", status: "planned" }),
+    );
+    const saved = await schedule();
+    expect(saved.items).toEqual([
+      expect.objectContaining({ id: lessonId, date: today, time: "20:00" }),
+    ]);
+    expect(saved.recurring).not.toContainEqual(
+      expect.objectContaining({ date: today, time: "20:00" }),
+    );
+    expect(
+      (await a.call(`${path}/archive`, "POST", { archived: true })).status,
+    ).toBe(200);
+    expect((await schedule()).recurring).toBeUndefined();
   });
   it("buổi chụp một giá/người, bỏ người vắng; retry đồng thời không tạo thêm dòng hoặc audit", async () => {
     const key = randomUUID();

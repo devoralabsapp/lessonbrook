@@ -295,17 +295,28 @@ export function Workspace({
                   : t("Ghi từng buổi, theo dõi đúng học phí.")}
           </p>
         </div>
-        <Button
-          disabled={
-            Boolean(studentId) && (loading || !student || !!student.archivedAt)
-          }
-          onClick={() =>
-            setModal({ kind: mode === "students" ? "student" : "session" })
-          }
-        >
-          <Plus />
-          {mode === "students" ? t("Thêm học viên") : t("Ghi buổi dạy")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {!studentId && mode !== "students" && (
+            <Button asChild variant="outline">
+              <Link href="/app/schedule">
+                <CalendarDays />
+                {t("Lịch dạy sắp tới")}
+              </Link>
+            </Button>
+          )}
+          <Button
+            disabled={
+              Boolean(studentId) &&
+              (loading || !student || !!student.archivedAt)
+            }
+            onClick={() =>
+              setModal({ kind: mode === "students" ? "student" : "session" })
+            }
+          >
+            <Plus />
+            {mode === "students" ? t("Thêm học viên") : t("Ghi buổi dạy")}
+          </Button>
+        </div>
       </div>
       {mode === "sessions" && !studentId && (
         <div className="mb-6 flex flex-wrap gap-3">

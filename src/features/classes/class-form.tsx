@@ -5,7 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
 import type { Student } from "@/domain";
 import { MAX_VND } from "@/domain";
-import type { TeachingClass } from "@/domain/classes";
+import {
+  MAX_WEEKLY_SLOTS,
+  weekdays,
+  type TeachingClass,
+  type WeeklySlot,
+} from "@/domain/classes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStatementMutation } from "@/features/statements/shared";
@@ -25,9 +30,21 @@ export function ClassForm({
   const { t } = useI18n();
   const dialog = useRef<HTMLDialogElement>(null);
   const [members, setMembers] = useState<Student[]>(record?.students ?? []);
+  const [slots, setSlots] = useState<(WeeklySlot & { key: string })[]>(() =>
+    (record?.weeklySchedule ?? []).map((slot, index) => ({
+      ...slot,
+      key: String(index),
+    })),
+  );
   const [selectionError, setSelectionError] = useState("");
   const mutation = useStatementMutation();
   const draft = useMobileDraft(mutation.busy);
+  function updateSlot(key: string, change: Partial<WeeklySlot>) {
+    draft.changed();
+    setSlots((current) =>
+      current.map((slot) => (slot.key === key ? { ...slot, ...change } : slot)),
+    );
+  }
   useEffect(() => {
     const el = dialog.current,
       trigger = document.activeElement;
@@ -55,6 +72,7 @@ export function ClassForm({
         rateVnd: Number(form.get("rateVnd")),
         privateNote: String(form.get("privateNote")),
         studentIds: members.map((s) => s.id),
+        weeklySchedule: slots.map(({ weekday, time }) => ({ weekday, time })),
       },
     );
     if (result) {
@@ -111,6 +129,89 @@ export function ClassForm({
               setMembers(value);
             }}
           />
+          <fieldset className="min-w-0 space-y-3">
+            <legend className="text-sm font-semibold">
+              {t("Lịch học hằng tuần")}
+            </legend>
+            <p className="text-xs text-muted-foreground">
+              {t("Giờ Việt Nam. Lịch xuất hiện trong các buổi sắp tới.")}
+            </p>
+            {slots.map((slot, index) => (
+              <div
+                key={slot.key}
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2"
+              >
+                <label className="field-label min-w-0">
+                  <span className={index ? "sr-only" : undefined}>
+                    {t("Ngày trong tuần")}
+                  </span>
+                  <select
+                    className="select-input"
+                    value={slot.weekday}
+                    onChange={(e) =>
+                      updateSlot(slot.key, { weekday: Number(e.target.value) })
+                    }
+                  >
+                    {weekdays.map((day, index) => (
+                      <option key={day} value={index + 1}>
+                        {t(day)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field-label min-w-0">
+                  <span className={index ? "sr-only" : undefined}>
+                    {t("Giờ bắt đầu")}
+                  </span>
+                  <Input
+                    type="time"
+                    value={slot.time}
+                    required
+                    onChange={(e) =>
+                      updateSlot(slot.key, { time: e.target.value })
+                    }
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t("Xóa giờ học {0}", { "0": index + 1 })}
+                  onClick={() => {
+                    draft.changed();
+                    setSlots((current) =>
+                      current.filter((item) => item.key !== slot.key),
+                    );
+                  }}
+                >
+                  {t("Xóa")}
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={slots.length >= MAX_WEEKLY_SLOTS}
+              onClick={() => {
+                draft.changed();
+                const weekday =
+                  weekdays.findIndex(
+                    (_, index) =>
+                      !slots.some((slot) => slot.weekday === index + 1),
+                  ) + 1;
+                setSlots([
+                  ...slots,
+                  {
+                    key: crypto.randomUUID(),
+                    weekday: weekday || 1,
+                    time: slots.at(-1)?.time || "20:00",
+                  },
+                ]);
+              }}
+            >
+              {t("Thêm giờ học")}
+            </Button>
+          </fieldset>
           <label className="field-label">
             {t("Ghi chú riêng")}
             <textarea

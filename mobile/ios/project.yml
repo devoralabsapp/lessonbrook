@@ -5,8 +5,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.3.1"
-    CURRENT_PROJECT_VERSION: "5"
+    MARKETING_VERSION: "0.4.0"
+    CURRENT_PROJECT_VERSION: "6"
 packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git

@@ -91,7 +91,13 @@ async function handle(request: Request, context: Context) {
           displayName: onboarding.profile.displayName,
           needsOnboarding: !onboarding.completed,
           locale,
-          schedule: { ...schedule, items: schedule.items.slice(0, 8) },
+          schedule: {
+            ...schedule,
+            items: schedule.items.slice(0, 8),
+            ...(schedule.recurring
+              ? { recurring: schedule.recurring.slice(0, 8) }
+              : {}),
+          },
         });
       }
       if (resource === "mobile" && id === "schedule" && path.length === 2) {

@@ -4,6 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useState } from "react";
 import Link from "next/link";
 import { formatVnd } from "@/domain";
+import { weekdays } from "@/domain/classes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useStatementMutation } from "@/features/statements/shared";
@@ -66,6 +67,25 @@ export function ClassDetail({ id }: { id: string }) {
           {mutation.error}
         </p>
       )}
+      <Card className="space-y-3 p-5">
+        <h2 className="serif text-2xl">{t("Lịch học hằng tuần")}</h2>
+        {item.weeklySchedule.length ? (
+          <ul className="flex flex-wrap gap-2">
+            {item.weeklySchedule.map(({ weekday, time }) => (
+              <li
+                key={`${weekday}:${time}`}
+                className="rounded-lg border border-border px-3 py-2 text-sm"
+              >
+                {t(weekdays[weekday - 1])} · <time>{time}</time>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {t("Chưa đặt lịch học hằng tuần.")}
+          </p>
+        )}
+      </Card>
       <Card className="p-5">
         <h2 className="serif mb-4 text-2xl">{t("Học viên trong lớp")}</h2>
         <p className="mb-4 text-xs leading-5 text-muted-foreground">

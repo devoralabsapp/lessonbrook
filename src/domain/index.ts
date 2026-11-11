@@ -12,6 +12,7 @@ export const idSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]{1,128}$/, "ID không hợp lệ");
 export const requestIdSchema = z.uuid();
+export const lessonTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 export const dateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -48,11 +49,7 @@ export const sessionInputSchema = z
   .object({
     studentId: idSchema,
     sessionDate: dateSchema,
-    startTime: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-      .nullable()
-      .default(null),
+    startTime: lessonTimeSchema.nullable().default(null),
     durationMinutes: z.number().int().min(1).max(1440).nullable().default(null),
     status: z.enum(["planned", "completed", "cancelled"]),
     billable: z.boolean(),

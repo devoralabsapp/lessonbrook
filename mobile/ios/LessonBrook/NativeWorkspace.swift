@@ -20,6 +20,13 @@ struct WorkspaceSnapshot: Decodable {
     struct Schedule: Decodable {
         let today: String
         let items: [Lesson]
+        let recurring: [Lesson]?
+
+        var upcoming: [Lesson] {
+            Array((items + (recurring ?? [])).sorted {
+                ($0.date, $0.time ?? "24:00", $0.id) < ($1.date, $1.time ?? "24:00", $1.id)
+            }.prefix(8))
+        }
     }
 
     struct Lesson: Decodable, Identifiable {
@@ -29,30 +36,41 @@ struct WorkspaceSnapshot: Decodable {
         let date: String
         let time: String?
 
-        var path: String { "/app/\(kind == "group" ? "lessons" : "sessions")/\(id)" }
+        var path: String {
+            if kind == "recurring" {
+                var url = URLComponents()
+                url.path = "/app/lessons/new"
+                url.queryItems = [
+                    URLQueryItem(name: "classId", value: id), URLQueryItem(name: "date", value: date),
+                    URLQueryItem(name: "time", value: time)
+                ]
+                return url.string ?? "/app/schedule"
+            }
+            return "/app/\(kind == "group" ? "lessons" : "sessions")/\(id)"
+        }
     }
 }
 
 enum WorkspaceTab: Int, CaseIterable {
-    case today, students, lessons, tuition, more
+    case dashboard, students, classes, lessons, statements
 
     var label: String {
         switch self {
-        case .today: return "Today"
+        case .dashboard: return "Dashboard"
         case .students: return "Students"
         case .lessons: return "Lessons"
-        case .tuition: return "Tuition"
-        case .more: return "More"
+        case .statements: return "Statements"
+        case .classes: return "Classes"
         }
     }
 
     var icon: String {
         switch self {
-        case .today: return "rectangle.grid.2x2"
+        case .dashboard: return "rectangle.grid.2x2"
         case .students: return "person.2"
         case .lessons: return "calendar"
-        case .tuition: return "doc.text"
-        case .more: return "ellipsis.circle"
+        case .statements: return "doc.text"
+        case .classes: return "building.2"
         }
     }
 
@@ -60,7 +78,8 @@ enum WorkspaceTab: Int, CaseIterable {
         switch self {
         case .students: return "/app/students"
         case .lessons: return "/app/sessions"
-        case .tuition: return "/app/statements"
+        case .statements: return "/app/statements"
+        case .classes: return "/app/classes"
         default: return nil
         }
     }
@@ -109,10 +128,11 @@ func workspaceText(_ key: String, locale: String) -> String {
 
 struct NativeDashboard: View {
     let snapshot: WorkspaceSnapshot
+    let theme: String?
     let open: (String) -> Void
     let refresh: () async -> Void
 
-    private var palette: WorkspacePalette { WorkspacePalette(snapshot.theme) }
+    private var palette: WorkspacePalette { WorkspacePalette(theme ?? snapshot.theme) }
 
     var body: some View {
         ScrollView {
@@ -193,14 +213,15 @@ struct NativeDashboard: View {
     }
 
     private func scheduleView(_ schedule: WorkspaceSnapshot.Schedule) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        let items = schedule.upcoming
+        return VStack(alignment: .leading, spacing: 9) {
             Text(t("Upcoming lessons")).font(.title2.bold()).accessibilityAddTraits(.isHeader)
-            if schedule.items.isEmpty {
+            if items.isEmpty {
                 Text(t("No planned lessons in the next seven days."))
                     .font(.subheadline).foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(schedule.items, id: \.path) { lesson in
+                    ForEach(items, id: \.path) { lesson in
                         Button { open(lesson.path) } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "calendar").foregroundStyle(palette.accent)
@@ -209,6 +230,7 @@ struct NativeDashboard: View {
                                     Text(lesson.name ?? t("Group lesson")).font(.subheadline.weight(.semibold))
                                     Text("\(dayLabel(lesson.date, today: schedule.today)) · \(lesson.time ?? t("Time not set"))")
                                         .font(.footnote)
+                                    if lesson.kind == "recurring" { Text(t("Weekly")).font(.caption) }
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.footnote).accessibilityHidden(true)
@@ -218,7 +240,7 @@ struct NativeDashboard: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        if lesson.path != schedule.items.last?.path { Divider() }
+                        if lesson.path != items.last?.path { Divider() }
                     }
                 }
                 .padding(.horizontal, 14)
@@ -337,38 +359,4 @@ struct NativeWelcome: View {
     }
 
     private func t(_ key: String) -> String { workspaceText(key, locale: locale) }
-}
-
-struct NativeMore: View {
-    let locale: String
-    let palette: WorkspacePalette
-    let open: (String) -> Void
-
-    var body: some View {
-        List {
-            row("Classes", icon: "person.3", path: "/app/classes")
-            row("Account settings", icon: "gearshape", path: "/app/settings")
-            row("Help & support", icon: "questionmark.circle", path: "/help")
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(palette.background)
-        .tint(palette.accent)
-        .environment(\.colorScheme, palette.dark ? .dark : .light)
-    }
-
-    private func row(_ label: String, icon: String, path: String) -> some View {
-        Button { open(path) } label: {
-            HStack {
-                Label(workspaceText(label, locale: locale), systemImage: icon)
-                Spacer()
-                Image(systemName: "chevron.right").font(.footnote)
-                    .foregroundStyle(.secondary).accessibilityHidden(true)
-            }
-            .frame(minHeight: 32)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .listRowBackground(palette.surface)
-    }
 }

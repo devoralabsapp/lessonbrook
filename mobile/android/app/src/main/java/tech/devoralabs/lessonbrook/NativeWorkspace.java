@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.net.Uri;
 import android.view.Gravity;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -22,19 +23,21 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 final class NativeWorkspace {
     enum Tab {
-        TODAY(R.string.today, R.drawable.ic_today, null),
+        DASHBOARD(R.string.dashboard, R.drawable.ic_today, null),
         STUDENTS(R.string.students, R.drawable.ic_students, "/app/students"),
+        CLASSES(R.string.classes, R.drawable.ic_classes, "/app/classes"),
         LESSONS(R.string.lessons, R.drawable.ic_lessons, "/app/sessions"),
-        TUITION(R.string.tuition, R.drawable.ic_tuition, "/app/statements"),
-        MORE(R.string.more, R.drawable.ic_more, null);
+        STATEMENTS(R.string.statements, R.drawable.ic_tuition, "/app/statements");
 
         final int title;
         final int icon;
@@ -67,8 +70,17 @@ final class NativeWorkspace {
     record Schedule(String today, List<Lesson> items) {
         static Schedule parse(JSONObject data) throws JSONException {
             if (data == null) return null;
-            var items = data.getJSONArray("items");
             List<Lesson> lessons = new ArrayList<>();
+            appendLessons(lessons, data.getJSONArray("items"));
+            appendLessons(lessons, data.optJSONArray("recurring"));
+            lessons.sort(Comparator.comparing(Lesson::date)
+                .thenComparing(lesson -> lesson.time() == null ? "24:00" : lesson.time())
+                .thenComparing(Lesson::id));
+            return new Schedule(data.getString("today"), Collections.unmodifiableList(lessons.subList(0, Math.min(8, lessons.size()))));
+        }
+
+        private static void appendLessons(List<Lesson> lessons, JSONArray items) throws JSONException {
+            if (items == null) return;
             for (int i = 0; i < items.length(); i++) {
                 var row = items.getJSONObject(i);
                 lessons.add(new Lesson(
@@ -77,12 +89,16 @@ final class NativeWorkspace {
                     row.isNull("time") ? null : row.getString("time")
                 ));
             }
-            return new Schedule(data.getString("today"), Collections.unmodifiableList(lessons));
         }
     }
 
     record Lesson(String id, String kind, String name, String date, String time) {
-        String path() { return "/app/" + ("group".equals(kind) ? "lessons/" : "sessions/") + id; }
+        String path() {
+            if ("recurring".equals(kind))
+                return new Uri.Builder().path("/app/lessons/new").appendQueryParameter("classId", id)
+                    .appendQueryParameter("date", date).appendQueryParameter("time", time).build().toString();
+            return "/app/" + ("group".equals(kind) ? "lessons/" : "sessions/") + id;
+        }
     }
 
     record Palette(int background, int surface, int accent, boolean dark) {
@@ -210,7 +226,8 @@ final class NativeWorkspace {
             String day = data.today().equals(lesson.date()) ? text(R.string.today)
                 : LocalDate.parse(lesson.date()).format(dateFormat);
             String time = lesson.time() == null ? text(R.string.time_not_set) : lesson.time();
-            String when = day + " · " + time;
+            String when = day + " · " + time
+                + ("recurring".equals(lesson.kind()) ? " · " + text(R.string.weekly) : "");
             add(row, bold(name + " ›", 15, palette.foreground()), 0);
             add(row, label(when, 13, palette.foreground()), 3);
             row.setMinimumHeight(dp(50));
@@ -220,14 +237,6 @@ final class NativeWorkspace {
         add(section, rows, 8);
         add(section, button(text(R.string.full_schedule), () -> open.accept("/app/schedule"), false), 6);
         return section;
-    }
-
-    View more(Consumer<String> open) {
-        LinearLayout page = page();
-        add(page, button(text(R.string.classes), () -> open.accept("/app/classes"), false), 0);
-        add(page, button(text(R.string.account_settings), () -> open.accept("/app/settings"), false), 10);
-        add(page, button(text(R.string.help_support), () -> open.accept("/help"), false), 10);
-        return scroll(page);
     }
 
     View error(Runnable retry) {

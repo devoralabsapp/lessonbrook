@@ -24,3 +24,9 @@ export function hasNativeMobileActions(userAgent: string | null) {
     /\bMobileActions\/1\b/.test(userAgent ?? "")
   );
 }
+
+export function hasNativeChrome(userAgent: string | null) {
+  return (
+    hasNativeWorkspace(userAgent) && /\bNativeChrome\/1\b/.test(userAgent ?? "")
+  );
+}

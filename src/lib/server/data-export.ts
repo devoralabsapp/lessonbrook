@@ -42,6 +42,7 @@ const columns: Record<Dataset, [string, string][]> = {
     ["displayName", "Tên lớp"],
     ["studentIds", "Mã các học viên"],
     ["rateVnd", "Học phí mỗi người VND"],
+    ["weeklySchedule", "Lịch học hằng tuần"],
     ["privateNote", "Ghi chú riêng"],
     ["archivedAt", "Lưu trữ UTC"],
     ["createdAt", "Ngày tạo UTC"],

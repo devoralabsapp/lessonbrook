@@ -35,14 +35,17 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
-    private enum Screen { WELCOME, TODAY, MORE, PAGE }
+    private enum Screen { WELCOME, TODAY, PAGE }
 
     private static final String SESSION = "chotcong_session";
     private static final String LOCALE = "chotcong_locale";
     private static final String DELETION = "/account/deletion";
     private static final String DRAFT_STATE = """
-        document.querySelector('[data-mobile-draft="saving"]') ? 'saving' :
-        document.querySelector('[data-mobile-draft="dirty"]') ? 'dirty' : 'clean'
+        ({
+            state: document.querySelector('[data-mobile-draft="saving"]') ? 'saving' :
+                document.querySelector('[data-mobile-draft="dirty"]') ? 'dirty' : 'clean',
+            theme: document.querySelector('[data-saved-theme]')?.dataset.savedTheme ?? ''
+        })
         """;
     private static final String SHARE_DATA = """
         (() => {
@@ -60,9 +63,9 @@ public final class MainActivity extends Activity {
     private ProgressBar progress;
     private AlertDialog signInError;
     private Screen screen = Screen.WELCOME;
-    private NativeWorkspace.Tab tab = NativeWorkspace.Tab.TODAY;
-    private NativeWorkspace.Tab returnTab = NativeWorkspace.Tab.TODAY;
+    private NativeWorkspace.Tab tab = NativeWorkspace.Tab.DASHBOARD;
     private NativeWorkspace.Snapshot snapshot;
+    private String webTheme;
     private String locale = "en";
     private String webRoot;
     private String verifier;
@@ -114,7 +117,8 @@ public final class MainActivity extends Activity {
     }
 
     private NativeWorkspace.Palette palette() {
-        return NativeWorkspace.Palette.from(snapshot == null ? "playful-retro" : snapshot.theme());
+        String theme = webTheme != null ? webTheme : snapshot == null ? "playful-retro" : snapshot.theme();
+        return NativeWorkspace.Palette.from(theme);
     }
 
     private NativeWorkspace workspace() {
@@ -139,7 +143,7 @@ public final class MainActivity extends Activity {
 
         toolbar.removeAllViews();
         toolbar.setVisibility(screen == Screen.WELCOME ? View.GONE : View.VISIBLE);
-        toolbar.setBackgroundColor(colors.background());
+        toolbar.setBackgroundColor(colors.surface());
         if (screen == Screen.PAGE) toolbar.addView(tool(R.drawable.ic_back, R.string.back, this::goBack));
 
         TextView title = new TextView(this);
@@ -147,10 +151,19 @@ public final class MainActivity extends Activity {
         title.setTextColor(colors.foreground());
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         title.setTextSize(20);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         if (Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
         title.setPadding(dp(screen == Screen.PAGE ? 2 : 20), 0, dp(8), 0);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         if (screen == Screen.TODAY) toolbar.addView(tool(R.drawable.ic_refresh, R.string.reload, this::showToday));
+        if (screen != Screen.WELCOME && !DELETION.equals(webRoot)) {
+            String path = screen == Screen.PAGE ? webPath() : "/app";
+            if (!"/app/appearance".equals(path))
+                toolbar.addView(tool(R.drawable.ic_palette, R.string.choose_theme, () -> openToolbarPage("/app/appearance")));
+            if (!"/app/settings".equals(path))
+                toolbar.addView(tool(R.drawable.ic_settings, R.string.account_settings, () -> openToolbarPage("/app/settings")));
+        }
 
         tabs.removeAllViews();
         boolean showTabs = screen != Screen.WELCOME && !DELETION.equals(webRoot);
@@ -163,9 +176,9 @@ public final class MainActivity extends Activity {
         TypedValue background = new TypedValue();
         getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, background, true);
         button.setBackgroundResource(background.resourceId);
-        button.setLayoutParams(new LinearLayout.LayoutParams(dp(54), dp(48)));
+        button.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(48)));
         button.setImageResource(icon);
-        button.setImageTintList(ColorStateList.valueOf(palette().accent()));
+        button.setImageTintList(ColorStateList.valueOf(palette().foreground()));
         button.setContentDescription(workspace().text(label));
         button.setOnClickListener(view -> action.run());
         return button;
@@ -177,8 +190,16 @@ public final class MainActivity extends Activity {
 
     private void openTab(NativeWorkspace.Tab target) {
         if (target.path != null) openPage(target.path);
-        else if (target == NativeWorkspace.Tab.MORE) showMore();
         else showToday();
+    }
+
+    private void openToolbarPage(String path) {
+        beforeLeavingPage(() -> {
+            String current = webView == null ? null : webView.getUrl();
+            if (current != null && MobileSignIn.isFirstParty(Uri.parse(current))) {
+                if (!path.equals(Uri.parse(current).getPath())) webView.loadUrl(MobileSignIn.ORIGIN + path);
+            } else openPage(path);
+        });
     }
 
     private void nativeView(View child) {
@@ -192,8 +213,9 @@ public final class MainActivity extends Activity {
         int version = ++requestVersion;
         signedIn = false;
         snapshot = null;
+        webTheme = null;
         screen = Screen.WELCOME;
-        tab = NativeWorkspace.Tab.TODAY;
+        tab = NativeWorkspace.Tab.DASHBOARD;
         renderWelcome(null, expired, false);
         network.execute(() -> {
             try {
@@ -235,7 +257,7 @@ public final class MainActivity extends Activity {
         int version = ++requestVersion;
         signedIn = true;
         screen = Screen.TODAY;
-        tab = NativeWorkspace.Tab.TODAY;
+        tab = NativeWorkspace.Tab.DASHBOARD;
         if (snapshot != null) renderToday();
         else {
             nativeView(new FrameLayout(this));
@@ -252,6 +274,7 @@ public final class MainActivity extends Activity {
                 var result = NativeWorkspace.Snapshot.parse(MobileSignIn.get("/api/mobile/workspace", headers));
                 deliver(version, () -> {
                     snapshot = result;
+                    webTheme = null;
                     locale = result.locale();
                     renderToday();
                 });
@@ -271,13 +294,6 @@ public final class MainActivity extends Activity {
 
     private void showDashboardError() { nativeView(workspace().error(this::showToday)); }
 
-    private void showMore() {
-        ++requestVersion;
-        tab = NativeWorkspace.Tab.MORE;
-        screen = Screen.MORE;
-        nativeView(workspace().more(this::openPage));
-    }
-
     private void deliver(int version, Runnable display) {
         runOnUiThread(() -> {
             if (!isDestroyed() && requestVersion == version) display.run();
@@ -286,12 +302,11 @@ public final class MainActivity extends Activity {
 
     private void openPage(String path) {
         ++requestVersion;
-        returnTab = screen == Screen.MORE ? NativeWorkspace.Tab.MORE : NativeWorkspace.Tab.TODAY;
         closePage();
         content.removeAllViews();
         screen = Screen.PAGE;
         webRoot = path;
-        tab = pageTab(path);
+        tab = pageTab(path, tab);
         WebView web = new WebView(this);
         webView = web;
         configureWebView(web);
@@ -323,7 +338,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " LessonBrookApp/Android NativeWorkspace/1 MobileActions/1");
+        settings.setUserAgentString(settings.getUserAgentString() + " LessonBrookApp/Android NativeWorkspace/1 MobileActions/1 NativeChrome/1");
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -385,7 +400,7 @@ public final class MainActivity extends Activity {
         view.evaluateJavascript(SHARE_DATA, value -> {
             if (isDestroyed() || view != webView || !source.equals(view.getUrl()) || value == null) return;
             try {
-                JSONObject data = new JSONObject(value);
+                JSONObject data = new JSONObject(value == null ? "{}" : value);
                 String address = data.getString("url");
                 String text = data.getString("text");
                 Uri link = Uri.parse(address);
@@ -416,7 +431,7 @@ public final class MainActivity extends Activity {
                 chrome();
             }
             default -> {
-                tab = pageTab(path);
+                tab = pageTab(path, tab);
                 chrome();
             }
         }
@@ -536,24 +551,26 @@ public final class MainActivity extends Activity {
         return path == null ? webRoot : path;
     }
 
-    private static NativeWorkspace.Tab pageTab(String path) {
+    private static NativeWorkspace.Tab pageTab(String path, NativeWorkspace.Tab fallback) {
         if (path.startsWith("/app/students")) return NativeWorkspace.Tab.STUDENTS;
         if (path.startsWith("/app/sessions") || path.startsWith("/app/lessons") || path.equals("/app/schedule"))
             return NativeWorkspace.Tab.LESSONS;
-        if (path.startsWith("/app/statements")) return NativeWorkspace.Tab.TUITION;
-        return NativeWorkspace.Tab.MORE;
+        if (path.startsWith("/app/statements")) return NativeWorkspace.Tab.STATEMENTS;
+        if (path.startsWith("/app/classes")) return NativeWorkspace.Tab.CLASSES;
+        return fallback;
     }
 
-    private static int pageTitle(String path) {
+    private int pageTitle(String path) {
         return switch (path) {
             case "/app/lessons/new" -> R.string.record_lesson;
             case "/app/schedule" -> R.string.upcoming_lessons;
             case "/app/classes" -> R.string.classes;
             case "/app/settings" -> R.string.account_settings;
+            case "/app/appearance" -> R.string.appearance;
             case DELETION -> R.string.account_deletion;
             case "/onboarding" -> R.string.get_started;
             case "/help" -> R.string.help_support;
-            default -> pageTab(path).title;
+            default -> pageTab(path, tab).title;
         };
     }
 
@@ -562,12 +579,8 @@ public final class MainActivity extends Activity {
             beforeLeavingPage(() -> {
                 if (webView != null && webView.canGoBack()) webView.goBack();
                 else if (DELETION.equals(webRoot)) showWelcome(false);
-                else openTab(returnTab);
+                else showToday();
             });
-            return true;
-        }
-        if (screen == Screen.MORE) {
-            showToday();
             return true;
         }
         return false;
@@ -588,11 +601,20 @@ public final class MainActivity extends Activity {
         web.evaluateJavascript(DRAFT_STATE, value -> {
             checkingDraft = false;
             if (isDestroyed() || web != webView || !location.equals(web.getUrl())) return;
-            if ("\"clean\"".equals(value)) {
+            String state = "";
+            try {
+                JSONObject result = new JSONObject(value == null ? "{}" : value);
+                state = result.optString("state");
+                String theme = result.optString("theme");
+                if (!theme.isEmpty()) webTheme = theme;
+            } catch (JSONException ignored) {
+                // An interrupted page still needs the draft confirmation.
+            }
+            if ("clean".equals(state)) {
                 leave.run();
                 return;
             }
-            boolean saving = "\"saving\"".equals(value);
+            boolean saving = "saving".equals(state);
             NativeWorkspace ui = workspace();
             AlertDialog.Builder dialog = new AlertDialog.Builder(this)
                 .setTitle(ui.text(saving ? R.string.saving_changes : R.string.unsaved_changes))

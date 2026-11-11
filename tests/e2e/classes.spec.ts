@@ -39,6 +39,16 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await dialog.getByLabel("Học phí mỗi học viên").fill("150000");
   for (const name of ["Lan", "Minh", "An"])
     await dialog.getByRole("checkbox", { name, exact: true }).check();
+  for (const [index, day] of [2, 4, 6].entries()) {
+    await dialog
+      .getByRole("button", { name: "Thêm giờ học", exact: true })
+      .click();
+    await dialog
+      .getByLabel("Ngày trong tuần")
+      .nth(index)
+      .selectOption(String(day));
+    await dialog.getByLabel("Giờ bắt đầu").nth(index).fill("20:00");
+  }
   await dialog
     .getByRole("button", { name: "Lưu lớp học", exact: true })
     .click();
@@ -46,6 +56,21 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     page.getByRole("heading", { name: "Piano chiều", exact: true }),
   ).toBeVisible();
   const classUrl = page.url();
+  for (const day of ["Thứ Ba", "Thứ Năm", "Thứ Bảy"])
+    await expect(
+      page.getByText(`${day} · 20:00`, { exact: true }),
+    ).toBeVisible();
+  await page.goto("/app/schedule");
+  const scheduled = page
+    .getByRole("link", { name: /Piano chiều.*Hằng tuần/ })
+    .first();
+  const scheduledUrl = new URL((await scheduled.getAttribute("href"))!, origin);
+  await scheduled.click();
+  await expect(page.getByLabel("Ngày dạy")).toHaveValue(
+    scheduledUrl.searchParams.get("date")!,
+  );
+  await expect(page.getByLabel("Giờ bắt đầu")).toHaveValue("20:00");
+  await page.goto(classUrl);
   await page
     .getByRole("link", { name: "Ghi buổi cho lớp", exact: true })
     .click();

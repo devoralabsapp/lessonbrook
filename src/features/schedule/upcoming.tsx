@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   upcomingLessonPath,
+  sortUpcomingLessons,
   type UpcomingSchedule,
 } from "@/domain/upcoming-schedule";
 import { LoadError, useResource } from "@/features/classes/shared";
@@ -16,7 +17,11 @@ export function UpcomingScheduleView() {
   if (schedule.error)
     return <LoadError message={schedule.error} retry={schedule.reload} />;
   if (!schedule.data) return <p role="status">{t("Đang tải…")}</p>;
-  const { today, through, items } = schedule.data;
+  const { today, through } = schedule.data;
+  const items = sortUpcomingLessons([
+    ...schedule.data.items,
+    ...(schedule.data.recurring ?? []),
+  ]);
   return (
     <div className="space-y-4">
       <h1 className="serif text-3xl">{t("Lịch dạy sắp tới")}</h1>
@@ -27,7 +32,7 @@ export function UpcomingScheduleView() {
         <Card>
           <ul className="divide-y divide-border">
             {items.map((lesson) => (
-              <li key={`${lesson.kind}:${lesson.id}`}>
+              <li key={upcomingLessonPath(lesson)}>
                 <Link
                   href={upcomingLessonPath(lesson)}
                   className="block rounded-lg p-3 hover:bg-muted"
@@ -38,6 +43,7 @@ export function UpcomingScheduleView() {
                   <span className="text-sm text-muted-foreground">
                     {formatDate(lesson.date, locale)} ·{" "}
                     {lesson.time ?? t("Chưa đặt giờ")}
+                    {lesson.kind === "recurring" ? ` · ${t("Hằng tuần")}` : ""}
                   </span>
                 </Link>
               </li>

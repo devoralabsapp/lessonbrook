@@ -44,4 +44,9 @@
     <string name="full_schedule">View full schedule</string>
     <string name="share_statement">Share statement</string>
     <string name="share_unavailable">Couldn’t open sharing. Use Copy message and try again.</string>
+    <string name="dashboard">Dashboard</string>
+    <string name="statements">Statements</string>
+    <string name="appearance">Appearance</string>
+    <string name="choose_theme">Choose a theme</string>
+    <string name="weekly">Weekly</string>
 </resources>

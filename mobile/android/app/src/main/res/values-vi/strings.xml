@@ -44,4 +44,9 @@
     <string name="full_schedule">Xem lịch đầy đủ</string>
     <string name="share_statement">Chia sẻ bảng kê</string>
     <string name="share_unavailable">Không mở được chia sẻ. Hãy thử sao chép tin nhắn.</string>
+    <string name="dashboard">Tổng quan</string>
+    <string name="statements">Bảng kê</string>
+    <string name="appearance">Giao diện</string>
+    <string name="choose_theme">Chọn theme</string>
+    <string name="weekly">Hằng tuần</string>
 </resources>

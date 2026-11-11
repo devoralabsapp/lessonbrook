@@ -24,7 +24,7 @@ export const AppearanceContext = createContext<
   commitTheme: () => undefined,
   cancelPreview: () => undefined,
 });
-export function AppearancePicker() {
+export function AppearancePicker({ inline = false }: { inline?: boolean }) {
   const { t } = useI18n();
   const {
     theme: choice,
@@ -76,32 +76,41 @@ export function AppearancePicker() {
     }
   }
   return (
-    <div ref={root}>
-      <Button
-        ref={trigger}
-        type="button"
-        size="icon"
-        variant="outline"
-        title={t("Chọn theme")}
-        aria-label={t("Chọn theme")}
-        aria-expanded={open}
-        aria-controls={open ? id : undefined}
-        disabled={mutation.busy}
-        onClick={() => {
-          if (open) cancelPreview();
-          else {
-            setMessage("");
-            mutation.clearError();
-          }
-          setOpen(!open);
-        }}
-      >
-        <Palette aria-hidden="true" />
-      </Button>
-      {open && (
+    <div
+      ref={root}
+      data-mobile-draft={inline && mutation.busy ? "saving" : undefined}
+    >
+      {!inline && (
+        <Button
+          ref={trigger}
+          type="button"
+          size="icon"
+          variant="outline"
+          title={t("Chọn theme")}
+          aria-label={t("Chọn theme")}
+          aria-expanded={open}
+          aria-controls={open ? id : undefined}
+          disabled={mutation.busy}
+          onClick={() => {
+            if (open) cancelPreview();
+            else {
+              setMessage("");
+              mutation.clearError();
+            }
+            setOpen(!open);
+          }}
+        >
+          <Palette aria-hidden="true" />
+        </Button>
+      )}
+      {(inline || open) && (
         <Card
           id={id}
-          className="absolute inset-x-4 top-full z-30 mt-2 max-h-[calc(100dvh-10rem-env(safe-area-inset-bottom))] overflow-auto p-4 sm:left-auto sm:right-8 sm:w-[34rem] sm:p-5 lg:max-h-[calc(100dvh-7rem)]"
+          className={
+            inline
+              ? "p-4 sm:p-5"
+              : "absolute inset-x-4 top-full z-30 mt-2 max-h-[calc(100dvh-10rem-env(safe-area-inset-bottom))] overflow-auto p-4 sm:left-auto sm:right-8 sm:w-[34rem] sm:p-5 lg:max-h-[calc(100dvh-7rem)]"
+          }
         >
           <h2 className="serif text-xl">{t("Giao diện của bạn")}</h2>
           <fieldset

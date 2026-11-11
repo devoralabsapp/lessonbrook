@@ -34,11 +34,13 @@ export function AppShell({
   name,
   initialTheme = DEFAULT_THEME,
   embedded = false,
+  nativeChrome = false,
   children,
 }: {
   name: string;
   initialTheme?: Theme;
   embedded?: boolean;
+  nativeChrome?: boolean;
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
@@ -48,7 +50,8 @@ export function AppShell({
     href === "/app"
       ? path === href
       : path.startsWith(href) ||
-        (href === "/app/sessions" && path.startsWith("/app/lessons"));
+        (href === "/app/sessions" &&
+          (path.startsWith("/app/lessons") || path === "/app/schedule"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -70,6 +73,7 @@ export function AppShell({
     <AppearanceContext.Provider value={appearance}>
       <div
         data-theme={appearance.theme}
+        data-saved-theme={appearance.savedTheme}
         className="min-h-dvh bg-background text-foreground"
       >
         <a
@@ -141,10 +145,12 @@ export function AppShell({
         )}
         <div className={embedded ? undefined : "lg:ml-[242px]"}>
           {embedded ? (
-            <header className="relative flex justify-end gap-3 px-5 pt-3 sm:px-9">
-              {path === "/app/settings" && <LanguageSwitcher />}
-              <AppearancePicker key={path} />
-            </header>
+            (!nativeChrome || path === "/app/settings") && (
+              <header className="relative flex justify-end gap-3 px-5 pt-3 sm:px-9">
+                {path === "/app/settings" && <LanguageSwitcher />}
+                {!nativeChrome && <AppearancePicker key={path} />}
+              </header>
+            )
           ) : (
             <header
               data-slot="workspace-header"
@@ -161,7 +167,9 @@ export function AppShell({
                     ? t("Học viên")
                     : path.includes("classes")
                       ? t("Lớp học")
-                      : path.includes("sessions") || path.includes("lessons")
+                      : path.includes("sessions") ||
+                          path.includes("lessons") ||
+                          path === "/app/schedule"
                         ? t("Buổi dạy")
                         : path.includes("statements")
                           ? t("Bảng kê")

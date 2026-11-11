@@ -1,7 +1,36 @@
 import { z } from "zod";
-import { dateSchema, idSchema, moneySchema } from ".";
+import { dateSchema, idSchema, lessonTimeSchema, moneySchema } from ".";
 
 export const MAX_CLASS_STUDENTS = 50;
+export const MAX_WEEKLY_SLOTS = 35;
+export const weekdays = [
+  "Thứ Hai",
+  "Thứ Ba",
+  "Thứ Tư",
+  "Thứ Năm",
+  "Thứ Sáu",
+  "Thứ Bảy",
+  "Chủ nhật",
+] as const;
+const weeklySlotSchema = z
+  .object({
+    weekday: z.number().int().min(1).max(7),
+    time: lessonTimeSchema,
+  })
+  .strict();
+export type WeeklySlot = z.infer<typeof weeklySlotSchema>;
+const weeklyScheduleSchema = z
+  .array(weeklySlotSchema)
+  .max(MAX_WEEKLY_SLOTS)
+  .refine(
+    (slots) =>
+      new Set(slots.map(({ weekday, time }) => `${weekday}:${time}`)).size ===
+      slots.length,
+    "Các giờ học hằng tuần không được trùng nhau.",
+  )
+  .transform((slots) =>
+    slots.sort((a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time)),
+  );
 export const participantIdsSchema = z
   .array(idSchema)
   .min(1)
@@ -16,9 +45,11 @@ export const classInputSchema = z
     studentIds: participantIdsSchema,
     rateVnd: moneySchema,
     privateNote: z.string().trim().max(1000).default(""),
+    weeklySchedule: weeklyScheduleSchema.optional(),
   })
   .strict();
 export const classSchema = classInputSchema.extend({
+  weeklySchedule: weeklyScheduleSchema.default([]),
   id: idSchema,
   archivedAt: z.string().nullable(),
   createdAt: z.string(),
@@ -31,11 +62,7 @@ const lessonFields = z
     studentIds: participantIdsSchema,
     rateVnd: moneySchema,
     sessionDate: dateSchema,
-    startTime: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-      .nullable()
-      .default(null),
+    startTime: lessonTimeSchema.nullable().default(null),
     durationMinutes: z.number().int().min(1).max(1440).nullable().default(null),
     status: z.enum(["planned", "completed", "cancelled"]).nullable(),
     billable: z.boolean().nullable(),

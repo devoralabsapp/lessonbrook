@@ -3,7 +3,7 @@ import UIKit
 import WebKit
 
 final class BrowserViewController: UIViewController, WKNavigationDelegate, UITabBarDelegate {
-    private enum Screen { case welcome, today, more, page }
+    private enum Screen { case welcome, today, page }
     private struct Availability: Decodable { let available: Bool }
 
     private let native = UIHostingController(rootView: AnyView(EmptyView()))
@@ -16,9 +16,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private var webURL: NSKeyValueObservation?
     private var webRoot: String?
     private var screen = Screen.welcome
-    private var selectedTab = WorkspaceTab.today
-    private var returnTab = WorkspaceTab.today
+    private var selectedTab = WorkspaceTab.dashboard
     private var snapshot: WorkspaceSnapshot?
+    private var webTheme: String?
     private var locale = "en"
     private var request: Task<Void, Never>?
     private var verifier: String?
@@ -27,8 +27,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private var checkingDraft = false
 
     private static let draftState = """
-        document.querySelector('[data-mobile-draft="saving"]') ? 'saving' :
-        document.querySelector('[data-mobile-draft="dirty"]') ? 'dirty' : 'clean'
+        ({
+            state: document.querySelector('[data-mobile-draft="saving"]') ? 'saving' :
+                document.querySelector('[data-mobile-draft="dirty"]') ? 'dirty' : 'clean',
+            theme: document.querySelector('[data-saved-theme]')?.dataset.savedTheme ?? ''
+        })
         """
     private static let shareData = """
         (() => {
@@ -38,7 +41,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         """
 
     private var cookies: WKHTTPCookieStore { WKWebsiteDataStore.default().httpCookieStore }
-    private var palette: WorkspacePalette { WorkspacePalette(snapshot?.theme) }
+    private var palette: WorkspacePalette { WorkspacePalette(webTheme ?? snapshot?.theme) }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -111,7 +114,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     }
 
     private func configureChrome() {
-        let showTabs = screen == .today || screen == .more || (screen == .page && webRoot != "/account/deletion")
+        let showTabs = screen == .today || (screen == .page && webRoot != "/account/deletion")
         tabs.isHidden = !showTabs
         bottom?.isActive = false
         bottom = content.bottomAnchor.constraint(equalTo: showTabs ? tabs.topAnchor : view.safeAreaLayoutGuide.bottomAnchor)
@@ -120,12 +123,42 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             UITabBarItem(title: t($0.label), image: UIImage(systemName: $0.icon), tag: $0.rawValue)
         }
         tabs.selectedItem = tabs.items?[selectedTab.rawValue]
-        tabs.tintColor = UIColor(palette.accent)
+        let surface = UIColor(palette.surface)
+        let ink = UIColor(palette.foreground)
+        let accent = UIColor(palette.accent)
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithOpaqueBackground()
+        tabAppearance.backgroundColor = surface
+        for item in [tabAppearance.stackedLayoutAppearance, tabAppearance.inlineLayoutAppearance,
+                     tabAppearance.compactInlineLayoutAppearance] {
+            item.normal.iconColor = ink
+            item.normal.titleTextAttributes = [.foregroundColor: ink]
+            item.selected.iconColor = accent
+            item.selected.titleTextAttributes = [.foregroundColor: accent]
+        }
+        tabs.standardAppearance = tabAppearance
+        tabs.scrollEdgeAppearance = tabAppearance
+        tabs.tintColor = accent
         view.backgroundColor = UIColor(palette.background)
         overrideUserInterfaceStyle = palette.dark ? .dark : .light
-        navigationController?.navigationBar.tintColor = UIColor(palette.accent)
+        let barAppearance = UINavigationBarAppearance()
+        barAppearance.configureWithOpaqueBackground()
+        barAppearance.backgroundColor = surface
+        barAppearance.titleTextAttributes = [.foregroundColor: ink]
+        barAppearance.largeTitleTextAttributes = [.foregroundColor: ink]
+        let bar = navigationController?.navigationBar
+        bar?.standardAppearance = barAppearance
+        bar?.compactAppearance = barAppearance
+        bar?.scrollEdgeAppearance = barAppearance
+        bar?.compactScrollEdgeAppearance = barAppearance
+        bar?.tintColor = ink
         navigationController?.setNavigationBarHidden(screen == .welcome, animated: false)
-        title = screen == .page ? pageTitle(webView?.url?.path ?? webRoot ?? "") : t(selectedTab.label)
+        let path = webView?.url?.path ?? webRoot ?? ""
+        title = screen == .page ? pageTitle(path) : t(selectedTab.label)
+        navigationItem.rightBarButtonItems = showTabs ? [
+            path == "/app/settings" ? nil : toolbarItem("gearshape", "Account settings", #selector(openSettings)),
+            path == "/app/appearance" ? nil : toolbarItem("paintpalette", "Choose a theme", #selector(openAppearance))
+        ].compactMap { $0 } : []
         if screen == .page {
             navigationItem.leftBarButtonItem = UIBarButtonItem(
                 image: UIImage(systemName: "chevron.backward"), style: .plain, target: self, action: #selector(goBack)
@@ -133,6 +166,26 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             navigationItem.leftBarButtonItem?.accessibilityLabel = t("Back")
         } else {
             navigationItem.leftBarButtonItem = nil
+        }
+    }
+
+    private func toolbarItem(_ image: String, _ label: String, _ action: Selector) -> UIBarButtonItem {
+        let item = UIBarButtonItem(image: UIImage(systemName: image), style: .plain, target: self, action: action)
+        item.accessibilityLabel = t(label)
+        return item
+    }
+
+    @objc private func openSettings() { openToolbarPage("/app/settings") }
+    @objc private func openAppearance() { openToolbarPage("/app/appearance") }
+
+    private func openToolbarPage(_ path: String) {
+        beforeLeavingPage { [self] in
+            if let webView, let current = webView.url, MobileSignIn.isFirstParty(current),
+               let url = URL(string: path, relativeTo: MobileSignIn.origin)?.absoluteURL {
+                if current.path != path { webView.load(URLRequest(url: url)) }
+            } else {
+                openPage(path)
+            }
         }
     }
 
@@ -152,7 +205,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         request?.cancel()
         signedIn = false
         snapshot = nil
-        selectedTab = .today
+        webTheme = nil
+        selectedTab = .dashboard
         showNative(.welcome, body: welcome(nil, expired: expired))
         request = Task {
             do {
@@ -193,7 +247,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func showToday() {
         request?.cancel()
         signedIn = true
-        selectedTab = .today
+        selectedTab = .dashboard
         if let snapshot {
             showNative(.today, body: dashboard(snapshot))
         } else {
@@ -203,7 +257,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     }
 
     private func dashboard(_ value: WorkspaceSnapshot) -> NativeDashboard {
-        NativeDashboard(snapshot: value, open: { [weak self] path in self?.openPage(path) },
+        NativeDashboard(snapshot: value, theme: webTheme, open: { [weak self] path in self?.openPage(path) },
                         refresh: { [weak self] in await self?.loadDashboard() })
     }
 
@@ -216,6 +270,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             )
             guard !Task.isCancelled, screen == .today else { return }
             snapshot = value
+            webTheme = nil
             locale = value.locale
             native.rootView = AnyView(dashboard(value))
             configureChrome()
@@ -235,20 +290,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         }
     }
 
-    private func showMore() {
-        request?.cancel()
-        selectedTab = .more
-        showNative(.more, body: NativeMore(locale: locale, palette: palette) { [weak self] path in
-            self?.openPage(path)
-        })
-    }
-
     func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
         guard let next = WorkspaceTab(rawValue: item.tag) else { return }
         tabBar.selectedItem = tabs.items?[selectedTab.rawValue]
         beforeLeavingPage { [self] in
             if let path = next.path { openPage(path) }
-            else if next == .more { showMore() }
             else { showToday() }
         }
     }
@@ -257,19 +303,18 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         guard let url = URL(string: path, relativeTo: MobileSignIn.origin)?.absoluteURL,
               MobileSignIn.isFirstParty(url) else { return }
         request?.cancel()
-        returnTab = screen == .more ? .more : .today
         webURL = nil
         webView?.stopLoading()
         webView?.removeFromSuperview()
         webRoot = path
         screen = .page
-        selectedTab = pageTab(path)
+        selectedTab = pageTab(path) ?? selectedTab
         native.view.isHidden = true
 
         let configuration = WKWebViewConfiguration()
         configuration.applicationNameForUserAgent = NativeGoogleSignIn.isConfigured
-            ? "LessonBrookApp/iOS NativeGoogleSignIn/1 NativeWorkspace/1 MobileActions/1"
-            : "LessonBrookApp/iOS NativeWorkspace/1 MobileActions/1"
+            ? "LessonBrookApp/iOS NativeGoogleSignIn/1 NativeWorkspace/1 MobileActions/1 NativeChrome/1"
+            : "LessonBrookApp/iOS NativeWorkspace/1 MobileActions/1 NativeChrome/1"
         let web = WKWebView(frame: .zero, configuration: configuration)
         web.navigationDelegate = self
         web.translatesAutoresizingMaskIntoConstraints = false
@@ -293,8 +338,6 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             webView.goBack()
         } else if webRoot == "/account/deletion" {
             showWelcome()
-        } else if returnTab == .more {
-            showMore()
         } else {
             showToday()
         }
@@ -310,8 +353,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             guard let self else { return }
             checkingDraft = false
             guard let web, web === webView, web.url == url else { return }
-            if value as? String == "clean" { return leave() }
-            let saving = value as? String == "saving"
+            let state = value as? [String: String]
+            if let theme = state?["theme"], !theme.isEmpty { webTheme = theme }
+            if state?["state"] == "clean" { return leave() }
+            let saving = state?["state"] == "saving"
             let alert = UIAlertController(
                 title: t(saving ? "Saving changes" : "Unsaved changes"),
                 message: t(saving ? "Wait for the save to finish before leaving."
@@ -343,9 +388,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             webRoot = url.path
             configureChrome()
         default:
-            selectedTab = pageTab(url.path)
-            title = pageTitle(url.path)
-            tabs.selectedItem = tabs.items?[selectedTab.rawValue]
+            selectedTab = pageTab(url.path) ?? selectedTab
+            configureChrome()
         }
     }
 
@@ -506,11 +550,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         locale = saved.first(where: { $0.name == "chotcong_locale" })?.value == "vi" ? "vi" : "en"
     }
 
-    private func pageTab(_ path: String) -> WorkspaceTab {
+    private func pageTab(_ path: String) -> WorkspaceTab? {
         if path.hasPrefix("/app/students") { return .students }
         if path.hasPrefix("/app/sessions") || path.hasPrefix("/app/lessons") || path == "/app/schedule" { return .lessons }
-        if path.hasPrefix("/app/statements") { return .tuition }
-        return .more
+        if path.hasPrefix("/app/statements") { return .statements }
+        if path.hasPrefix("/app/classes") { return .classes }
+        return nil
     }
 
     private func pageTitle(_ path: String) -> String {
@@ -519,10 +564,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         case "/app/schedule": return t("Upcoming lessons")
         case "/app/classes": return t("Classes")
         case "/app/settings": return t("Account settings")
+        case "/app/appearance": return t("Appearance")
         case "/account/deletion": return t("Account deletion")
         case "/onboarding": return t("Get started")
         case "/help": return t("Help & support")
-        default: return t(pageTab(path).label)
+        default: return t((pageTab(path) ?? selectedTab).label)
         }
     }
 

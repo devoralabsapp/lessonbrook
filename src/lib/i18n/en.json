@@ -854,5 +854,20 @@
   "Kết nối lại với khóa hiện tại": "Reconnect with existing key",
   "Bật tự động làm mới": "Enable automatic renewal",
   "Giá trị Authorization đang dùng trong Phím tắt": "Current Shortcut Authorization value",
-  "Xác nhận với Google": "Confirm with Google"
+  "Xác nhận với Google": "Confirm with Google",
+  "Thứ Hai": "Monday",
+  "Thứ Ba": "Tuesday",
+  "Thứ Tư": "Wednesday",
+  "Thứ Năm": "Thursday",
+  "Thứ Sáu": "Friday",
+  "Thứ Bảy": "Saturday",
+  "Chủ nhật": "Sunday",
+  "Hằng tuần": "Weekly",
+  "Lịch học hằng tuần": "Weekly class schedule",
+  "Giờ Việt Nam. Lịch xuất hiện trong các buổi sắp tới.": "Vietnam time. The schedule appears in Upcoming lessons.",
+  "Ngày trong tuần": "Day of week",
+  "Xóa giờ học {0}": "Remove lesson time {0}",
+  "Thêm giờ học": "Add lesson time",
+  "Chưa đặt lịch học hằng tuần.": "No weekly schedule yet.",
+  "Các giờ học hằng tuần không được trùng nhau.": "Weekly lesson times must be unique."
 }
