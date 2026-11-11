@@ -11,6 +11,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private let tabs = UITabBar()
     private let activity = UIActivityIndicatorView(style: .large)
     private var bottom: NSLayoutConstraint?
+    private var tabHeight: NSLayoutConstraint?
     private var webView: WKWebView?
     private var webURL: NSKeyValueObservation?
     private var webRoot: String?
@@ -50,11 +51,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tabs.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tabs.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tabs.bottomAnchor.constraint(equalTo: safe.bottomAnchor),
-            tabs.heightAnchor.constraint(equalToConstant: 52),
+            tabs.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             activity.centerXAnchor.constraint(equalTo: safe.centerXAnchor),
             activity.centerYAnchor.constraint(equalTo: safe.centerYAnchor),
         ])
+        tabHeight = tabs.heightAnchor.constraint(equalToConstant: 0)
+        tabHeight?.isActive = true
+        sizeTabs()
         pin(native.view)
         configureChrome()
         request = Task {
@@ -69,6 +72,21 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
                 showWelcome()
             }
         }
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        sizeTabs()
+    }
+
+    private func sizeTabs() {
+        let barHeight: CGFloat
+        if #available(iOS 26, *) {
+            barHeight = 70
+        } else {
+            barHeight = 49
+        }
+        tabHeight?.constant = barHeight + view.safeAreaInsets.bottom
     }
 
     private func pin(_ child: UIView) {
