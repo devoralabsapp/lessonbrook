@@ -48,7 +48,7 @@ The app keeps a random verifier in memory. The server ties the browser handoff t
 ## Bank transfer notifications
 
 1. Sign in, open **Account settings**, and save your bank details. Include them when preparing a statement so the recipient sees the exact transfer reference. You can also copy the reference from the issued statement.
-2. In **iPhone payment shortcut**, enter the receiving account number as shown in the bank notification and create a key. Copy the value shown for **Authorization**. Creating a new key or disconnecting disables the previous key. The connection expires with the Firebase session used to create it, up to five days after sign-in.
+2. In **iPhone payment shortcut**, enter the receiving account number as shown in the bank notification and create a key. Confirm with the same Google account, then copy the value shown for **Authorization**. The server renews the Firebase session when a notification arrives after it expires. Creating a new key or disconnecting disables the previous key. For a connection that still shows an expiry date, select **Enable automatic renewal** and paste its current **Authorization** value to keep using the same Shortcut key.
 3. In Apple Shortcuts, add **Get Contents of URL** with the URL shown in settings and choose **POST**. Add the **Authorization** header with the copied value and set **Request Body** to **JSON**. Add a text field named `message` with the full notification as its value.
 
 The currently supported format looks like this fictional example.

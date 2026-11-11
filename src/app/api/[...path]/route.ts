@@ -9,6 +9,7 @@ import {
   disconnectBankShortcut,
   getBankShortcut,
   transferReferenceFor,
+  upgradeBankShortcut,
 } from "@/lib/server/bank-shortcut";
 import {
   archiveClass,
@@ -173,6 +174,8 @@ async function handle(request: Request, context: Context) {
             ),
           );
         }
+        if (path.length === 2 && id === "upgrade")
+          return json(await upgradeBankShortcut(uid, body, requestId));
         if (path.length === 2 && id === "disconnect") {
           z.object({}).strict().parse(body);
           return json(await disconnectBankShortcut(uid, requestId));

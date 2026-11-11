@@ -165,7 +165,7 @@ export function SettingsForm({
           </p>
         )}
       </Card>
-      {profile && <BankShortcutSettings url={shortcutUrl} />}
+      {profile && <BankShortcutSettings url={shortcutUrl} inApp={inApp} />}
       {inApp ? (
         <Card>
           <Button

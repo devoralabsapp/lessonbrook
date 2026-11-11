@@ -1,5 +1,7 @@
 import { randomBytes } from "node:crypto";
+import { Timestamp } from "firebase-admin/firestore";
 import { describe, expect, it } from "vitest";
+import { admin } from "@/lib/firebase/admin";
 import { client, googleToken, origin } from "./helpers";
 
 const accountNumber = "12345678901234";
@@ -8,7 +10,8 @@ const message = (memo: string, amount = "30,000", account = accountNumber) =>
 
 async function setup() {
   const app = await client("en");
-  await app.login((await googleToken()).idToken);
+  const identity = await googleToken();
+  await app.login(identity.idToken);
   async function create(path: string, body: unknown) {
     const response = await app.call(path, "POST", body);
     expect(response.status).toBe(200);
@@ -42,7 +45,7 @@ async function setup() {
     });
     return `Bearer ${id}.${secret}`;
   };
-  return { app, path, detail, connect };
+  return { app, path, detail, connect, identity };
 }
 
 const send = (notice: string, authorization?: string) =>
@@ -56,6 +59,54 @@ const send = (notice: string, authorization?: string) =>
   });
 
 describe("iPhone bank notification Shortcut", () => {
+  it("upgrades an existing key and renews an expired session during payment delivery", async () => {
+    const teacher = await setup();
+    const key = await teacher.connect();
+    const [selector, secret] = key.slice("Bearer ".length).split(".");
+    const ref = admin().db.doc(`apps/chotcong/bankShortcuts/${selector}`);
+    const notice = message(teacher.detail.transferReference);
+    await ref.update({ expiresAt: Timestamp.fromMillis(Date.now() - 60_000) });
+    expect((await send(notice, key)).status).toBe(401);
+    const other = await googleToken();
+    expect(
+      (
+        await teacher.app.call("/api/bank-shortcut/upgrade", "POST", {
+          secret,
+          refreshToken: other.refreshToken,
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await teacher.app.call("/api/bank-shortcut/upgrade", "POST", {
+          secret,
+          refreshToken: teacher.identity.refreshToken,
+        })
+      ).status,
+    ).toBe(200);
+    expect(await (await teacher.app.call("/api/bank-shortcut")).json()).toEqual(
+      { accountLast4: "1234", renewable: true, expiresAt: null },
+    );
+
+    const expired = Timestamp.fromMillis(Date.now() - 60_000);
+    await ref.update({ expiresAt: expired });
+    const results = await Promise.all([send(notice, key), send(notice, key)]);
+    expect(results.map((result) => result.status)).toEqual([200, 200]);
+    expect(
+      (await Promise.all(results.map((result) => result.json())))
+        .map((result) => result.status)
+        .sort(),
+    ).toEqual(["duplicate", "recorded"]);
+    const renewed = (await ref.get()).data()!;
+    expect(renewed.expiresAt.toMillis()).toBeGreaterThan(Date.now());
+    expect(renewed.keyHash).not.toBe(secret);
+    expect(JSON.stringify(renewed)).not.toContain(
+      teacher.identity.refreshToken,
+    );
+    await admin().auth.updateUser(teacher.identity.uid, { disabled: true });
+    expect((await send(notice, key)).status).toBe(401);
+  });
+
   it("matches the receiving account and unique reference, then records the exact outstanding amount once", async () => {
     const teacher = await setup();
     const otherTeacher = await setup();

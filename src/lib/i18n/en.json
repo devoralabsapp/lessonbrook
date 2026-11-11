@@ -843,5 +843,16 @@
   "Tài khoản nhận tiền đuôi {0} · Phiên kết nối hết hạn {1}.": "Receiving account ending in {0} · Connection expires {1}.",
   "Tạo khóa Phím tắt": "Create shortcut key",
   "Tạo lại khóa Phím tắt": "Replace shortcut key",
-  "Đã sao chép khóa.": "Key copied."
+  "Đã sao chép khóa.": "Key copied.",
+  "Chưa thể làm mới phiên Firebase. Vui lòng thử lại.": "Couldn't renew the Firebase session. Please try again.",
+  "Xác nhận lại bằng đúng tài khoản Google của LessonBrook.": "Confirm using the same Google account you use for LessonBrook.",
+  "Khóa không khớp với kết nối Phím tắt hiện tại.": "The key doesn't match your current Shortcut connection.",
+  "Dán giá trị Authorization đang dùng trong Phím tắt.": "Paste the Authorization value you use in Shortcuts.",
+  "Tài khoản nhận tiền đuôi {0} · Tự động làm mới đã bật.": "Receiving account ending in {0} · Automatic renewal enabled.",
+  "Quản lý Phím tắt trong trình duyệt": "Manage Shortcut in browser",
+  "Xác nhận Google một lần để Phím tắt tự làm mới phiên.": "Confirm with Google once to let the Shortcut renew its session automatically.",
+  "Kết nối lại với khóa hiện tại": "Reconnect with existing key",
+  "Bật tự động làm mới": "Enable automatic renewal",
+  "Giá trị Authorization đang dùng trong Phím tắt": "Current Shortcut Authorization value",
+  "Xác nhận với Google": "Confirm with Google"
 }

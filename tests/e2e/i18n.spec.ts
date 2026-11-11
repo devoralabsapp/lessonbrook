@@ -291,7 +291,8 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   context,
   browser,
 }) => {
-  const token = await googleToken();
+  const sub = crypto.randomUUID();
+  const token = await googleToken(sub);
   const csrf = (await (await context.request.get("/api/auth/csrf")).json())
     .token;
   const headers = { Origin: origin, "x-csrf-token": csrf };
@@ -455,9 +456,26 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   await page
     .getByLabel("Account number in the notification")
     .fill("12345678901234");
+  const popupPromise = page.waitForEvent("popup");
   await page
     .getByRole("button", { name: "Create shortcut key", exact: true })
     .click();
+  const popup = await popupPromise;
+  await popup.waitForLoadState("load");
+  const relayElement = await page.waitForSelector(
+    'iframe[src*="/emulator/auth/iframe"]',
+    { state: "attached" },
+  );
+  const relay = await relayElement!.contentFrame();
+  await relay!.waitForFunction(
+    "Boolean(window.parentContainer)",
+    {},
+    { timeout: 20000, polling: 100 },
+  );
+  await popup.getByText(`${sub}@example.test`, { exact: true }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Automatic renewal enabled" }),
+  ).toBeVisible();
   const authorization = page.getByLabel("Authorization header value");
   await expect(authorization).toHaveValue(
     /^Bearer [a-f0-9]{64}\.[a-f0-9]{64}$/,

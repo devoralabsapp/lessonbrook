@@ -25,7 +25,11 @@ export async function googleToken(uid = crypto.randomUUID()) {
   );
   const data = await response.json();
   if (!response.ok) throw new Error(JSON.stringify(data));
-  return { idToken: data.idToken as string, uid: data.localId as string };
+  return {
+    idToken: data.idToken as string,
+    uid: data.localId as string,
+    refreshToken: data.refreshToken as string,
+  };
 }
 export async function client(locale: "en" | "vi" = "vi") {
   const csrfResponse = await fetch(`${origin}/api/auth/csrf`);

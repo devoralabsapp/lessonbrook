@@ -45,6 +45,6 @@ Retro component styles are scoped to `data-theme="playful-retro"` and exclude th
 
 ## Limits
 
-An optional iPhone Shortcut can forward incoming bank notices. Its scoped key unlocks an encrypted Firebase session that the server verifies for revocation and expiration on every request. The payment transaction checks the connection again and matches the account, a unique issued-statement reference, and the full outstanding balance. The server retains the normal transfer record and idempotency hash, without the notice text or bank balance.
+An optional iPhone Shortcut can forward incoming bank notices. Its scoped key unlocks an encrypted Firebase session that the server verifies for revocation on every request. The user can confirm with Google to enable renewal on demand. Firebase refresh credentials are encrypted with the Shortcut key and stored only on the server. Disconnecting deletes the connection. Revoked Firebase credentials require reconnection. The payment transaction checks the connection again and matches the account, a unique issued-statement reference, and the full outstanding balance. The server retains the normal transfer record and idempotency hash, without the notice text or bank balance.
 
 Recurring schedules, prepaid packages and multi-staff permissions are outside the current scope. The manifest provides a launch shortcut. Emulator tests do not prove cloud indexes, IAM, OAuth, or installation on real devices. Cloud checks need isolated staging and fake data.
