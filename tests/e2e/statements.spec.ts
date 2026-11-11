@@ -104,13 +104,12 @@ test("360px: tìm học viên → chọn buổi → phát hành trực tiếp �
     ),
   ).toBeTruthy();
   await page.goto(`/app/students/${student.id}`);
-  await expect(
-    page
-      .locator(".status-completed")
-      .first()
-      .locator("..")
-      .getByRole("button", { name: "Sửa", exact: true }),
-  ).toBeDisabled();
+  const lessonEditButtons = page
+    .locator(".status-completed")
+    .locator("..")
+    .getByRole("button", { name: "Sửa", exact: true });
+  await expect(lessonEditButtons.and(page.locator(":disabled"))).toHaveCount(7);
+  await expect(lessonEditButtons.and(page.locator(":enabled"))).toHaveCount(1);
   await expect(
     page
       .locator(".status-cancelled")
