@@ -10,7 +10,7 @@ export const themeSchema = z.enum([
   "playful-retro",
 ]);
 export type Theme = z.infer<typeof themeSchema>;
-export const DEFAULT_THEME: Theme = "natura";
+export const DEFAULT_THEME: Theme = "playful-retro";
 export const GUEST_THEME_COOKIE = "chotcong_guest_theme";
 export const themes: {
   id: Theme;

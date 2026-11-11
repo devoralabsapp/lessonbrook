@@ -412,7 +412,7 @@ describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
         theme,
       );
       expect((await (await b.call("/api/appearance")).json()).theme).toBe(
-        "natura",
+        "playful-retro",
       );
     }
     expect(

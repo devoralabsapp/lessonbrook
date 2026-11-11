@@ -38,7 +38,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         """
 
     private var cookies: WKHTTPCookieStore { WKWebsiteDataStore.default().httpCookieStore }
-    private var palette: WorkspacePalette { WorkspacePalette(snapshot?.theme ?? "natura") }
+    private var palette: WorkspacePalette { WorkspacePalette(snapshot?.theme) }
 
     override func viewDidLoad() {
         super.viewDidLoad()

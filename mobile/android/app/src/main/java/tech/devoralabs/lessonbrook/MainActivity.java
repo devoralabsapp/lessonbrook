@@ -114,7 +114,7 @@ public final class MainActivity extends Activity {
     }
 
     private NativeWorkspace.Palette palette() {
-        return NativeWorkspace.Palette.from(snapshot == null ? "natura" : snapshot.theme());
+        return NativeWorkspace.Palette.from(snapshot == null ? "playful-retro" : snapshot.theme());
     }
 
     private NativeWorkspace workspace() {

@@ -19,6 +19,8 @@ import {
   sessionSchema,
   studentInputSchema,
   studentSchema,
+  type Student,
+  type TeachingSession,
   TIME_ZONE,
   vietnamToday,
 } from "@/domain";
@@ -34,7 +36,11 @@ import {
   matchesSession,
 } from "@/domain/list-filters";
 import { assertServiceAvailable } from "./maintenance";
-import { accountControlRef, assertAccountWritable } from "./account-access";
+import {
+  accountAccessRefs,
+  accountControlRef,
+  assertAccountAccess,
+} from "./account-access";
 import {
   profileDocumentSchema,
   sessionDocumentSchema,
@@ -80,9 +86,9 @@ export const sessionDto = (doc: DocumentSnapshot) => {
   return sessionSchema.parse(dto(doc));
 };
 const nowIso = () => Timestamp.now();
-type OperationResult = { id: string };
+type OperationResult<T = never> = { id: string; record?: T };
 
-export async function operation(
+export async function operation<T = never>(
   uid: string,
   name: string,
   requestId: string,
@@ -91,8 +97,8 @@ export async function operation(
     tx: FirebaseFirestore.Transaction,
     root: FirebaseFirestore.DocumentReference,
     now: Timestamp,
-  ) => Promise<OperationResult>,
-) {
+  ) => Promise<OperationResult<T>>,
+): Promise<OperationResult<T>> {
   requestIdSchema.parse(requestId);
   const root = userRef(uid);
   const hash = createHash("sha256")
@@ -103,8 +109,11 @@ export async function operation(
     .doc(`${name}_${requestId}`);
   const now = nowIso();
   return admin().db.runTransaction(async (tx) => {
-    await assertAccountWritable(tx, uid);
-    const previous = await tx.get(requestRef);
+    const [maintenance, control, previous] = await tx.getAll(
+      ...accountAccessRefs(uid),
+      requestRef,
+    );
+    assertAccountAccess(maintenance.exists, control.exists);
     if (previous.exists) {
       if (previous.get("payloadHash") !== hash)
         throw new AppError(
@@ -197,26 +206,46 @@ export async function saveStudent(
   const input = studentInputSchema.parse(raw);
   if (id) idSchema.parse(id);
   const resultId = id ?? randomUUID(); // Stable across transaction retries.
-  return operation(
+  return operation<Student>(
     uid,
     id ? "student-update" : "student-create",
     requestId,
     { id: id ?? null, ...input },
     async (tx, root, now) => {
       const ref = root.collection("students").doc(resultId);
-      const existing = await tx.get(ref);
-      if (id && !existing.exists)
-        throw new AppError(404, "Không tìm thấy học viên.");
-      if (id) tx.update(ref, { ...input, updatedAt: now });
-      else
-        tx.create(ref, {
+      const timestamp = now.toDate().toISOString();
+      if (id) {
+        const current = await tx.get(ref);
+        if (!current.exists)
+          throw new AppError(404, "Không tìm thấy học viên.");
+        const record = studentSchema.parse({
+          ...dto(current),
+          ...input,
+          updatedAt: timestamp,
+        });
+        tx.update(ref, { ...input, updatedAt: now });
+        return { id: resultId, record };
+      } else {
+        const fields = {
           ...input,
           archivedAt: null,
+          schemaVersion: 1 as const,
+        };
+        tx.create(ref, {
+          ...fields,
           createdAt: now,
           updatedAt: now,
-          schemaVersion: 1,
         });
-      return { id: resultId };
+        return {
+          id: resultId,
+          record: {
+            ...fields,
+            id: resultId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        };
+      }
     },
   );
 }
@@ -290,7 +319,7 @@ export async function saveSession(
   const input = sessionInputSchema.parse(raw);
   if (id) idSchema.parse(id);
   const resultId = id ?? randomUUID();
-  return operation(
+  return operation<TeachingSession>(
     uid,
     id ? "session-update" : "session-create",
     requestId,
@@ -298,16 +327,16 @@ export async function saveSession(
     async (tx, root, now) => {
       const ref = root.collection("sessions").doc(resultId);
       // All reads precede all writes. Student read also serializes archive/default-rate changes.
-      const studentDoc = await tx.get(
-        root.collection("students").doc(input.studentId),
-      );
-      const currentDoc = await tx.get(ref);
+      const studentRef = root.collection("students").doc(input.studentId);
+      const [studentDoc, currentDoc] = id
+        ? await tx.getAll(studentRef, ref)
+        : ([await tx.get(studentRef), null] as const);
       if (!studentDoc.exists)
         throw new AppError(404, "Không tìm thấy học viên trong tài khoản này.");
       const student = studentDto(studentDoc);
-      if (id && !currentDoc.exists)
+      if (id && !currentDoc?.exists)
         throw new AppError(404, "Không tìm thấy buổi dạy.");
-      const current = currentDoc.exists ? sessionDto(currentDoc) : null;
+      const current = currentDoc?.exists ? sessionDto(currentDoc) : null;
       if (current?.billedStatementId != null)
         throw new AppError(409, "Buổi đã lập bảng kê không thể sửa.");
       if (current && current.studentId !== input.studentId)
@@ -332,18 +361,36 @@ export async function saveSession(
         rateVnd,
         studentName: student.displayName,
         amountVnd: sessionAmount({ ...input, rateVnd }),
-        updatedAt: now,
       };
-      if (id) tx.update(ref, data);
-      else
-        tx.create(ref, {
+      const timestamp = now.toDate().toISOString();
+      if (current) {
+        tx.update(ref, { ...data, updatedAt: now });
+        return {
+          id: resultId,
+          record: { ...current, ...data, updatedAt: timestamp },
+        };
+      } else {
+        const fields = {
           ...data,
           billedStatementId: null,
           requestId,
+          schemaVersion: 1 as const,
+        };
+        tx.create(ref, {
+          ...fields,
           createdAt: now,
-          schemaVersion: 1,
+          updatedAt: now,
         });
-      return { id: resultId };
+        return {
+          id: resultId,
+          record: {
+            ...fields,
+            id: resultId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        };
+      }
     },
   );
 }

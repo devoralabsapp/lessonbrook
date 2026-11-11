@@ -23,6 +23,7 @@ import {
   statusLabels,
   vietnamToday,
 } from "@/domain";
+import { matchesSession, normalizeSearch } from "@/domain/list-filters";
 import { api } from "@/lib/client-api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -45,6 +46,20 @@ type Summary = {
   unbilledVnd: number;
 };
 type Mode = "overview" | "students" | "sessions";
+const compare = (a: string, b: string) => (a === b ? 0 : a < b ? -1 : 1);
+function updatePage<T extends { id: string }>(
+  page: Page<T>,
+  record: T,
+  matches: boolean,
+  order: (a: T, b: T) => number,
+): Page<T> {
+  const items = page.items.filter((item) => item.id !== record.id);
+  const last = page.items.at(-1);
+  // If the row falls outside the loaded range, the next read will place it.
+  if (matches && (!page.nextCursor || !last || order(record, last) <= 0))
+    items.push(record);
+  return { ...page, items: items.sort(order) };
+}
 export function Workspace({
   mode,
   studentId,
@@ -74,6 +89,7 @@ export function Workspace({
   };
   const [data, setData] = useState<{
     key: string;
+    revision: number;
     students: Page<Student>;
     sessions: Page<TeachingSession>;
     summary: Summary | null;
@@ -105,7 +121,8 @@ export function Workspace({
   }
   const endpoint =
     mode === "students" ? `/api/students?${params}` : `/api/sessions?${params}`;
-  const key = `${endpoint}:${revision}:${mode}:${studentId ?? ""}`;
+  const key = `${endpoint}:${mode}:${studentId ?? ""}`;
+  const requestKey = `${key}:${revision}`;
   useEffect(() => {
     let active = true;
     const empty = { items: [], nextCursor: null };
@@ -125,6 +142,7 @@ export function Workspace({
         if (active)
           setData({
             key,
+            revision,
             students: mode === "students" ? (page as Page<Student>) : empty,
             sessions:
               mode !== "students" ? (page as Page<TeachingSession>) : empty,
@@ -134,25 +152,27 @@ export function Workspace({
           });
       })
       .catch((e) => {
-        if (active) setError({ key, message: e.message });
+        if (active) setError({ key: requestKey, message: e.message });
       });
     return () => {
       active = false;
     };
-  }, [endpoint, key, mode, studentId, t]);
+  }, [endpoint, key, mode, requestKey, revision, studentId, t]);
+  const view = data?.key === key ? data : null;
+  const loadError = error?.key === requestKey ? error.message : "";
   const loading =
-    (mode === "students" && search !== queryText) ||
-    (data?.key !== key && error?.key !== key);
+    (mode === "students" && search !== queryText) || (!view && !loadError);
+  const updating = !!view && view.revision !== revision && !loadError;
   async function more() {
-    const page = mode === "students" ? data?.students : data?.sessions;
-    if (!page?.nextCursor) return;
+    const page = mode === "students" ? view?.students : view?.sessions;
+    if (!page?.nextCursor || updating || moreBusy) return;
     setMoreBusy(true);
     try {
       const next = await api<Page<Student> | Page<TeachingSession>>(
         `${endpoint}&cursor=${encodeURIComponent(page.nextCursor)}`,
       );
       setData((d) =>
-        d?.key === key
+        d && d === view
           ? {
               ...d,
               ...(mode === "students"
@@ -203,8 +223,45 @@ export function Workspace({
       setActionBusy("");
     }
   }
-  const view = data?.key === key ? data : null;
   const student = view?.student;
+  function applySaved(record: Student | TeachingSession) {
+    setData((current) => {
+      if (!current || current.key !== key) return current;
+      if ("sessionDate" in record) {
+        const selectedStudent = studentId || range.studentId;
+        const matches =
+          (!selectedStudent || selectedStudent === record.studentId) &&
+          (!range.from || record.sessionDate >= range.from) &&
+          (!range.to || record.sessionDate <= range.to) &&
+          matchesSession(record, range.status, range.billing);
+        return {
+          ...current,
+          sessions: updatePage(
+            current.sessions,
+            record,
+            matches,
+            (a, b) =>
+              compare(b.sessionDate, a.sessionDate) || compare(b.id, a.id),
+          ),
+        };
+      }
+      if (mode !== "students") return { ...current, student: record };
+      const matches =
+        Boolean(record.archivedAt) === archived &&
+        normalizeSearch(record.displayName).includes(
+          normalizeSearch(queryText),
+        );
+      return {
+        ...current,
+        students: updatePage(current.students, record, matches, (a, b) =>
+          archived
+            ? compare(b.archivedAt ?? "", a.archivedAt ?? "") ||
+              compare(b.id, a.id)
+            : compare(a.displayName, b.displayName) || compare(a.id, b.id),
+        ),
+      };
+    });
+  }
   const title =
     mode === "overview"
       ? t("Một ngày dạy học thật tốt.")
@@ -571,6 +628,14 @@ export function Workspace({
             </div>
           </form>
         )}
+        {loadError && (
+          <div role="alert" className="p-8 text-center">
+            <p className="mb-4 text-sm text-destructive">{t(loadError)}</p>
+            <Button variant="outline" onClick={() => setRevision((v) => v + 1)}>
+              {t("Thử lại")}
+            </Button>
+          </div>
+        )}
         {loading ? (
           <div
             role="status"
@@ -579,14 +644,7 @@ export function Workspace({
             <LoaderCircle size={18} className="animate-spin" />
             {t("Đang mở sổ…")}
           </div>
-        ) : error?.key === key ? (
-          <div role="alert" className="p-8 text-center">
-            <p className="mb-4 text-sm text-destructive">{t(error.message)}</p>
-            <Button variant="outline" onClick={() => setRevision((v) => v + 1)}>
-              {t("Thử lại")}
-            </Button>
-          </div>
-        ) : mode === "students" ? (
+        ) : !view ? null : mode === "students" ? (
           view?.students.items.length ? (
             <div className="divide-y divide-border">
               {view.students.items.map((s) => (
@@ -604,10 +662,11 @@ export function Workspace({
                     <span className="block break-words text-sm font-semibold">
                       {s.displayName}
                     </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {formatVnd(s.defaultRateVnd, locale)}
-                      {t(" / buổi")}
-                    </span>
+                    {(s.contactName || s.phone) && (
+                      <span className="mt-1 block break-words text-xs text-muted-foreground">
+                        {[s.contactName, s.phone].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
                   </Link>
                   <Button
                     variant="ghost"
@@ -737,7 +796,11 @@ export function Workspace({
             ? view?.students.nextCursor
             : view?.sessions.nextCursor) && (
             <div className="border-t border-border p-4 text-center">
-              <Button variant="ghost" disabled={moreBusy} onClick={more}>
+              <Button
+                variant="ghost"
+                disabled={moreBusy || updating}
+                onClick={more}
+              >
                 <ChevronDown />
                 {moreBusy
                   ? t("Đang tải…")
@@ -760,9 +823,10 @@ export function Workspace({
           record={modal.record}
           student={student ?? undefined}
           onClose={() => setModal(null)}
-          onSaved={(message) => {
+          onSaved={(message, record) => {
             setModal(null);
             setNotice(message);
+            if (record) applySaved(record);
             setRevision((v) => v + 1);
           }}
         />

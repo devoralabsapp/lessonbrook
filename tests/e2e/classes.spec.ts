@@ -185,7 +185,7 @@ test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/app/settings");
   const backgrounds = new Set<string>();
-  let savedTheme = "natura";
+  let savedTheme = "playful-retro";
   let appearanceWrites = 0;
   page.on("request", (request) => {
     if (
@@ -341,7 +341,7 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   await expect(
     page.getByRole("status").filter({ hasText: "Đang xem trước, chưa lưu." }),
   ).toBeVisible();
-  expect(await stored()).toBe("natura");
+  expect(await stored()).toBe("playful-retro");
   expect(writes).toBe(0);
   await page.screenshot({
     path: "/tmp/lessonbrook-command-line-preview.png",
@@ -351,7 +351,7 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   await page
     .getByRole("button", { name: "Hủy xem trước", exact: true })
     .click();
-  await expect(shell("natura")).toBeVisible();
+  await expect(shell("playful-retro")).toBeVisible();
   await expect(save).toBeDisabled();
   await page.getByRole("radio", { name: "Visual Code", exact: false }).check();
   await expect(shell("visual-code")).toBeVisible();
@@ -360,18 +360,21 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
     .getByRole("link", { name: "Tổng quan", exact: true })
     .click();
   await page.waitForURL("**/app");
-  await expect(shell("natura")).toBeVisible();
+  await expect(shell("playful-retro")).toBeVisible();
   await page
     .getByRole("link", { name: "Cài đặt tài khoản", exact: true })
     .click();
   await page.waitForURL("**/app/settings");
   await expect(
-    page.getByRole("radio", { name: "Natura", exact: false }),
+    page.getByRole("radio", {
+      name: "Playful Retro Neo-Brutalism",
+      exact: false,
+    }),
   ).toBeChecked();
   await page.getByRole("radio", { name: "Command Line", exact: false }).check();
   await page.reload();
-  await expect(shell("natura")).toBeVisible();
-  expect(await stored()).toBe("natura");
+  await expect(shell("playful-retro")).toBeVisible();
+  expect(await stored()).toBe("playful-retro");
   expect(writes).toBe(0);
   let fail = true;
   const keys: string[] = [];
@@ -394,7 +397,7 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
     page.getByRole("alert").filter({ hasText: "Chưa thể lưu giao diện." }),
   ).toBeVisible();
   await expect(shell("visual-code")).toBeVisible();
-  expect(await stored()).toBe("natura");
+  expect(await stored()).toBe("playful-retro");
   await save.click();
   await expect(
     page.getByRole("status").filter({ hasText: "Đã lưu giao diện." }),
@@ -434,20 +437,11 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
   });
   await create(`/api/statements/${statement.id}/issue`, { version: 1 });
   await page.goto("/app/settings");
-  await page
-    .getByRole("radio", { name: "Playful Retro Neo-Brutalism", exact: false })
-    .check();
   const shell = page.locator('[data-theme="playful-retro"]');
   await expect(shell).toBeVisible();
   expect(
     (await (await context.request.get("/api/appearance")).json()).theme,
-  ).toBe("natura");
-  await page
-    .getByRole("button", { name: "Lưu giao diện", exact: true })
-    .click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Đã lưu giao diện." }),
-  ).toBeVisible();
+  ).toBe("playful-retro");
   for (const width of [360, 1440]) {
     await page.setViewportSize({ width, height: width === 360 ? 800 : 1000 });
     for (const route of [
@@ -555,7 +549,7 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
   expect(
     await save.evaluate((el) => getComputedStyle(el).transitionProperty),
   ).not.toContain("transform");
-  // Leaving the retro theme removes its outlines/shadows, and cancel restores the saved retro preference.
+  // Leaving the retro theme removes its outlines/shadows, and cancel restores the default retro theme.
   await page.getByRole("radio", { name: "Natura", exact: false }).check();
   await expect(
     page.locator('[data-theme="natura"] [data-slot="card"]').first(),

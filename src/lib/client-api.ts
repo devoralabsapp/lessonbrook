@@ -1,5 +1,6 @@
 "use client";
 let csrf: Promise<string> | undefined;
+let csrfRefreshAt = 0;
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -10,7 +11,10 @@ export class ApiError extends Error {
   }
 }
 export function csrfToken() {
-  csrf ??= fetch("/api/auth/csrf", { cache: "no-store" })
+  if (csrf && Date.now() < csrfRefreshAt) return csrf;
+  // Renew before the one-hour cookie lifetime, including on long-open forms.
+  csrfRefreshAt = Date.now() + 55 * 60_000;
+  csrf = fetch("/api/auth/csrf", { cache: "no-store" })
     .then(async (r) => {
       if (!r.ok) throw new Error("Không thể tạo phiên bảo mật.");
       return (await r.json()).token as string;
@@ -23,7 +27,12 @@ export function csrfToken() {
 }
 export async function api<T>(
   path: string,
-  options?: { method?: string; body?: unknown; requestId?: string },
+  options?: {
+    method?: string;
+    body?: unknown;
+    requestId?: string;
+    returnRecord?: boolean;
+  },
 ): Promise<T> {
   const mutation = options?.method && options.method !== "GET";
   const response = await fetch(path, {
@@ -33,6 +42,7 @@ export async function api<T>(
       ? {
           "Content-Type": "application/json",
           "x-csrf-token": await csrfToken(),
+          ...(options.returnRecord ? { Prefer: "return=representation" } : {}),
           ...(options.requestId
             ? { "Idempotency-Key": options.requestId }
             : {}),

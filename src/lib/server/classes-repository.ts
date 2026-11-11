@@ -181,7 +181,15 @@ export async function saveLesson(
     { id: id ?? null, ...input },
     async (tx, root, now) => {
       const ref = root.collection("lessons").doc(resultId);
-      const currentDoc = await tx.get(ref);
+      const classRef = input.classId
+        ? root.collection("classes").doc(input.classId)
+        : null;
+      const [currentDoc, ...studentDocs] = await tx.getAll(
+        ref,
+        ...input.studentIds.map((id) => root.collection("students").doc(id)),
+        ...(classRef ? [classRef] : []),
+      );
+      const classDoc = classRef ? studentDocs.pop()! : null;
       if (id && !currentDoc.exists)
         throw new AppError(404, "Không tìm thấy buổi học.");
       const current = currentDoc.exists ? lessonDto(currentDoc) : null;
@@ -195,9 +203,6 @@ export async function saveLesson(
           409,
           "Danh sách tham gia của buổi đã lưu được giữ cố định. Có thể hủy hoặc miễn phí riêng từng học viên.",
         );
-      const classDoc = input.classId
-        ? await tx.get(root.collection("classes").doc(input.classId))
-        : null;
       if (classDoc && !classDoc.exists)
         throw new AppError(404, "Không tìm thấy lớp trong tài khoản này.");
       const teachingClass = classDoc ? classDto(classDoc) : null;
@@ -217,9 +222,6 @@ export async function saveLesson(
           409,
           "Đơn giá lớp đã thay đổi. Tải lại lớp trước khi ghi buổi.",
         );
-      const studentDocs = await tx.getAll(
-        ...input.studentIds.map((id) => root.collection("students").doc(id)),
-      );
       const students = studentDocs.map((doc) => {
         if (!doc.exists)
           throw new AppError(404, "Học viên không thuộc tài khoản này.");

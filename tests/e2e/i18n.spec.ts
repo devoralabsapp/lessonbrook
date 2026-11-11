@@ -127,7 +127,7 @@ test("visitors can preview themes on the home page without saving an account pre
   await page.goto("/");
   const theme = page.getByRole("combobox", { name: "Preview theme" });
   const home = page.getByRole("main");
-  await expect(theme).toHaveValue("natura");
+  await expect(theme).toHaveValue("playful-retro");
   await expect(theme.locator("option")).toHaveCount(8);
 
   await theme.selectOption("command-line");
@@ -423,19 +423,14 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   ).toBeVisible();
   expect(
     (await (await context.request.get("/api/appearance")).json()).theme,
-  ).toBe("natura");
+  ).toBe("playful-retro");
   await page
     .getByRole("button", { name: "Cancel preview", exact: true })
     .click();
-  await expect(page.locator('[data-theme="natura"]')).toBeVisible();
+  await expect(page.locator('[data-theme="playful-retro"]')).toBeVisible();
   await expect(saveAppearance).toBeDisabled();
-  await page
-    .getByRole("radio", { name: "Playful Retro Neo-Brutalism", exact: false })
-    .check();
-  await expect(page.locator('[data-theme="playful-retro"]')).toHaveCSS(
-    "background-color",
-    "rgb(255, 246, 230)",
-  );
+  await page.getByRole("radio", { name: "Natura", exact: false }).check();
+  await expect(page.locator('[data-theme="natura"]')).toBeVisible();
   await expect(
     page.getByText(
       "Warm cream, vivid pastels, bold outlines and retro shadows",
@@ -448,7 +443,7 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   await page
     .getByRole("button", { name: "Cancel preview", exact: true })
     .click();
-  await expect(page.locator('[data-theme="natura"]')).toBeVisible();
+  await expect(page.locator('[data-theme="playful-retro"]')).toBeVisible();
 
   expect(
     await page.evaluate(

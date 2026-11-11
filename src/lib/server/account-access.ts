@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { admin } from "@/lib/firebase/admin";
 import { idSchema } from "@/domain";
 import { AppError } from "./errors";
-import { assertServiceAvailable } from "./maintenance";
+import { assertMaintenanceInactive, maintenanceRef } from "./maintenance";
 export const accountKey = (uid: string) =>
   createHash("sha256").update(idSchema.parse(uid)).digest("hex");
 export const accountControlRef = (uid: string) =>
@@ -11,19 +11,27 @@ export const accountControlRef = (uid: string) =>
 export async function accountBlocked(uid: string) {
   return (await accountControlRef(uid).get()).exists;
 }
-export async function assertAccountAvailable(uid: string) {
-  await assertServiceAvailable();
-  if (await accountBlocked(uid))
+export function accountAccessRefs(uid: string) {
+  return [maintenanceRef(), accountControlRef(uid)] as const;
+}
+export function assertAccountAccess(maintenance: boolean, blocked: boolean) {
+  assertMaintenanceInactive(maintenance);
+  if (blocked)
     throw new AppError(
       423,
       "Tài khoản đang được xóa hoặc đã xóa. Hãy mở trang tiến trình.",
     );
 }
+export async function assertAccountAvailable(uid: string) {
+  const [maintenance, control] = await admin().db.getAll(
+    ...accountAccessRefs(uid),
+  );
+  assertAccountAccess(maintenance.exists, control.exists);
+}
 export async function assertAccountWritable(
   tx: FirebaseFirestore.Transaction,
   uid: string,
 ) {
-  await assertServiceAvailable(tx);
-  if ((await tx.get(accountControlRef(uid))).exists)
-    throw new AppError(423, "Tài khoản đang được xóa hoặc đã xóa.");
+  const [maintenance, control] = await tx.getAll(...accountAccessRefs(uid));
+  assertAccountAccess(maintenance.exists, control.exists);
 }

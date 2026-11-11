@@ -72,7 +72,7 @@ struct WorkspacePalette {
     let accent: Color
     let dark: Bool
 
-    init(_ theme: String) {
+    init(_ theme: String? = nil) {
         let colors: (UInt32, UInt32, UInt32, Bool)
         switch theme {
         case "modern": colors = (0xedf3fb, 0xffffff, 0x2858a0, false)
@@ -81,8 +81,8 @@ struct WorkspacePalette {
         case "ocean": colors = (0xedf7f8, 0xffffff, 0x176676, false)
         case "command-line": colors = (0x000000, 0x151515, 0x74e6a1, true)
         case "visual-code": colors = (0x1e1e1e, 0x252526, 0x75beff, true)
-        case "playful-retro": colors = (0xfff6e6, 0xfffdf8, 0x734626, false)
-        default: colors = (0xf7f8f3, 0xffffff, 0x296447, false)
+        case "natura": colors = (0xf7f8f3, 0xffffff, 0x296447, false)
+        default: colors = (0xfff6e6, 0xfffdf8, 0x734626, false)
         }
         background = Self.color(colors.0)
         surface = Self.color(colors.1)
@@ -282,6 +282,7 @@ struct NativeWelcome: View {
     let retry: () -> Void
     let changeLanguage: (String) -> Void
     let help: () -> Void
+    private let palette = WorkspacePalette()
 
     var body: some View {
         ScrollView {
@@ -290,7 +291,7 @@ struct NativeWelcome: View {
                     .font(.system(size: 32, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 66, height: 66)
-                    .background(WorkspacePalette("natura").accent, in: RoundedRectangle(cornerRadius: 19))
+                    .background(palette.accent, in: RoundedRectangle(cornerRadius: 19))
                     .accessibilityHidden(true)
                 Text("LessonBrook").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
                 Text(t("Your lessons and tuition in one place.")).foregroundStyle(.secondary)
@@ -302,7 +303,7 @@ struct NativeWelcome: View {
                             .frame(maxWidth: .infinity, minHeight: 43)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(WorkspacePalette("natura").accent)
+                    .tint(palette.accent)
                     .padding(.top, 8)
                 } else if checkFailed {
                     Text(t("Check your connection and try again.")).font(.footnote)
@@ -324,7 +325,7 @@ struct NativeWelcome: View {
                     Button(t("Help & support"), action: help)
                 }
                 .font(.footnote.weight(.semibold))
-                .tint(WorkspacePalette("natura").accent)
+                .tint(palette.accent)
                 .padding(.top, 8)
             }
             .frame(maxWidth: 420, alignment: .leading)
@@ -332,7 +333,7 @@ struct NativeWelcome: View {
             .padding(.top, 56)
             .frame(maxWidth: .infinity)
         }
-        .background(WorkspacePalette("natura").background)
+        .background(palette.background)
     }
 
     private func t(_ key: String) -> String { workspaceText(key, locale: locale) }

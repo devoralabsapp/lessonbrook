@@ -94,8 +94,8 @@ final class NativeWorkspace {
                 case "ocean" -> new Palette(0xffedf7f8, 0xffffffff, 0xff176676, false);
                 case "command-line" -> new Palette(0xff000000, 0xff151515, 0xff74e6a1, true);
                 case "visual-code" -> new Palette(0xff1e1e1e, 0xff252526, 0xff75beff, true);
-                case "playful-retro" -> new Palette(0xfffff6e6, 0xfffffdf8, 0xff734626, false);
-                default -> new Palette(0xfff7f8f3, 0xffffffff, 0xff296447, false);
+                case "natura" -> new Palette(0xfff7f8f3, 0xffffffff, 0xff296447, false);
+                default -> new Palette(0xfffff6e6, 0xfffffdf8, 0xff734626, false);
             };
         }
 

@@ -24,7 +24,7 @@ type Props = {
   student?: Student;
   initialStatus?: TeachingSession["status"];
   onClose: () => void;
-  onSaved: (message: string) => void;
+  onSaved: (message: string, record?: Student | TeachingSession) => void;
 };
 export function RecordForm({
   kind,
@@ -200,16 +200,25 @@ export function RecordForm({
     if (request.current?.payload !== serialized)
       request.current = { payload: serialized, id: crypto.randomUUID() };
     try {
-      await api(
+      const result = await api<{
+        id: string;
+        record?: Student | TeachingSession;
+      }>(
         `/api/${kind === "student" ? "students" : "sessions"}${record ? `/${record.id}` : ""}`,
         {
           method: record ? "PATCH" : "POST",
           body: payload,
           requestId: request.current!.id,
+          returnRecord: true,
         },
       );
       draft.saved();
+      const savedSession =
+        result.record && "sessionDate" in result.record
+          ? result.record
+          : undefined;
       const name =
+        savedSession?.studentName ??
         students.find((s) => s.id === selected)?.displayName ??
         lesson?.studentName ??
         t("học viên");
@@ -220,10 +229,12 @@ export function RecordForm({
               "0": name,
               "1": formatDate(date, locale),
               "2": formatVnd(
-                sessionAmount({ status, billable, rateVnd: rate }),
+                savedSession?.amountVnd ??
+                  sessionAmount({ status, billable, rateVnd: rate }),
                 locale,
               ),
             }),
+        result.record,
       );
     } catch (e) {
       setError(

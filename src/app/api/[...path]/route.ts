@@ -209,10 +209,15 @@ async function handle(request: Request, context: Context) {
         (request.method === "POST" && path.length === 1) ||
         (request.method === "PATCH" && path.length === 2)
       ) {
-        if (resource === "students")
-          return json(await saveStudent(uid, body, requestId, id));
-        if (resource === "sessions")
-          return json(await saveSession(uid, body, requestId, id));
+        if (resource === "students" || resource === "sessions") {
+          const save = resource === "students" ? saveStudent : saveSession;
+          const result = await save(uid, body, requestId, id);
+          return json(
+            request.headers.get("prefer") === "return=representation"
+              ? result
+              : { id: result.id },
+          );
+        }
         if (resource === "classes")
           return json(await saveClass(uid, body, requestId, id));
         if (resource === "lessons")

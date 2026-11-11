@@ -178,10 +178,7 @@ export function StatementEditor({
     if (result) {
       draft.saved();
       if (onSaved) onSaved(result.id);
-      else {
-        router.push(`/app/statements/${result.id}`);
-        router.refresh();
-      }
+      else router.push(`/app/statements/${result.id}`);
     }
   }
   return (

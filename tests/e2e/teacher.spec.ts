@@ -74,6 +74,16 @@ test("giáo viên 360px: học viên → buổi → reload → giá mới không
   });
   expect(login.ok()).toBeTruthy();
   await page.goto("/app/students");
+  await expect(
+    page.getByRole("heading", { name: "Bắt đầu với học viên đầu tiên" }),
+  ).toBeVisible();
+  const refreshStarted = Promise.withResolvers<void>();
+  const releaseRefresh = Promise.withResolvers<void>();
+  await page.route("**/api/students?archived=false", async (route) => {
+    refreshStarted.resolve();
+    await releaseRefresh.promise;
+    await route.continue();
+  });
   await page
     .getByRole("button", { name: "Thêm học viên", exact: true })
     .first()
@@ -83,10 +93,19 @@ test("giáo viên 360px: học viên → buổi → reload → giá mới không
   await expect(page.getByLabel("Đơn giá mặc định")).toBeFocused();
   await page.getByLabel("Đơn giá mặc định").fill("200000");
   await page.getByRole("button", { name: "Lưu học viên", exact: true }).click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Đã lưu học viên Lan E2E" }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: /Lan E2E/ }).click();
+  try {
+    await refreshStarted.promise;
+    await expect(
+      page.getByRole("status").filter({ hasText: "Đã lưu học viên Lan E2E" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Lan E2E", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(/200\.000/)).toHaveCount(0);
+  } finally {
+    releaseRefresh.resolve();
+  }
+  await page.getByRole("link", { name: "Lan E2E", exact: true }).click();
   await expect(page.getByText(/Đơn giá hiện tại:/)).toBeVisible();
   await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
   await page.getByLabel("Ngày dạy").fill("2026-10-15");

@@ -4,7 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { LanguageSwitcher } from "./language-switcher";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   ChevronRight,
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
-import { api } from "@/lib/client-api";
+import { api, csrfToken } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useAppearancePreview } from "@/lib/use-appearance-preview";
 import { AppearanceContext } from "./appearance";
@@ -51,6 +51,11 @@ export function AppShell({
         (href === "/app/sessions" && path.startsWith("/app/lessons"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    void csrfToken().catch(() => {
+      // A failed preload is retried when the user submits a form.
+    });
+  }, []);
   async function logout() {
     setBusy(true);
     try {
