@@ -538,7 +538,7 @@ export function Workspace({
             }}
             className="grid grid-cols-2 items-start gap-x-3 gap-y-2.5 border-b border-border bg-surface p-3 sm:grid-cols-4 sm:px-5"
           >
-            <label className="field-label min-w-0">
+            <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
               {t("Từ ngày")}
               <Input
                 className="h-[42px]"
@@ -552,7 +552,7 @@ export function Workspace({
                 }
               />
             </label>
-            <label className="field-label min-w-0">
+            <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
               {t("Đến ngày")}
               <Input
                 className="h-[42px]"

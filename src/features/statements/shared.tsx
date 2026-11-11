@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { type Student } from "@/domain";
 import { api } from "@/lib/client-api";
 import { useDebounced } from "@/lib/use-debounced";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ThemedSelect } from "@/components/ui/themed-select";
 export type Page<T> = {
@@ -73,11 +72,13 @@ export function StudentPicker({
   onChange,
   optional = false,
   showSearch = true,
+  disabled = false,
 }: {
   value: string;
   onChange: (id: string) => void;
   optional?: boolean;
   showSearch?: boolean;
+  disabled?: boolean;
 }) {
   const { t } = useI18n();
   const [archived, setArchived] = useState(false);
@@ -160,24 +161,21 @@ export function StudentPicker({
   }
   return (
     <div className="space-y-3">
-      {showSearch && (
-        <label className="field-label">
-          {t("Tìm tên học viên")}
-          <Input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            maxLength={100}
-            placeholder={t("Có dấu hoặc không dấu")}
-          />
-        </label>
-      )}
       <ThemedSelect
         label={t("Học viên")}
         field
         value={value}
-        onChange={onChange}
+        onChange={(id) => {
+          setSearch("");
+          onChange(id);
+        }}
+        disabled={disabled}
         required={!optional}
+        searchField={showSearch ? {
+          label: t("Tìm tên học viên"),
+          value: search,
+          onChange: setSearch,
+        } : undefined}
         options={[
           {
             value: "",
@@ -203,6 +201,7 @@ export function StudentPicker({
         <input
           type="checkbox"
           checked={archived}
+          disabled={disabled}
           data-draft-ignore
           onChange={(event) => setArchived(event.target.checked)}
         />

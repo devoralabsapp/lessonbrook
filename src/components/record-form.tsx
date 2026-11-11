@@ -77,7 +77,9 @@ export function RecordForm({
     const trigger = document.activeElement;
     el?.showModal();
     el?.querySelector<HTMLElement>(
-      'input:not(:disabled):not([aria-hidden="true"]), textarea:not(:disabled)',
+      matchMedia("(pointer: coarse)").matches
+        ? "[data-record-close]"
+        : 'input:not(:disabled):not([aria-hidden="true"]), textarea:not(:disabled)',
     )?.focus({ preventScroll: true });
     return () => {
       el?.close();
@@ -275,6 +277,7 @@ export function RecordForm({
         <Button
           variant="ghost"
           size="icon"
+          data-record-close
           aria-label={t("Đóng biểu mẫu")}
           disabled={busy}
           onClick={onClose}
@@ -416,7 +419,7 @@ export function RecordForm({
                       )}
                 </p>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 min-[420px]:grid-cols-2">
                 <label className="field-label">
                   {t("Ngày dạy *")}
                   <Input

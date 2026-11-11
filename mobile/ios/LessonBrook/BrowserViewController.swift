@@ -12,9 +12,16 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
     private let native = UIHostingController(rootView: AnyView(EmptyView()))
     private let content = UIView()
+    private let header = UIView()
+    private let headerTitle = UILabel()
+    private let headerLine = UIView()
+    private let backButton = UIButton(type: .system)
+    private let appearanceButton = UIButton(type: .system)
+    private let settingsButton = UIButton(type: .system)
     private let tabs = UITabBar()
     private let activity = UIActivityIndicatorView(style: .large)
     private var bottom: NSLayoutConstraint?
+    private var headerHeight: NSLayoutConstraint?
     private var tabHeight: NSLayoutConstraint?
     private var webView: WKWebView?
     private var webURL: NSKeyValueObservation?
@@ -51,11 +58,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
+        navigationController?.setNavigationBarHidden(true, animated: false)
         content.translatesAutoresizingMaskIntoConstraints = false
         tabs.translatesAutoresizingMaskIntoConstraints = false
         tabs.delegate = self
         activity.translatesAutoresizingMaskIntoConstraints = false
         activity.hidesWhenStopped = true
+        view.addSubview(header)
         view.addSubview(content)
         view.addSubview(tabs)
         view.addSubview(activity)
@@ -65,8 +74,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         content.addSubview(native.view)
         native.didMove(toParent: self)
         let safe = view.safeAreaLayoutGuide
+        configureHeader()
+        headerHeight = header.heightAnchor.constraint(equalToConstant: 0)
         NSLayoutConstraint.activate([
-            content.topAnchor.constraint(equalTo: safe.topAnchor),
+            header.topAnchor.constraint(equalTo: safe.topAnchor),
+            header.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            content.topAnchor.constraint(equalTo: header.bottomAnchor),
+            content.bottomAnchor.constraint(lessThanOrEqualTo: view.keyboardLayoutGuide.topAnchor),
             content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tabs.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -75,11 +90,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             activity.centerXAnchor.constraint(equalTo: safe.centerXAnchor),
             activity.centerYAnchor.constraint(equalTo: safe.centerYAnchor),
         ])
+        headerHeight?.isActive = true
         tabHeight = tabs.heightAnchor.constraint(equalToConstant: 0)
         tabHeight?.isActive = true
         sizeTabs()
         pin(native.view)
         configureChrome()
+        NotificationCenter.default.addObserver(self, selector: #selector(updateTextSize),
+                                               name: UIContentSizeCategory.didChangeNotification, object: nil)
         request = Task {
             let saved = await originCookies()
             guard !Task.isCancelled else { return }
@@ -92,6 +110,59 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
                 showWelcome()
             }
         }
+    }
+
+    private func configureHeader() {
+        header.translatesAutoresizingMaskIntoConstraints = false
+        headerTitle.translatesAutoresizingMaskIntoConstraints = false
+        headerLine.translatesAutoresizingMaskIntoConstraints = false
+        headerTitle.textAlignment = .center
+        headerTitle.font = UIFontMetrics(forTextStyle: .headline)
+            .scaledFont(for: .systemFont(ofSize: 17, weight: .semibold))
+        headerTitle.adjustsFontForContentSizeCategory = true
+        headerTitle.lineBreakMode = .byTruncatingTail
+        headerTitle.accessibilityTraits.insert(.header)
+        headerTitle.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let tools = UIStackView(arrangedSubviews: [appearanceButton, settingsButton])
+        tools.spacing = 4
+        tools.translatesAutoresizingMaskIntoConstraints = false
+        backButton.translatesAutoresizingMaskIntoConstraints = false
+        header.addSubview(headerTitle)
+        header.addSubview(backButton)
+        header.addSubview(tools)
+        header.addSubview(headerLine)
+        for (button, icon, action) in [
+            (backButton, "chevron.backward", #selector(goBack)),
+            (appearanceButton, "paintpalette", #selector(openAppearance)),
+            (settingsButton, "gearshape", #selector(openSettings)),
+        ] {
+            let image = UIImage(systemName: icon, withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium))
+            button.setImage(image, for: .normal)
+            button.addTarget(self, action: action, for: .touchUpInside)
+            let width = button.widthAnchor.constraint(equalToConstant: 44)
+            width.priority = .required - 1
+            width.isActive = true
+            button.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        }
+        NSLayoutConstraint.activate([
+            backButton.leadingAnchor.constraint(equalTo: header.layoutMarginsGuide.leadingAnchor),
+            backButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            tools.trailingAnchor.constraint(equalTo: header.layoutMarginsGuide.trailingAnchor),
+            tools.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            headerTitle.centerXAnchor.constraint(equalTo: header.centerXAnchor),
+            headerTitle.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            headerTitle.widthAnchor.constraint(lessThanOrEqualTo: header.widthAnchor, constant: -216),
+            headerLine.leadingAnchor.constraint(equalTo: header.leadingAnchor),
+            headerLine.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            headerLine.bottomAnchor.constraint(equalTo: header.bottomAnchor),
+            headerLine.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+        ])
+    }
+
+    @objc private func updateTextSize() {
+        let scale = UIFontMetrics(forTextStyle: .body).scaledValue(for: 17) / 17
+        webView?.pageZoom = min(max(scale, 1), 1.6)
+        headerHeight?.constant = screen == .welcome ? 0 : max(52, headerTitle.font.lineHeight + 16)
     }
 
     override func viewSafeAreaInsetsDidChange() {
@@ -123,6 +194,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         tabs.isHidden = !showTabs
         bottom?.isActive = false
         bottom = content.bottomAnchor.constraint(equalTo: showTabs ? tabs.topAnchor : view.safeAreaLayoutGuide.bottomAnchor)
+        bottom?.priority = .defaultHigh
         bottom?.isActive = true
         tabs.items = WorkspaceTab.allCases.map {
             UITabBarItem(title: t($0.label), image: UIImage(systemName: $0.icon), tag: $0.rawValue)
@@ -146,39 +218,23 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         tabs.tintColor = accent
         view.backgroundColor = UIColor(palette.background)
         overrideUserInterfaceStyle = palette.dark ? .dark : .light
-        let barAppearance = UINavigationBarAppearance()
-        barAppearance.configureWithOpaqueBackground()
-        barAppearance.backgroundColor = surface
-        barAppearance.titleTextAttributes = [.foregroundColor: ink]
-        barAppearance.largeTitleTextAttributes = [.foregroundColor: ink]
-        let bar = navigationController?.navigationBar
-        bar?.standardAppearance = barAppearance
-        bar?.compactAppearance = barAppearance
-        bar?.scrollEdgeAppearance = barAppearance
-        bar?.compactScrollEdgeAppearance = barAppearance
-        bar?.tintColor = ink
-        navigationController?.setNavigationBarHidden(screen == .welcome, animated: false)
         navigationController?.setNeedsStatusBarAppearanceUpdate()
         let path = webView?.url?.path ?? webRoot ?? ""
-        title = screen == .page ? pageTitle(path) : t(selectedTab.label)
-        navigationItem.rightBarButtonItems = showTabs ? [
-            path == "/app/settings" ? nil : toolbarItem("gearshape", "Account settings", #selector(openSettings)),
-            path == "/app/appearance" ? nil : toolbarItem("paintpalette", "Choose a theme", #selector(openAppearance))
-        ].compactMap { $0 } : []
-        if screen == .page {
-            navigationItem.leftBarButtonItem = UIBarButtonItem(
-                image: UIImage(systemName: "chevron.backward"), style: .plain, target: self, action: #selector(goBack)
-            )
-            navigationItem.leftBarButtonItem?.accessibilityLabel = t("Back")
-        } else {
-            navigationItem.leftBarButtonItem = nil
-        }
-    }
-
-    private func toolbarItem(_ image: String, _ label: String, _ action: Selector) -> UIBarButtonItem {
-        let item = UIBarButtonItem(image: UIImage(systemName: image), style: .plain, target: self, action: action)
-        item.accessibilityLabel = t(label)
-        return item
+        header.isHidden = screen == .welcome
+        updateTextSize()
+        header.backgroundColor = UIColor(palette.background)
+        headerLine.backgroundColor = ink.withAlphaComponent(0.15)
+        headerTitle.text = screen == .page ? pageTitle(path) : t(selectedTab.label)
+        headerTitle.textColor = ink
+        backButton.isHidden = screen != .page || WorkspaceTab.allCases.contains(where: { $0.path == path })
+        backButton.tintColor = ink
+        backButton.accessibilityLabel = t("Back")
+        appearanceButton.isHidden = !showTabs || path == "/app/appearance"
+        appearanceButton.tintColor = accent
+        appearanceButton.accessibilityLabel = t("Choose a theme")
+        settingsButton.isHidden = !showTabs || path == "/app/settings"
+        settingsButton.tintColor = ink
+        settingsButton.accessibilityLabel = t("Account settings")
     }
 
     @objc private func openSettings() { openToolbarPage("/app/settings") }
@@ -328,6 +384,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         content.addSubview(web)
         pin(web)
         webView = web
+        updateTextSize()
         webURL = web.observe(\.url, options: [.new]) { [weak self] web, _ in
             DispatchQueue.main.async { self?.track(web) }
         }
@@ -511,6 +568,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         native.view.isHidden = true
         webView.isHidden = false
         track(webView)
+        if let url = webView.url, MobileSignIn.isFirstParty(url) {
+            webView.evaluateJavaScript("document.querySelector('[data-saved-theme]')?.dataset.savedTheme") { [weak self, weak webView] value, _ in
+                guard let self, let webView, webView === self.webView, webView.url == url,
+                      let theme = value as? String, !theme.isEmpty, theme != self.webTheme else { return }
+                self.webTheme = theme
+                self.configureChrome()
+            }
+        }
         Task {
             let saved = await originCookies()
             guard webView === self.webView else { return }
@@ -569,6 +634,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         case "/app/lessons/new": return t("Record a lesson")
         case "/app/schedule": return t("Upcoming lessons")
         case "/app/classes": return t("Classes")
+        case "/app/statements/new": return t("Create statement")
         case "/app/settings": return t("Account settings")
         case "/app/appearance": return t("Appearance")
         case "/account/deletion": return t("Account deletion")

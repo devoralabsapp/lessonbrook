@@ -243,6 +243,26 @@ summary:focus-visible {
   font-weight: 600;
   color: var(--label);
 }
+/* WebKit's date/time controls otherwise size to their intrinsic content in grids. */
+[data-slot="input"]:is([type="date"], [type="time"]) {
+  display: block;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-min-logical-width: 0;
+  max-width: 100%;
+  min-height: 42px;
+}
+[data-slot="input"]::-webkit-date-and-time-value {
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+}
+@media (pointer: coarse) {
+  [data-slot="input"],
+  textarea.select-input {
+    font-size: 16px;
+  }
+}
 .select-input {
   width: 100%;
   min-width: 0;
@@ -501,7 +521,7 @@ dialog::backdrop {
 
 /* The statement boundary keeps recipient-facing previews independent. */
 [data-theme="playful-retro"]
-  :is([data-slot="card"], dialog, [role="listbox"]):not(
+  :is([data-slot="card"], dialog, .themed-select-menu):not(
     [data-theme="statement"] *
   ) {
   border: var(--retro-outline);

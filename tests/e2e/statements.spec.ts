@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { googleToken, origin } from "../integration/helpers";
-test("360px: chọn 8 buổi → retry cùng khóa → nháp → phát hành → khóa → hủy → lập lại", async ({
+import { chooseOption } from "./select";
+test("360px: tìm học viên → chọn buổi → phát hành trực tiếp → sửa khóa → hủy", async ({
   page,
   context,
 }) => {
@@ -41,19 +42,32 @@ test("360px: chọn 8 buổi → retry cùng khóa → nháp → phát hành →
     status: "cancelled",
     billable: false,
   });
-  await page.goto(`/app/statements/new?studentId=${student.id}`);
+  await page.goto("/app/statements/new");
+  const studentPicker = page.getByRole("combobox", {
+    name: "Học viên",
+    exact: true,
+  });
+  const search = page.getByRole("combobox", { name: "Tìm tên học viên" });
+  await expect(search).toHaveCount(0);
+  await studentPicker.click();
+  await search.fill("Lan bang ke");
+  await page.getByRole("option", { name: "Lan bảng kê", exact: true }).click();
+  await expect(search).toHaveCount(0);
+  const period = page.getByRole("combobox", { name: "Kỳ học" });
+  await expect(period).toHaveText("Tháng này");
+  await chooseOption(period, "week");
+  await expect(period).toHaveText("Tuần này");
+  await chooseOption(period, "custom");
   await page.getByLabel("Từ ngày", { exact: true }).fill("2026-10-01");
   await page.getByLabel("Đến ngày", { exact: true }).fill("2026-10-31");
   await expect(page.getByRole("checkbox", { name: /^Buổi / })).toHaveCount(8);
-  await page
-    .getByRole("button", { name: "Chọn các buổi đang hiện", exact: true })
-    .click();
-  await expect(
-    page.getByText("Đã chọn 8/100 buổi", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByTestId("draft-total")).toContainText("1.600.000");
+  const selectAll = page.getByRole("checkbox", { name: "Chọn tất cả buổi" });
+  await selectAll.check();
+  await expect(page.getByTestId("statement-selection-total")).toContainText(
+    "1.600.000",
+  );
   const keys: string[] = [];
-  await page.route("**/api/statements", async (route) => {
+  await page.route("**/api/statements/issue", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     keys.push(route.request().headers()["idempotency-key"]);
     if (keys.length === 1) {
@@ -61,30 +75,29 @@ test("360px: chọn 8 buổi → retry cùng khóa → nháp → phát hành →
       await route.abort("failed");
     } else await route.continue();
   });
-  await page.getByRole("button", { name: "Lưu nháp", exact: true }).click();
+  await page.getByRole("button", { name: "Lập bảng kê", exact: true }).click();
   await expect(
     page.getByRole("alert").filter({ hasText: "Nội dung vẫn được giữ" }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Đã chọn 8/100 buổi", { exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Lưu nháp", exact: true }).click();
+  await expect(selectAll).toBeChecked();
+  await page.getByRole("button", { name: "Lập bảng kê", exact: true }).click();
   await page.waitForURL(/\/app\/statements\/[a-f0-9-]+$/);
   const statementUrl = page.url();
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
   await expect(page.getByTestId("statement-total")).toContainText("1.600.000");
-  await expect(
-    page.getByRole("heading", { name: "Xem trước bản nháp", exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Phát hành bảng kê", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: /^CC-\d{4}-\d+/ }),
-  ).toBeVisible();
+  const issued = page.getByRole("heading", { name: /^CC-\d{4}-\d+/ });
+  await expect(issued).toBeVisible();
+  const number = await issued.textContent();
+  await page.getByRole("button", { name: "Sửa bảng kê", exact: true }).click();
+  const lesson = page.getByRole("checkbox", { name: /^Buổi / }).last();
+  await expect(page.getByRole("checkbox", { name: /^Buổi / })).toHaveCount(8);
+  await expect(lesson).toBeChecked();
+  await lesson.uncheck();
+  await page.getByRole("button", { name: "Lưu thay đổi bảng kê" }).click();
+  await expect(issued).toHaveText(number!);
   await page.reload();
-  await expect(page.getByTestId("statement-total")).toContainText("1.600.000");
+  await expect(page.getByTestId("statement-total")).toContainText("1.400.000");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -118,6 +131,7 @@ test("360px: chọn 8 buổi → retry cùng khóa → nháp → phát hành →
   await page
     .getByRole("link", { name: "Lập bảng kê mới", exact: true })
     .click();
+  await chooseOption(period, "custom");
   await page.getByLabel("Từ ngày", { exact: true }).fill("2026-10-01");
   await page.getByLabel("Đến ngày", { exact: true }).fill("2026-10-31");
   await expect(page.getByRole("checkbox", { name: /^Buổi / })).toHaveCount(8);
@@ -127,6 +141,10 @@ test("360px: chọn 8 buổi → retry cùng khóa → nháp → phát hành →
     ),
   ).toBeTruthy();
   await page.goto("/app/statements");
+  await expect(search).toHaveCount(0);
+  await studentPicker.click();
+  await search.fill("Lan bang ke");
+  await page.getByRole("option", { name: "Lan bảng kê", exact: true }).click();
   await expect(
     page.getByRole("link", { name: /CC-.*Lan bảng kê/ }),
   ).toBeVisible();

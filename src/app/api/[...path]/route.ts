@@ -47,6 +47,8 @@ import {
   getSummary,
 } from "@/lib/server/repository";
 import {
+  amendStatement,
+  createIssuedStatement,
   getStatement,
   issueStatement,
   listEligibleSessions,
@@ -233,6 +235,12 @@ async function handle(request: Request, context: Context) {
           return json(await revokeShare(uid, id, body, requestId));
       }
       if (resource === "statements") {
+        if (request.method === "POST" && path.length === 2 && id === "issue")
+          return json(await createIssuedStatement(uid, body, requestId));
+        if (request.method === "POST" && path.length === 3 && action === "publish")
+          return json(await createIssuedStatement(uid, body, requestId, id));
+        if (request.method === "PATCH" && path.length === 3 && action === "issued")
+          return json(await amendStatement(uid, id, body, requestId));
         if (request.method === "POST" && path.length === 1)
           return json(await saveStatementDraft(uid, body, requestId));
         if (request.method === "PATCH" && path.length === 2)

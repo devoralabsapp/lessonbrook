@@ -82,6 +82,7 @@ export function ThemedSelect<Value extends string>({
   compact = false,
   icon,
   describedBy,
+  searchField,
 }: {
   label: string;
   value: Value;
@@ -96,10 +97,17 @@ export function ThemedSelect<Value extends string>({
   compact?: boolean;
   icon?: ReactNode;
   describedBy?: string;
+  searchField?: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+  };
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const listbox = useRef<HTMLDivElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
   const search = useRef({ text: "", time: 0 });
   const [root, setRoot] = useState<HTMLElement | null>(null);
   const [activeValue, setActiveValue] = useState<Value>(value);
@@ -122,8 +130,9 @@ export function ThemedSelect<Value extends string>({
 
   useLayoutEffect(() => {
     const anchor = trigger.current;
-    const menu = listbox.current;
-    if (!root || !anchor || !menu) return;
+    const menu = popup.current;
+    const list = listbox.current;
+    if (!root || !anchor || !menu || !list) return;
     function dismiss(event: PointerEvent) {
       if (
         event.target instanceof Node &&
@@ -133,12 +142,19 @@ export function ThemedSelect<Value extends string>({
         setRoot(null);
     }
     function position(event?: Event) {
-      if (event?.target === menu || !anchor || !menu || !root) return;
+      if (
+        event?.target === list ||
+        event?.target === menu ||
+        !anchor ||
+        !menu ||
+        !root
+      )
+        return;
       if (anchor.matches(":disabled") || !positionMenu(anchor, menu, root))
         setRoot(null);
     }
     position();
-    revealOption(menu, menu.querySelector("[data-active]"));
+    revealOption(list, list.querySelector("[data-active]"));
     const viewport = window.visualViewport;
     document.addEventListener("pointerdown", dismiss);
     window.addEventListener("resize", position);
@@ -193,6 +209,14 @@ export function ThemedSelect<Value extends string>({
       event.preventDefault();
       event.stopPropagation();
       setRoot(null);
+    } else if (
+      key === "Tab" &&
+      root &&
+      searchInput.current &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      searchInput.current.focus({ preventScroll: true });
     } else if (key === "Tab" && root) {
       setRoot(null);
     } else if (root && active && (key === "Enter" || key === " ")) {
@@ -290,7 +314,9 @@ export function ThemedSelect<Value extends string>({
         data-compact={compact || undefined}
         className="themed-select-trigger"
         onKeyDown={onKeyDown}
-        onBlur={() => setRoot(null)}
+        onBlur={(event) => {
+          if (!popup.current?.contains(event.relatedTarget)) setRoot(null);
+        }}
         onClick={() => {
           if (root) setRoot(null);
           else open();
@@ -335,27 +361,93 @@ export function ThemedSelect<Value extends string>({
       {root &&
         createPortal(
           <div
-            ref={listbox}
-            id={id}
-            role="listbox"
-            aria-label={label}
-            className="themed-select-menu"
+            ref={popup}
+            id={searchField ? undefined : id}
+            role={searchField ? undefined : "listbox"}
+            aria-label={searchField ? undefined : label}
+            className="themed-select-menu flex flex-col"
           >
-            {Array.from(groups, ([name, items]) =>
-              name ? (
-                <div
-                  key={name}
-                  role="group"
-                  aria-label={name}
-                  className="themed-select-group"
-                >
-                  <div aria-hidden="true">{name}</div>
-                  {items.map(renderOption)}
-                </div>
-              ) : (
-                <Fragment key="ungrouped">{items.map(renderOption)}</Fragment>
-              ),
+            {searchField && (
+              <input
+                ref={searchInput}
+                data-slot="input"
+                type="search"
+                role="combobox"
+                aria-expanded="true"
+                aria-autocomplete="list"
+                aria-controls={id}
+                aria-activedescendant={active ? optionId(active) : undefined}
+                aria-label={searchField.label}
+                placeholder={searchField.label}
+                value={searchField.value}
+                onChange={(event) => searchField.onChange(event.target.value)}
+                maxLength={100}
+                autoComplete="off"
+                className="m-1 min-w-0 rounded-lg border border-input bg-card px-3 py-2 text-base text-foreground"
+                onBlur={(event) => {
+                  if (
+                    event.relatedTarget !== trigger.current &&
+                    !popup.current?.contains(event.relatedTarget)
+                  )
+                    setRoot(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing) return;
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    trigger.current?.focus({ preventScroll: true });
+                    setRoot(null);
+                  } else if (
+                    event.key === "ArrowDown" ||
+                    event.key === "ArrowUp"
+                  ) {
+                    event.preventDefault();
+                    const index = active ? options.indexOf(active) : -1;
+                    highlight(
+                      options[
+                        Math.max(
+                          0,
+                          Math.min(
+                            options.length - 1,
+                            index + (event.key === "ArrowDown" ? 1 : -1),
+                          ),
+                        )
+                      ],
+                    );
+                  } else if (event.key === "Enter" && active) {
+                    event.preventDefault();
+                    choose(active);
+                  } else if (event.key === "Tab") {
+                    trigger.current?.focus({ preventScroll: true });
+                    setRoot(null);
+                  }
+                }}
+              />
             )}
+            <div
+              ref={listbox}
+              id={searchField ? id : undefined}
+              role={searchField ? "listbox" : undefined}
+              aria-label={searchField ? label : undefined}
+              className="min-h-0 overflow-auto overscroll-contain"
+            >
+              {Array.from(groups, ([name, items]) =>
+                name ? (
+                  <div
+                    key={name}
+                    role="group"
+                    aria-label={name}
+                    className="themed-select-group"
+                  >
+                    <div aria-hidden="true">{name}</div>
+                    {items.map(renderOption)}
+                  </div>
+                ) : (
+                  <Fragment key="ungrouped">{items.map(renderOption)}</Fragment>
+                ),
+              )}
+            </div>
           </div>,
           root,
         )}

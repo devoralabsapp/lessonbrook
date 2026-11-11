@@ -67,7 +67,8 @@ export function StatementDetail({
         {t("Đang mở bảng kê…")}
       </p>
     );
-  if (editing && data.status === "draft")
+  const canEditIssued = data.status === "issued" && !data.activePaymentCount && !data.paidVnd;
+  if (editing && (data.status === "draft" || canEditIssued))
     return (
       <StatementEditor
         initial={data}
@@ -116,6 +117,11 @@ export function StatementDetail({
             {display.label}
             {display.overdue ? t(" · Quá hạn") : ""}
           </span>
+          {canEditIssued && (
+            <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+              {t("Sửa bảng kê")}
+            </Button>
+          )}
         </div>
       </div>
       <Card className="overflow-hidden" data-testid="statement-preview">

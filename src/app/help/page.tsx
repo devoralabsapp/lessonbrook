@@ -69,7 +69,7 @@ export default async function HelpPage() {
           </li>
           <li>
             {t(
-              "Lưu nháp, kiểm tra người nhận, các buổi và ngày đến hạn rồi phát hành. Bảng kê có tối đa 100 buổi và dùng thông tin chuyển khoản đã lưu để tạo VietQR.",
+              "Kiểm tra học viên, các buổi và ngày đến hạn rồi bấm Lập bảng kê để phát hành ngay. Bạn có thể sửa bảng kê trước khi ghi nhận khoản thu. Mỗi bảng kê có tối đa 100 buổi.",
             )}
           </li>
         </ol>

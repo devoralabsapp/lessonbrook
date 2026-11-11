@@ -82,6 +82,7 @@ async function readDraftSources(
   tx: Transaction,
   root: DocumentReference,
   input: StatementDraftInput,
+  issued?: ReturnType<typeof statementDto>,
 ) {
   const [profileDoc, studentDoc, ...sessionDocs] = await tx.getAll(
     root,
@@ -93,6 +94,9 @@ async function readDraftSources(
   const profile = profileDocumentSchema.parse(profileDoc.data());
   const student = studentDto(studentDoc);
   const sessions = sessionDocs.map(sessionDto);
+  const previousItems = new Map(
+    issued?.items.map((item) => [item.sessionId, item]),
+  );
   for (const session of sessions) {
     if (session.studentId !== input.studentId)
       throw new AppError(
@@ -102,7 +106,8 @@ async function readDraftSources(
     if (
       session.status !== "completed" ||
       !session.billable ||
-      session.billedStatementId !== null ||
+      session.billedStatementId !==
+        (previousItems.has(session.id) ? issued!.id : null) ||
       session.sessionDate < input.periodStart ||
       session.sessionDate > input.periodEnd
     )
@@ -117,7 +122,7 @@ async function readDraftSources(
     .map((session) => ({
       sessionId: session.id,
       sessionDate: session.sessionDate,
-      amountVnd: session.rateVnd,
+      amountVnd: previousItems.get(session.id)?.amountVnd ?? session.rateVnd,
     }))
     .sort(
       (a, b) =>
@@ -230,23 +235,14 @@ export async function issueStatement(
       if (draft.status !== "draft")
         throw new AppError(409, "Bảng kê này không còn là bản nháp.");
       assertVersion(draft.version, input.version);
-      const issueDate = vietnamToday(now.toDate());
-      const counterRef = root.collection("counters").doc(issueDate.slice(0, 4));
-      const counter = await tx.get(counterRef);
-      const previous = counter.exists
-        ? z
-            .number()
-            .int()
-            .min(0)
-            .max(999_999_999)
-            .parse(counter.get("lastValue"))
-        : 0;
-      if (previous === 999_999_999)
-        throw new AppError(409, "Bộ đếm bảng kê đã đạt giới hạn.");
-      const { source, bankTransferSnapshot } = await readDraftSources(tx, root, {
-        ...draft,
-        sessionIds: draft.items.map((item) => item.sessionId),
-      });
+      const { source, bankTransferSnapshot } = await readDraftSources(
+        tx,
+        root,
+        {
+          ...draft,
+          sessionIds: draft.items.map((item) => item.sessionId),
+        },
+      );
       if (
         JSON.stringify(source.items) !== JSON.stringify(draft.items) ||
         JSON.stringify(source.teacherSnapshot) !==
@@ -259,35 +255,186 @@ export async function issueStatement(
           409,
           "Buổi dạy hoặc thông tin bảng kê đã thay đổi. Mở sửa nháp, kiểm tra và lưu lại trước khi phát hành.",
         );
-      // Every check/read above precedes writes; sessions are the shared contention points.
-      for (const item of source.items)
-        tx.update(root.collection("sessions").doc(item.sessionId), {
-          billedStatementId: id,
-          updatedAt: now,
-        });
-      const number = `CC-${issueDate.slice(0, 4)}-${String(previous + 1).padStart(6, "0")}`;
-      tx.set(counterRef, {
-        lastValue: previous + 1,
-        updatedAt: now,
-        schemaVersion: 1,
-      });
+      const issued = await issueFields(tx, root, id, now, source.items);
       tx.update(ref, {
         ...source,
         ...(bankTransferSnapshot && {
           bankTransferSnapshot,
           bankSnapshot: null,
         }),
-        status: "issued",
-        number,
-        issueDate,
-        issuedAt: now,
-        paidVnd: 0,
-        activePaymentCount: 0,
-        activeShareTokenHash: null,
+        ...issued,
         updatedAt: now,
         version: statementVersionSchema.parse(draft.version + 1),
       });
       audit(tx, root, eventId, id, "issued", now);
+      return { id };
+    },
+  );
+}
+
+async function issueFields(
+  tx: Transaction,
+  root: DocumentReference,
+  id: string,
+  now: Timestamp,
+  items: ReturnType<typeof statementDto>["items"],
+) {
+  const issueDate = vietnamToday(now.toDate());
+  const year = issueDate.slice(0, 4);
+  const counterRef = root.collection("counters").doc(year);
+  const counter = await tx.get(counterRef);
+  const previous = counter.exists
+    ? z.number().int().min(0).max(999_999_999).parse(counter.get("lastValue"))
+    : 0;
+  if (previous === 999_999_999)
+    throw new AppError(409, "Bộ đếm bảng kê đã đạt giới hạn.");
+  const next = previous + 1;
+  for (const item of items)
+    tx.update(root.collection("sessions").doc(item.sessionId), {
+      billedStatementId: id,
+      updatedAt: now,
+    });
+  tx.set(counterRef, { lastValue: next, updatedAt: now, schemaVersion: 1 });
+  return {
+    status: "issued" as const,
+    number: `CC-${year}-${String(next).padStart(6, "0")}`,
+    issueDate,
+    issuedAt: now,
+    paidVnd: 0,
+    activePaymentCount: 0,
+    activeShareTokenHash: null,
+  };
+}
+
+export async function createIssuedStatement(
+  uid: string,
+  raw: unknown,
+  requestId: string,
+  draftId?: string,
+) {
+  const { sessionIds, version, ...period } =
+    statementDraftInputSchema.parse(raw);
+  if (draftId) idSchema.parse(draftId);
+  else if (version !== undefined)
+    throw new AppError(400, "Bảng kê mới chưa có phiên bản.");
+  sessionIds.sort();
+  const id = draftId ?? randomUUID();
+  const eventId = randomUUID();
+  return operation(
+    uid,
+    "statement-create-issued",
+    requestId,
+    { ...period, sessionIds, draftId, version },
+    async (tx, root, now) => {
+      const ref = root.collection("statements").doc(id);
+      const existing = draftId ? await tx.get(ref) : null;
+      const draft = existing ? statementDto(existing) : null;
+      if (draft) {
+        if (draft.status !== "draft")
+          throw new AppError(409, "Bảng kê này không còn là bản nháp.");
+        assertVersion(draft.version, version);
+      }
+      const { source, bankTransferSnapshot } = await readDraftSources(
+        tx,
+        root,
+        { ...period, sessionIds },
+      );
+      const issued = await issueFields(tx, root, id, now, source.items);
+      const data = statementDocumentSchema.parse({
+        ...period,
+        ...source,
+        ...(bankTransferSnapshot && {
+          bankTransferSnapshot,
+          bankSnapshot: null,
+        }),
+        ...issued,
+        version: (draft?.version ?? 0) + 1,
+        createdAt: existing?.get("createdAt") ?? now,
+        updatedAt: now,
+        voidedAt: null,
+        voidReason: null,
+        schemaVersion: 1,
+      });
+      if (draft) tx.set(ref, data);
+      else tx.create(ref, data);
+      audit(tx, root, eventId, id, "issued", now);
+      return { id };
+    },
+  );
+}
+
+function assertAmendable(statement: ReturnType<typeof statementDto>) {
+  if (
+    statement.status !== "issued" ||
+    statement.activePaymentCount ||
+    statement.paidVnd
+  )
+    throw new AppError(
+      409,
+      "Chỉ sửa được bảng kê đã phát hành chưa có khoản thu.",
+    );
+}
+
+export async function amendStatement(
+  uid: string,
+  id: string,
+  raw: unknown,
+  requestId: string,
+) {
+  idSchema.parse(id);
+  const input = statementDraftInputSchema.parse(raw);
+  input.sessionIds.sort();
+  const eventId = randomUUID();
+  return operation(
+    uid,
+    "statement-amend",
+    requestId,
+    { id, ...input },
+    async (tx, root, now) => {
+      const ref = root.collection("statements").doc(id);
+      const current = statementDto(await tx.get(ref));
+      assertAmendable(current);
+      assertVersion(current.version, input.version);
+      if (current.studentId !== input.studentId)
+        throw new AppError(
+          400,
+          "Không thể đổi học viên của bảng kê đã phát hành.",
+        );
+      const { source } = await readDraftSources(tx, root, input, current);
+      const selected = new Set(input.sessionIds);
+      const previous = new Set(current.items.map((item) => item.sessionId));
+      const removed = current.items
+        .filter((item) => !selected.has(item.sessionId))
+        .map((item) => root.collection("sessions").doc(item.sessionId));
+      const released = removed.length ? await tx.getAll(...removed) : [];
+      if (
+        released.some(
+          (doc) =>
+            !doc.exists ||
+            doc.get("billedStatementId") !== id ||
+            doc.get("studentId") !== current.studentId,
+        )
+      )
+        throw new AppError(409, "Liên kết buổi dạy không khớp bảng kê.");
+      for (const doc of released)
+        tx.update(doc.ref, { billedStatementId: null, updatedAt: now });
+      for (const item of source.items) {
+        if (!previous.has(item.sessionId))
+          tx.update(root.collection("sessions").doc(item.sessionId), {
+            billedStatementId: id,
+            updatedAt: now,
+          });
+      }
+      tx.update(ref, {
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
+        dueDate: input.dueDate,
+        items: source.items,
+        totalVnd: source.totalVnd,
+        version: statementVersionSchema.parse(current.version + 1),
+        updatedAt: now,
+      });
+      audit(tx, root, eventId, id, "amended", now);
       return { id };
     },
   );
@@ -371,6 +518,7 @@ export async function getStatement(uid: string, id: string) {
 const eligibleSchema = z
   .object({
     studentId: idSchema,
+    statementId: idSchema.optional(),
     periodStart: dateSchema,
     periodEnd: dateSchema,
     cursor: z.string().optional(),
@@ -383,13 +531,25 @@ const eligibleSchema = z
   );
 export async function listEligibleSessions(uid: string, raw: unknown) {
   const input = eligibleSchema.parse(raw);
-  await getStudent(uid, input.studentId); // Archived students remain eligible for past sessions.
+  if (input.statementId) {
+    const statement = await getStatement(uid, input.statementId);
+    assertAmendable(statement);
+    if (statement.studentId !== input.studentId)
+      throw new AppError(
+        400,
+        "Không thể đổi học viên của bảng kê đã phát hành.",
+      );
+  } else await getStudent(uid, input.studentId);
   let query: Query = userRef(uid)
     .collection("sessions")
     .where("studentId", "==", input.studentId)
     .where("status", "==", "completed")
     .where("billable", "==", true)
-    .where("billedStatementId", "==", null)
+    .where(
+      "billedStatementId",
+      input.statementId ? "in" : "==",
+      input.statementId ? [null, input.statementId] : null,
+    )
     .where("sessionDate", ">=", input.periodStart)
     .where("sessionDate", "<=", input.periodEnd)
     .orderBy("sessionDate")
