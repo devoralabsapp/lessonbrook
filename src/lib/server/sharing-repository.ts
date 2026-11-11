@@ -73,7 +73,10 @@ async function publicSnapshot(
       amountVnd,
     })),
     bankDetails: statement.bankSnapshot,
-    ...(statement.bankSnapshot && {
+    ...(statement.bankTransferSnapshot && {
+      bankTransfer: statement.bankTransferSnapshot,
+    }),
+    ...((statement.bankSnapshot || statement.bankTransferSnapshot) && {
       transferReference: transferReferenceFor(statement),
     }),
     updatedAt: statement.updatedAt,

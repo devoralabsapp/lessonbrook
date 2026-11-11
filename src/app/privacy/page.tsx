@@ -47,7 +47,7 @@ export default async function PrivacyPage() {
         </p>
         <p>
           {t(
-            "Link hiển thị tên giáo viên và người nhận đã chốt, mã bảng kê, ngày, các dòng học phí, tổng cần thu, các ngày/số tiền đã ghi nhận thu và số còn thiếu. Thông tin chuyển khoản chỉ có nếu bạn đã chọn đưa vào bảng kê.",
+            "Link hiển thị tên giáo viên và người nhận, mã bảng kê, ngày, học phí, các khoản đã thu và số còn thiếu. Khi bạn lưu thông tin chuyển khoản trong Cài đặt tài khoản, các bảng kê phát hành sau đó sẽ hiển thị thông tin này cùng VietQR cho số tiền còn phải thu.",
           )}
         </p>
         <p>
@@ -72,7 +72,7 @@ export default async function PrivacyPage() {
         </p>
         <p>
           {t(
-            "Ứng dụng giữ lịch sử thao tác trong sổ để đối chiếu và thông tin kỹ thuật tối thiểu để xử lý lỗi, chống truy cập tự động. Trang bảng kê chia sẻ không nạp công cụ phân tích bên thứ ba. LessonBrook không gửi tin nhắn Zalo, đọc giao dịch ngân hàng hoặc tự xác nhận chuyển khoản.",
+            "Ứng dụng giữ lịch sử thao tác trong sổ để đối chiếu và thông tin kỹ thuật tối thiểu để xử lý lỗi, chống truy cập tự động. Trang bảng kê chia sẻ không nạp công cụ phân tích bên thứ ba. Khi bạn bật Phím tắt, LessonBrook xử lý thông báo nhận tiền bạn gửi để đối soát. Sổ lưu khoản thu khớp mà không lưu nội dung thông báo hay số dư ngân hàng. VietQR được tạo ngay trong LessonBrook.",
           )}
         </p>
       </section>

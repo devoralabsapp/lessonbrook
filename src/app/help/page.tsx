@@ -69,7 +69,7 @@ export default async function HelpPage() {
           </li>
           <li>
             {t(
-              "Lưu nháp, xem trước tên người nhận, các buổi, thông tin chuyển khoản và ngày đến hạn; kiểm tra rồi phát hành. Tối đa 100 buổi mỗi bảng kê.",
+              "Lưu nháp, kiểm tra người nhận, các buổi và ngày đến hạn rồi phát hành. Bảng kê có tối đa 100 buổi và dùng thông tin chuyển khoản đã lưu để tạo VietQR.",
             )}
           </li>
         </ol>
@@ -173,7 +173,7 @@ export default async function HelpPage() {
         </p>
         <p>
           {t(
-            "Người nhận xem được tên đã chốt trên bảng kê, ngày và tiền từng buổi, tổng đã ghi nhận thu, số còn thiếu và thông tin nhận tiền bạn đã chọn chia sẻ. Ghi chú riêng, email và điện thoại không nằm trong bảng kê công khai.",
+            "Người nhận xem được tên đã chốt, ngày và học phí từng buổi, các khoản đã thu, số còn thiếu và thông tin chuyển khoản trên bảng kê. Ghi chú riêng, email và điện thoại được giữ trong sổ của giáo viên.",
           )}
         </p>
         <p>

@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { StatementEditor } from "./editor";
 import { formatDate, useStatementMutation } from "./shared";
 import { PaymentPanel } from "@/features/payments/payment-panel";
+import { BankTransferDetails } from "@/features/payments/bank-transfer-details";
 import { SharingPanel } from "@/features/sharing/sharing-panel";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
 type StatementDetailData = Statement & { transferReference: string | null };
@@ -195,22 +196,13 @@ export function StatementDetail({
             </>
           )}
         </div>
-        {data.bankSnapshot && (
-          <div className="border-t border-border p-5 sm:p-7">
-            <h3 className="mb-2 text-xs font-semibold">
-              {t("Thông tin nhận tiền")}
-            </h3>
-            <p className="whitespace-pre-wrap break-words text-sm leading-6">
-              {data.bankSnapshot}
-            </p>
-          </div>
-        )}
-        {data.transferReference && data.paidVnd < data.totalVnd && (
-          <p className="break-words border-t border-border px-5 py-4 text-sm sm:px-7">
-            {t("Nội dung chuyển khoản:")}{" "}
-            <strong>{data.transferReference}</strong>
-          </p>
-        )}
+        <BankTransferDetails
+          bank={data.status === "issued" ? data.bankTransferSnapshot : null}
+          legacyDetails={data.bankSnapshot}
+          reference={data.transferReference}
+          remainingVnd={data.totalVnd - data.paidVnd}
+          className="border-t border-border p-5 sm:p-7"
+        />
       </Card>
       {mutation.error && (
         <p
@@ -224,7 +216,7 @@ export function StatementDetail({
         <Card className="space-y-4 p-5">
           <p className="text-sm leading-6">
             {t(
-              "Kiểm tra tên, các buổi, số tiền và thông tin nhận tiền ở trên. Khi phát hành, nội dung được chốt cố định và các buổi này không còn được sửa. Nháp chưa được tính vào khoản phải thu.",
+              "Kiểm tra tên, các buổi và số tiền ở trên. Khi phát hành, bảng kê sẽ chốt nội dung, khóa các buổi và dùng thông tin chuyển khoản đã lưu để tạo VietQR.",
             )}
           </p>
           <div className="flex flex-wrap gap-3">

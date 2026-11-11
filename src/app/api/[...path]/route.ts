@@ -42,6 +42,7 @@ import {
   listStudents,
   saveSession,
   saveStudent,
+  updateBankTransfer,
   updateProfile,
   getSummary,
 } from "@/lib/server/repository";
@@ -162,6 +163,13 @@ async function handle(request: Request, context: Context) {
         request.headers.get("idempotency-key"),
       );
       const body = await jsonBody(request);
+      if (
+        resource === "profile" &&
+        id === "bank-transfer" &&
+        path.length === 2 &&
+        request.method === "PATCH"
+      )
+        return json(await updateBankTransfer(uid, body, requestId));
       if (resource === "bank-shortcut" && request.method === "POST") {
         if (path.length === 1) {
           const session = (await cookies()).get(SESSION_COOKIE)?.value;

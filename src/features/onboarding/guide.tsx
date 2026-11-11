@@ -85,7 +85,6 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
     try {
       const saved = await mutation.run("/api/onboarding", "POST", {
         displayName: String(form.get("displayName")),
-        bankDetails: String(form.get("bankDetails")),
       });
       if (saved) {
         await refresh();
@@ -173,19 +172,9 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
                   defaultValue={data.profile.displayName}
                 />
               </label>
-              <label className="field-label">
-                {t("Thông tin nhận chuyển khoản (tùy chọn)")}
-                <textarea
-                  name="bankDetails"
-                  className="select-input"
-                  rows={3}
-                  maxLength={500}
-                  defaultValue={data.profile.bankDetails}
-                />
-              </label>
               <p className="text-xs leading-6 text-muted-foreground">
                 {t(
-                  "Tên này xuất hiện trên bảng kê bạn phát hành. Thông tin chuyển khoản chỉ chia sẻ khi bạn chủ động chọn đưa vào bảng kê.",
+                  "Tên này xuất hiện trên bảng kê bạn phát hành. Bạn có thể thiết lập VietQR trong Cài đặt tài khoản.",
                 )}
               </p>
               <Button disabled={mutation.busy || loading}>

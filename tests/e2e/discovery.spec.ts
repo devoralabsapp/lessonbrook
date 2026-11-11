@@ -34,9 +34,6 @@ test("360px: hướng dẫn lần đầu → mất response xác nhận → ti�
   await page.goto("/app");
   await page.getByRole("link", { name: "Thiết lập sổ của bạn" }).click();
   await page.getByLabel("Tên giáo viên / tên lớp").fill("Cô Mai piano");
-  await page
-    .getByLabel("Thông tin nhận chuyển khoản")
-    .fill("Thông tin tùy chọn");
   const keys: string[] = [];
   await page.route("**/api/onboarding", async (route) => {
     if (route.request().method() !== "POST") return route.continue();

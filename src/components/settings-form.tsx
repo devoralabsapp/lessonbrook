@@ -14,6 +14,7 @@ import { DeletePanel } from "@/features/account/delete-panel";
 import { BankShortcutSettings } from "@/features/payments/bank-shortcut-settings";
 import { InfoLinks } from "./info-links";
 import { MOBILE_SCHEME } from "@/domain/mobile-sign-in";
+import type { BankTransfer } from "@/domain/bank-transfer";
 export function SettingsForm({
   inApp,
   shortcutUrl,
@@ -26,6 +27,7 @@ export function SettingsForm({
   const [profile, setProfile] = useState<{
     displayName: string;
     bankDetails: string;
+    bankTransfer?: BankTransfer | null;
     email: string | null;
   } | null>(null);
   const [error, setError] = useState("");
@@ -55,7 +57,6 @@ export function SettingsForm({
     const f = new FormData(e.currentTarget);
     const body = {
       displayName: String(f.get("displayName")),
-      bankDetails: String(f.get("bankDetails")),
     };
     const hash = JSON.stringify(body);
     if (request.current?.hash !== hash)
@@ -119,29 +120,6 @@ export function SettingsForm({
                 defaultValue={profile.displayName}
               />
             </label>
-            <section
-              aria-labelledby="bank-transfer-title"
-              className="min-w-0 space-y-2 border-t border-border pt-4"
-            >
-              <h2 id="bank-transfer-title" className="serif text-xl">
-                {t("Thông tin chuyển khoản")}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {t(
-                  "Thông tin này được thêm vào bảng kê khi bạn chọn hiển thị chi tiết chuyển khoản.",
-                )}
-              </p>
-              <label className="field-label">
-                {t("Thông tin nhận chuyển khoản (tùy chọn)")}
-                <textarea
-                  className="select-input"
-                  name="bankDetails"
-                  rows={3}
-                  maxLength={500}
-                  defaultValue={profile.bankDetails}
-                />
-              </label>
-            </section>
             <p className="text-xs leading-6 text-muted-foreground">
               {t("Tiền tệ: VND · Múi giờ: Việt Nam.")}
               <br />
@@ -165,7 +143,14 @@ export function SettingsForm({
           </p>
         )}
       </Card>
-      {profile && <BankShortcutSettings url={shortcutUrl} inApp={inApp} />}
+      {profile && (
+        <BankShortcutSettings
+          url={shortcutUrl}
+          inApp={inApp}
+          initialBankTransfer={profile.bankTransfer ?? null}
+          hasLegacyDetails={!!profile.bankDetails}
+        />
+      )}
       {inApp ? (
         <Card>
           <Button

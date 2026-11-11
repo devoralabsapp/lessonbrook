@@ -7,7 +7,7 @@ export const teacherSettingsSchema = z
       .trim()
       .min(1, "Nhập tên giáo viên hoặc tên lớp.")
       .max(100),
-    bankDetails: z.string().trim().max(500),
+    bankDetails: z.string().trim().max(500).optional(),
   })
   .strict();
 export type OnboardingState = {

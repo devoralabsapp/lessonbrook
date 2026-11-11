@@ -324,6 +324,13 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     expect(response.ok()).toBe(true);
     return response.json();
   };
+  await page.goto("/app/settings");
+  await page.getByRole("combobox", { name: "Bank name", exact: true }).click();
+  await page.getByRole("option", { name: "Vietcombank", exact: true }).click();
+  await page.getByLabel("Account number", { exact: true }).fill("12345678901234");
+  await page.getByLabel("Account holder name").fill("DEMO ACCOUNT HOLDER");
+  await page.getByRole("button", { name: "Save bank transfer details" }).click();
+  await expect(page.getByText("Bank transfer details saved.")).toBeVisible();
   await page.goto("/app/students");
   await page
     .getByRole("button", { name: "Add student", exact: true })
@@ -365,6 +372,7 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     .getByRole("button", { name: "Issue statement", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: /^CC-/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: "VietQR payment code" })).toBeVisible();
   await page
     .getByRole("button", { name: "Preview to create a link", exact: true })
     .click();
@@ -391,6 +399,8 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     await expect(recipient.getByTestId("public-remaining")).toContainText(
       "200,000",
     );
+    await expect(recipient.getByRole("img", { name: "VietQR payment code" })).toBeVisible();
+    await expect(recipient.getByTestId("public-statement")).toContainText("DEMO ACCOUNT HOLDER");
     await recipient
       .getByRole("combobox", { name: "Language", exact: true })
       .click();
@@ -459,9 +469,7 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   await expect(page.locator('[data-theme="playful-retro"]')).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(saveAppearance).toHaveCount(0);
-  await page
-    .getByLabel("Account number in the notification")
-    .fill("12345678901234");
+  await expect(page.getByLabel("Account number", { exact: true })).toHaveValue("12345678901234");
   const popupPromise = page.waitForEvent("popup");
   await page
     .getByRole("button", { name: "Create shortcut key", exact: true })

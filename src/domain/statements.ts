@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { dateSchema, idSchema, MAX_VND, moneySchema } from ".";
+import { bankTransferSchema } from "./bank-transfer";
 
 export const MAX_STATEMENT_SESSIONS = 100;
 export const statementMoneySchema = z
@@ -69,6 +70,7 @@ export const statementSchema = z
     teacherSnapshot: snapshotSchema,
     recipientSnapshot: snapshotSchema,
     bankSnapshot: z.string().max(500).nullable(),
+    bankTransferSnapshot: bankTransferSchema.nullable().optional(),
     includeBankDetails: z.boolean(),
     items: z.array(statementItemSchema).min(1).max(MAX_STATEMENT_SESSIONS),
     totalVnd: statementMoneySchema,

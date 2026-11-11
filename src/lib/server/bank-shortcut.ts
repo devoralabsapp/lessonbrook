@@ -7,6 +7,7 @@ import {
   shortcutKeySchema,
 } from "@/domain/bank-notification";
 import type { Statement } from "@/domain/statements";
+import { MAX_TRANSFER_MEMO_LENGTH } from "@/domain/bank-transfer";
 import { admin } from "@/lib/firebase/admin";
 import { accountKey, assertAccountAvailable } from "./account-access";
 import { AppError } from "./errors";
@@ -42,12 +43,15 @@ const hash = (secret: string) =>
 const unauthorized = () =>
   new AppError(401, "Kết nối Phím tắt không hợp lệ hoặc đã hết hạn.");
 const context = (selector: string) => `bank-shortcut:${selector}`;
-export const transferReferenceFor = (
-  statement: Pick<Statement, "number" | "id">,
-) =>
-  statement.number
-    ? `${statement.number}-${hash(statement.id).slice(0, 12).toUpperCase()}`
-    : null;
+export function transferReferenceFor(
+  statement: Pick<Statement, "number" | "id" | "bankTransferSnapshot">,
+) {
+  if (!statement.number) return null;
+  const suffixLength = statement.bankTransferSnapshot
+    ? MAX_TRANSFER_MEMO_LENGTH - statement.number.length - 1
+    : 12;
+  return `${statement.number}-${hash(statement.id).slice(0, suffixLength).toUpperCase()}`;
+}
 
 export async function getBankShortcut(uid: string) {
   const doc = await bankShortcutRef(uid).get();
@@ -287,6 +291,7 @@ export async function assertBankShortcutActive(
   tx: FirebaseFirestore.Transaction,
   uid: string,
   keyHash: string,
+  accountNumber: string,
 ) {
   const connection = connectionSchema.safeParse(
     (await tx.get(bankShortcutRef(uid))).data(),
@@ -294,7 +299,8 @@ export async function assertBankShortcutActive(
   if (
     !connection.success ||
     connection.data.expiresAt.toMillis() <= Date.now() ||
-    connection.data.keyHash !== keyHash
+    connection.data.keyHash !== keyHash ||
+    connection.data.accountNumber !== accountNumber
   )
     throw unauthorized();
 }

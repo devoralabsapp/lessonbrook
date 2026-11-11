@@ -1,4 +1,6 @@
 import "server-only";
+import { bankTransferInputSchema } from "@/domain/bank-transfer";
+import { vietQrBanks } from "@/domain/vietqr-banks";
 import { createHash, randomUUID } from "node:crypto";
 import {
   AggregateField,
@@ -194,6 +196,32 @@ export async function updateProfile(
       if (!(await tx.get(root)).exists)
         throw new AppError(404, "Chưa có hồ sơ.");
       tx.update(root, { ...input, updatedAt: now });
+      return { id: uid };
+    },
+  );
+}
+export async function updateBankTransfer(
+  uid: string,
+  raw: unknown,
+  requestId: string,
+) {
+  const { bankTransfer } = z
+    .object({ bankTransfer: bankTransferInputSchema.nullable() })
+    .strict()
+    .parse(raw);
+  const bankName = bankTransfer ? vietQrBanks[bankTransfer.bankBin] : undefined;
+  if (bankTransfer && !bankName)
+    throw new AppError(400, "Vui lòng chọn ngân hàng hỗ trợ VietQR.");
+  const details = bankTransfer && bankName ? { ...bankTransfer, bankName } : null;
+  return operation(
+    uid,
+    "bank-transfer-settings",
+    requestId,
+    { bankTransfer },
+    async (tx, root, now) => {
+      if (!(await tx.get(root)).exists)
+        throw new AppError(404, "Chưa có hồ sơ.");
+      tx.update(root, { bankTransfer: details, updatedAt: now });
       return { id: uid };
     },
   );

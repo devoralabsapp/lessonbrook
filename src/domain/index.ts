@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bankTransferSchema } from "./bank-transfer";
 
 export const TIME_ZONE = "Asia/Ho_Chi_Minh";
 export const MAX_VND = 1_000_000_000;
@@ -33,6 +34,7 @@ export const profileSchema = z
     currency: z.literal("VND"),
     timeZone: z.literal(TIME_ZONE),
     bankDetails: text(500),
+    bankTransfer: bankTransferSchema.nullable().optional(),
     schemaVersion: z.literal(1),
   })
   .strict();

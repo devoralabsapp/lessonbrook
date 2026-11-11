@@ -4,6 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { formatVnd, vietnamToday } from "@/domain";
 import { type PublicStatement } from "@/domain/sharing";
 import { formatDate } from "@/features/statements/shared";
+import { BankTransferDetails } from "@/features/payments/bank-transfer-details";
 export function PublicStatementView({
   statement: s,
 }: {
@@ -86,22 +87,13 @@ export function PublicStatementView({
           ))}
         </section>
       )}
-      {s.bankDetails && (
-        <section className="border-t border-border p-5">
-          <h2 className="mb-2 text-sm font-semibold">
-            {t("Thông tin nhận tiền")}
-          </h2>
-          <p className="whitespace-pre-wrap break-words text-sm leading-6">
-            {s.bankDetails}
-          </p>
-          {s.transferReference && s.remainingVnd > 0 && (
-            <p className="mt-3 break-words text-sm">
-              {t("Nội dung chuyển khoản:")}{" "}
-              <strong>{s.transferReference}</strong>
-            </p>
-          )}
-        </section>
-      )}
+      <BankTransferDetails
+        bank={s.bankTransfer}
+        legacyDetails={s.bankDetails}
+        reference={s.transferReference}
+        remainingVnd={s.remainingVnd}
+        className="border-t border-border p-5"
+      />
       <footer className="space-y-2 border-t border-border p-5 text-xs leading-5 text-muted-foreground">
         <p>
           {t("Cập nhật")}{" "}

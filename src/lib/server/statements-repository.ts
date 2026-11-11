@@ -127,14 +127,17 @@ async function readDraftSources(
   const totalVnd = statementTotal(items);
   if (totalVnd <= 0) throw new AppError(400, "Tổng bảng kê phải lớn hơn 0đ.");
   return {
-    teacherSnapshot: { displayName: profile.displayName },
-    recipientSnapshot: { displayName: student.displayName },
-    bankSnapshot:
-      input.includeBankDetails && profile.bankDetails
-        ? profile.bankDetails
-        : null,
-    items,
-    totalVnd,
+    bankTransferSnapshot: profile.bankTransfer ?? null,
+    source: {
+      teacherSnapshot: { displayName: profile.displayName },
+      recipientSnapshot: { displayName: student.displayName },
+      bankSnapshot:
+        input.includeBankDetails && profile.bankDetails
+          ? profile.bankDetails
+          : null,
+      items,
+      totalVnd,
+    },
   };
 }
 
@@ -165,7 +168,7 @@ export async function saveStatementDraft(
           throw new AppError(409, "Chỉ bản nháp mới được sửa.");
         assertVersion(current.version, input.version);
       }
-      const source = await readDraftSources(tx, root, input);
+      const { source } = await readDraftSources(tx, root, input);
       const { sessionIds: _ids, version: _version, ...period } = input;
       void _ids;
       void _version;
@@ -240,7 +243,7 @@ export async function issueStatement(
         : 0;
       if (previous === 999_999_999)
         throw new AppError(409, "Bộ đếm bảng kê đã đạt giới hạn.");
-      const source = await readDraftSources(tx, root, {
+      const { source, bankTransferSnapshot } = await readDraftSources(tx, root, {
         ...draft,
         sessionIds: draft.items.map((item) => item.sessionId),
       });
@@ -250,7 +253,7 @@ export async function issueStatement(
           JSON.stringify(draft.teacherSnapshot) ||
         JSON.stringify(source.recipientSnapshot) !==
           JSON.stringify(draft.recipientSnapshot) ||
-        source.bankSnapshot !== draft.bankSnapshot
+        (!bankTransferSnapshot && source.bankSnapshot !== draft.bankSnapshot)
       )
         throw new AppError(
           409,
@@ -270,6 +273,10 @@ export async function issueStatement(
       });
       tx.update(ref, {
         ...source,
+        ...(bankTransferSnapshot && {
+          bankTransferSnapshot,
+          bankSnapshot: null,
+        }),
         status: "issued",
         number,
         issueDate,

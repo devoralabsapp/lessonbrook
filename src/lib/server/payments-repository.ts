@@ -133,6 +133,7 @@ export async function recordPayment(
 export async function recordBankPayment(
   uid: string,
   keyHash: string,
+  accountNumber: string,
   reference: string,
   amountVnd: number,
 ) {
@@ -151,15 +152,19 @@ export async function recordBankPayment(
     requestId,
     payload,
     async (tx, root, now) => {
-      await assertBankShortcutActive(tx, uid, keyHash);
+      await assertBankShortcutActive(tx, uid, keyHash, accountNumber);
       const matches = await tx.get(
         root.collection("statements").where("number", "==", number).limit(2),
       );
-      if (
-        matches.size !== 1 ||
-        transferReferenceFor(statementDto(matches.docs[0])) !== reference
-      )
+      const statement =
+        matches.size === 1 ? statementDto(matches.docs[0]) : null;
+      if (!statement || transferReferenceFor(statement) !== reference)
         throw new AppError(404, "Không tìm thấy bảng kê khớp mã chuyển khoản.");
+      if (
+        statement.bankTransferSnapshot &&
+        statement.bankTransferSnapshot.accountNumber !== accountNumber
+      )
+        throw new AppError(409, "Tài khoản nhận tiền không khớp bảng kê.");
       const input = paymentInputSchema.parse({
         amountVnd,
         receivedDate: vietnamToday(now.toDate()),

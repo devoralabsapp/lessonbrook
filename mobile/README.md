@@ -47,8 +47,8 @@ The app keeps a random verifier in memory. The server ties the browser handoff t
 
 ## Bank transfer notifications
 
-1. Sign in, open **Account settings**, and save your bank details. Include them when preparing a statement so the recipient sees the exact transfer reference. You can also copy the reference from the issued statement.
-2. In **iPhone payment shortcut**, enter the receiving account number as shown in the bank notification and create a key. Confirm with the same Google account, then copy the value shown for **Authorization**. The server renews the Firebase session when a notification arrives after it expires. Creating a new key or disconnecting disables the previous key. For a connection that still shows an expiry date, select **Enable automatic renewal** and paste its current **Authorization** value to keep using the same Shortcut key.
+1. In **Account settings → Bank transfer details**, select the bank and save the account number and holder name. When you issue a statement, LessonBrook saves a copy of these details on it. The statement and its shared link show a VietQR for the outstanding amount with the exact transfer reference as the payment memo.
+2. In the same section, create a Shortcut key for the saved account. Confirm with the same Google account, then copy the **Authorization** value. Create a new key when the receiving account changes. The server renews the Firebase session when a notice arrives after expiry. Creating a new key or disconnecting disables the previous key. If a connection still shows an expiry date, select **Enable automatic renewal** and paste its current **Authorization** value to keep the same key.
 3. In Apple Shortcuts, add **Get Contents of URL** with the URL shown in settings and choose **POST**. Add the **Authorization** header with the copied value and set **Request Body** to **JSON**. Add a text field named `message` with the full notification as its value.
 
 The currently supported format looks like this fictional example.
@@ -57,7 +57,7 @@ The currently supported format looks like this fictional example.
 Account 12345678901234
 Amount: + 30,000
 Balance: 50,000
-DEMO SENDER CC-2026-000001-4EA8C340B1D2 transfer
+DEMO SENDER CC-2026-000001-4EA8C340B1 transfer
 ```
 
 Only a credit to the configured account with one matching reference and an exact outstanding amount is recorded. A retry returns `duplicate`. An unsupported format, account mismatch, or missing reference returns a status for review. A transfer without a matching statement or amount leaves the ledger for the teacher to reconcile. The received date uses Vietnam time when the notice is processed. Enter cash payments using **Record payment** on the statement.

@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     const result = await recordBankPayment(
       shortcut.uid,
       shortcut.keyHash,
+      notification.accountNumber,
       notification.reference,
       notification.amountVnd,
     );

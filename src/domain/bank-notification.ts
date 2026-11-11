@@ -8,7 +8,7 @@ export const bankAccountSchema = z
 export const shortcutKeySchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const transferReferenceSchema = z
   .string()
-  .regex(/^CC-\d{4}-\d{6,10}-[A-F0-9]{12}$/);
+  .regex(/^CC-\d{4}-\d{6,10}-[A-F0-9]{6,12}$/);
 export const bankNotificationSchema = z
   .object({
     message: z.string().trim().min(1).max(2048),
@@ -34,7 +34,7 @@ export function parseBankNotification(message: string) {
   const references = new Set(
     [
       ...match[3].matchAll(
-        /(?<![a-z\d-])CC-\d{4}-\d{6,10}-[a-f0-9]{12}(?![a-z\d-])/gi,
+        /(?<![a-z\d-])CC-\d{4}-\d{6,10}-[a-f0-9]{6,12}(?![a-z\d-])/gi,
       ),
     ].map(([reference]) => reference.toUpperCase()),
   );

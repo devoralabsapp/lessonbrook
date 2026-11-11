@@ -53,9 +53,6 @@ export function StatementEditor({
   const [dueDate, setDueDate] = useState(
     initial?.dueDate ?? addBusinessDays(today, 7),
   );
-  const [includeBankDetails, setIncludeBankDetails] = useState(
-    initial?.includeBankDetails ?? false,
-  );
   const [selected, setSelected] = useState<Map<string, Item>>(
     () => new Map(initial?.items.map((item) => [item.sessionId, item]) ?? []),
   );
@@ -170,7 +167,7 @@ export function StatementEditor({
         periodStart,
         periodEnd,
         dueDate,
-        includeBankDetails,
+        includeBankDetails: initial?.includeBankDetails ?? false,
         sessionIds: [...selected.keys()].sort(),
         ...(initial ? { version: initial.version } : {}),
       },
@@ -418,22 +415,9 @@ export function StatementEditor({
                 onChange={(event) => setDueDate(event.target.value)}
               />
             </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                className="mt-1"
-                type="checkbox"
-                checked={includeBankDetails}
-                onChange={(event) =>
-                  setIncludeBankDetails(event.target.checked)
-                }
-              />
-              <span>
-                {t("Đưa thông tin nhận tiền từ hồ sơ vào bảng kê")}
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {t("Bạn sẽ kiểm tra lại nội dung trước khi phát hành.")}
-                </span>
-              </span>
-            </label>
+            <p className="text-xs leading-5 text-muted-foreground">
+              {t("Khi phát hành, bảng kê dùng thông tin chuyển khoản đã lưu để tạo VietQR.")}
+            </p>
             <p className="text-xs leading-5 text-muted-foreground">
               {t(
                 "Nháp chưa tạo khoản phải thu và chưa khóa buổi dạy. Nếu buổi thay đổi, số tiền sẽ được tính lại khi lưu nháp.",

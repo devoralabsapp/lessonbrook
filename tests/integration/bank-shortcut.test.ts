@@ -8,7 +8,7 @@ const accountNumber = "12345678901234";
 const message = (memo: string, amount = "30,000", account = accountNumber) =>
   `Account ${account}\r\nAmount: + ${amount}\r\nBalance:\u00a0 30,000\r\n${memo}`;
 
-async function setup() {
+async function setup(withBankTransfer = false) {
   const app = await client("en");
   const identity = await googleToken();
   await app.login(identity.idToken);
@@ -35,17 +35,27 @@ async function setup() {
     dueDate: "2026-10-31",
   });
   const path = `/api/statements/${statement.id}`;
+  const saveBank = (number: string) =>
+    app.call("/api/profile/bank-transfer", "PATCH", {
+      bankTransfer: {
+        bankBin: "970436",
+        accountNumber: number,
+        accountName: "DEMO ACCOUNT HOLDER",
+      },
+    });
+  if (withBankTransfer)
+    expect((await saveBank(accountNumber)).status).toBe(200);
   await create(`${path}/issue`, { version: 1 });
   const detail = await (await app.call(path)).json();
-  const connect = async () => {
+  const connect = async (number = accountNumber) => {
     const secret = randomBytes(32).toString("hex");
     const { id } = await create("/api/bank-shortcut", {
-      accountNumber,
+      accountNumber: number,
       secret,
     });
     return `Bearer ${id}.${secret}`;
   };
-  return { app, path, detail, connect, identity };
+  return { app, path, detail, connect, identity, saveBank };
 }
 
 const send = (notice: string, authorization?: string) =>
@@ -59,6 +69,48 @@ const send = (notice: string, authorization?: string) =>
   });
 
 describe("iPhone bank notification Shortcut", () => {
+  it("freezes the saved account at issue and settles the VietQR reference once", async () => {
+    const teacher = await setup(true);
+    const reference = teacher.detail.transferReference;
+    expect(reference).toMatch(/^CC-\d{4}-\d{6}-[A-F0-9]{10}$/);
+    const bank = {
+      bankBin: "970436",
+      bankName: "Vietcombank",
+      accountNumber,
+      accountName: "DEMO ACCOUNT HOLDER",
+    };
+    expect(teacher.detail.bankTransferSnapshot).toEqual(bank);
+    expect(teacher.detail.bankSnapshot).toBeNull();
+
+    const newAccount = "98765432109876";
+    expect((await teacher.saveBank(newAccount)).status).toBe(200);
+    const preview = async () =>
+      (await (await teacher.app.call(`${teacher.path}/public-preview`)).json())
+        .statement;
+    expect(await preview()).toMatchObject({
+      bankTransfer: bank,
+      transferReference: reference,
+      remainingVnd: 30000,
+    });
+    const wrongKey = await teacher.connect(newAccount);
+    expect(
+      (await send(message(reference, "30,000", newAccount), wrongKey)).status,
+    ).toBe(409);
+    const key = await teacher.connect();
+    expect((await send(message(reference, "20,000"), key)).status).toBe(409);
+    expect(await (await send(message(reference), key)).json()).toEqual({
+      status: "recorded",
+    });
+    expect(await (await send(message(reference), key)).json()).toEqual({
+      status: "duplicate",
+    });
+    expect(await preview()).toMatchObject({
+      bankTransfer: bank,
+      paidVnd: 30000,
+      remainingVnd: 0,
+    });
+  });
+
   it("upgrades an existing key and renews an expired session during payment delivery", async () => {
     const teacher = await setup();
     const key = await teacher.connect();

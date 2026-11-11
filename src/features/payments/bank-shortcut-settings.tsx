@@ -9,10 +9,14 @@ import { useAuthReady } from "@/lib/firebase/use-auth-ready";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ThemedSelect } from "@/components/ui/themed-select";
 import { TIME_ZONE } from "@/domain";
+import type { BankTransfer } from "@/domain/bank-transfer";
+import { vietQrBanks } from "@/domain/vietqr-banks";
 import { useStatementMutation } from "@/features/statements/shared";
 import { api } from "@/lib/client-api";
 import { useI18n } from "@/lib/i18n/client";
+import { useMobileDraft } from "@/lib/use-mobile-draft";
 
 type Connection = {
   accountLast4: string;
@@ -23,9 +27,13 @@ type Connection = {
 export function BankShortcutSettings({
   url,
   inApp,
+  initialBankTransfer,
+  hasLegacyDetails,
 }: {
   url: string;
   inApp: boolean;
+  initialBankTransfer: BankTransfer | null;
+  hasLegacyDetails: boolean;
 }) {
   const { t, locale } = useI18n();
   const [connection, setConnection] = useState<Connection | null>(null);
@@ -40,6 +48,45 @@ export function BankShortcutSettings({
   const [busy, setBusy] = useState(false);
   const [authError, setAuthError] = useState("");
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [bankTransfer, setBankTransfer] = useState(initialBankTransfer);
+  const [bankBin, setBankBin] = useState(initialBankTransfer?.bankBin ?? "");
+  const [bankMessage, setBankMessage] = useState("");
+  const bankMutation = useStatementMutation();
+  const bankDraft = useMobileDraft(bankMutation.busy);
+
+  async function saveBankTransfer(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const details = {
+      bankBin,
+      accountNumber: String(form.get("accountNumber")).trim(),
+      accountName: String(form.get("accountName")).trim(),
+    };
+    setBankMessage("");
+    if (
+      await bankMutation.run("/api/profile/bank-transfer", "PATCH", {
+        bankTransfer: details,
+      })
+    ) {
+      setBankTransfer({ ...details, bankName: vietQrBanks[bankBin] });
+      bankDraft.saved();
+      setBankMessage(t("Đã lưu thông tin chuyển khoản."));
+    }
+  }
+
+  async function clearBankTransfer() {
+    setBankMessage("");
+    if (
+      await bankMutation.run("/api/profile/bank-transfer", "PATCH", {
+        bankTransfer: null,
+      })
+    ) {
+      setBankTransfer(null);
+      setBankBin("");
+      bankDraft.saved();
+      setBankMessage(t("Đã xóa thông tin chuyển khoản cho bảng kê mới."));
+    }
+  }
 
   async function authorize(
     path: string,
@@ -92,9 +139,9 @@ export function BankShortcutSettings({
   async function connect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || mutation.busy) return;
-    const accountNumber = String(
-      new FormData(event.currentTarget).get("accountNumber"),
-    ).trim();
+    const accountNumber =
+      bankTransfer?.accountNumber ??
+      String(new FormData(event.currentTarget).get("accountNumber")).trim();
     if (key.current?.accountNumber !== accountNumber) {
       const bytes = crypto.getRandomValues(new Uint8Array(32));
       key.current = {
@@ -148,7 +195,91 @@ export function BankShortcutSettings({
   const expiry = connection?.expiresAt && new Date(connection.expiresAt);
   return (
     <Card className="mt-6 space-y-4 p-6">
-      <h2 className="serif text-xl">{t("Phím tắt nhận tiền trên iPhone")}</h2>
+      <h2 className="serif text-xl">{t("Thông tin chuyển khoản")}</h2>
+      <p className="text-sm leading-6 text-muted-foreground">
+        {t(
+          "Thông tin đã lưu được dùng để tạo mã VietQR khi phát hành bảng kê. Người xem liên kết bảng kê có thể thấy thông tin này.",
+        )}
+      </p>
+      {!bankTransfer && hasLegacyDetails && (
+        <p className="text-sm text-muted-foreground">
+          {t(
+            "Hãy chọn ngân hàng và nhập số tài khoản, tên người nhận để tạo VietQR.",
+          )}
+        </p>
+      )}
+      <form
+        key={bankTransfer ? "saved-bank" : "no-bank"}
+        onSubmit={saveBankTransfer}
+        {...bankDraft.form}
+      >
+        <fieldset disabled={bankMutation.busy} className="min-w-0 space-y-3">
+          <ThemedSelect
+            label={t("Tên ngân hàng")}
+            field
+            required
+            value={bankBin}
+            onChange={(value) => {
+              bankDraft.changed();
+              setBankBin(value);
+            }}
+            options={[
+              { value: "", label: t("Chọn ngân hàng") },
+              ...Object.entries(vietQrBanks).map(([value, label]) => ({
+                value,
+                label,
+              })),
+            ]}
+          />
+          <label className="field-label">
+            {t("Số tài khoản")}
+            <Input
+              name="accountNumber"
+              defaultValue={bankTransfer?.accountNumber}
+              inputMode="numeric"
+              pattern="[0-9]{6,19}"
+              maxLength={19}
+              required
+              autoComplete="off"
+            />
+          </label>
+          <label className="field-label">
+            {t("Tên người nhận")}
+            <Input
+              name="accountName"
+              defaultValue={bankTransfer?.accountName}
+              maxLength={100}
+              required
+              autoComplete="off"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit">{t("Lưu thông tin chuyển khoản")}</Button>
+            {bankTransfer && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={clearBankTransfer}
+              >
+                {t("Xóa thông tin chuyển khoản")}
+              </Button>
+            )}
+          </div>
+        </fieldset>
+      </form>
+      {bankMutation.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {bankMutation.error}
+        </p>
+      )}
+      {bankMessage && (
+        <p role="status" className="text-sm text-primary">
+          {bankMessage}
+        </p>
+      )}
+      <h3 className="border-t border-border pt-4 text-sm font-semibold">
+        {t("Đối soát tự động qua Phím tắt")}
+      </h3>
       <p className="text-sm leading-6 text-muted-foreground">
         {t(
           "Gửi nguyên văn thông báo nhận tiền. LessonBrook ghi nhận chuyển khoản khi tài khoản, mã chuyển khoản và khoản còn thiếu đều khớp. Ghi nhận tiền mặt trong bảng kê.",
@@ -233,18 +364,26 @@ export function BankShortcutSettings({
             </form>
           ) : (
             <form onSubmit={connect} className="space-y-3">
-              <label className="field-label">
-                {t("Số tài khoản trong thông báo")}
-                <Input
-                  name="accountNumber"
-                  disabled={busy || mutation.busy}
-                  inputMode="numeric"
-                  pattern="[0-9]{6,32}"
-                  maxLength={32}
-                  required
-                  autoComplete="off"
-                />
-              </label>
+              {bankTransfer ? (
+                <p className="text-sm text-muted-foreground">
+                  {t(
+                    "Tạo khóa dùng số tài khoản đã lưu. Nếu đổi số tài khoản, hãy tạo lại khóa.",
+                  )}
+                </p>
+              ) : (
+                <label className="field-label">
+                  {t("Số tài khoản trong thông báo")}
+                  <Input
+                    name="accountNumber"
+                    disabled={busy || mutation.busy}
+                    inputMode="numeric"
+                    pattern="[0-9]{6,32}"
+                    maxLength={32}
+                    required
+                    autoComplete="off"
+                  />
+                </label>
+              )}
               <Button
                 type="submit"
                 disabled={busy || mutation.busy || !preparation.ready}
