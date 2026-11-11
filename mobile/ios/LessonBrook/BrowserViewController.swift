@@ -2,6 +2,10 @@ import SwiftUI
 import UIKit
 import WebKit
 
+final class WorkspaceNavigationController: UINavigationController {
+    override var childForStatusBarStyle: UIViewController? { topViewController }
+}
+
 final class BrowserViewController: UIViewController, WKNavigationDelegate, UITabBarDelegate {
     private enum Screen { case welcome, today, page }
     private struct Availability: Decodable { let available: Bool }
@@ -42,6 +46,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
     private var cookies: WKHTTPCookieStore { WKWebsiteDataStore.default().httpCookieStore }
     private var palette: WorkspacePalette { WorkspacePalette(webTheme ?? snapshot?.theme) }
+    override var preferredStatusBarStyle: UIStatusBarStyle { palette.dark ? .lightContent : .darkContent }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -153,6 +158,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         bar?.compactScrollEdgeAppearance = barAppearance
         bar?.tintColor = ink
         navigationController?.setNavigationBarHidden(screen == .welcome, animated: false)
+        navigationController?.setNeedsStatusBarAppearanceUpdate()
         let path = webView?.url?.path ?? webRoot ?? ""
         title = screen == .page ? pageTitle(path) : t(selectedTab.label)
         navigationItem.rightBarButtonItems = showTabs ? [
