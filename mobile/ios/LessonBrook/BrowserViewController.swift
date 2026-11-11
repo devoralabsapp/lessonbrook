@@ -32,6 +32,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private var webTheme: String?
     private var locale = "en"
     private var request: Task<Void, Never>?
+    private var dashboardTimer: Timer?
+    private var scheduleInitialized = false
     private var verifier: String?
     private var signingIn = false
     private var signedIn = false
@@ -98,6 +100,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         configureChrome()
         NotificationCenter.default.addObserver(self, selector: #selector(updateTextSize),
                                                name: UIContentSizeCategory.didChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshOpenDashboard),
+                                               name: UIApplication.didBecomeActiveNotification, object: nil)
         request = Task {
             let saved = await originCookies()
             guard !Task.isCancelled else { return }
@@ -252,6 +256,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     }
 
     private func showNative(_ next: Screen, body: some View) {
+        dashboardTimer?.invalidate()
+        dashboardTimer = nil
         webURL = nil
         webView?.stopLoading()
         webView?.removeFromSuperview()
@@ -266,6 +272,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func showWelcome(expired: Bool = false) {
         request?.cancel()
         signedIn = false
+        scheduleInitialized = false
         snapshot = nil
         webTheme = nil
         selectedTab = .dashboard
@@ -316,6 +323,15 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             showNative(.today, body: ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity))
         }
         request = Task { await loadDashboard() }
+        dashboardTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refreshOpenDashboard() }
+        }
+    }
+
+    @objc private func refreshOpenDashboard() {
+        guard screen == .today, snapshot != nil, UIApplication.shared.applicationState == .active else { return }
+        request?.cancel()
+        request = Task { await loadDashboard(quiet: true) }
     }
 
     private func dashboard(_ value: WorkspaceSnapshot) -> NativeDashboard {
@@ -323,14 +339,15 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
                         refresh: { [weak self] in await self?.loadDashboard() })
     }
 
-    private func loadDashboard() async {
+    private func loadDashboard(quiet: Bool = false) async {
         let saved = await originCookies()
         do {
-            let value: WorkspaceSnapshot = try await MobileSignIn().get(
-                "api/mobile/workspace",
-                cookies: saved.filter { [MobileSignIn.sessionName, "chotcong_locale"].contains($0.name) }
+            let value = try await MobileSignIn().workspace(
+                cookies: saved.filter { [MobileSignIn.sessionName, "chotcong_locale"].contains($0.name) },
+                initialize: !scheduleInitialized
             )
             guard !Task.isCancelled, screen == .today else { return }
+            scheduleInitialized = true
             snapshot = value
             webTheme = nil
             locale = value.locale
@@ -347,7 +364,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             guard !Task.isCancelled, screen == .today else { return }
             openPage("/account/deletion")
         } catch {
-            guard !Task.isCancelled, screen == .today else { return }
+            guard !quiet, !Task.isCancelled, screen == .today else { return }
             native.rootView = AnyView(failure { [weak self] in self?.showToday() })
         }
     }
@@ -364,6 +381,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func openPage(_ path: String) {
         guard let url = URL(string: path, relativeTo: MobileSignIn.origin)?.absoluteURL,
               MobileSignIn.isFirstParty(url) else { return }
+        dashboardTimer?.invalidate()
+        dashboardTimer = nil
         request?.cancel()
         webURL = nil
         webView?.stopLoading()

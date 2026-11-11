@@ -163,7 +163,7 @@ export default async function HelpPage() {
         <h2 className="serif text-2xl">{t("Gửi bảng kê qua link")}</h2>
         <p>
           {t(
-            "Sau khi phát hành, xem trước đúng nội dung công khai rồi bật link. Sao chép tin nhắn để tự gửi qua Zalo hoặc kênh bạn chọn. Người nhận không cần đăng nhập.",
+            "Sau khi phát hành, đọc thông tin bảng kê rồi bấm Chia sẻ để tạo link. Sao chép tin nhắn để tự gửi qua Zalo hoặc kênh bạn chọn. Người nhận không cần đăng nhập.",
           )}
         </p>
         <p>

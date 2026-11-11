@@ -18,12 +18,18 @@ export const paymentVoidInputSchema = z
     reason: z.string().trim().min(1, "Nhập lý do vô hiệu hóa.").max(500),
   })
   .strict();
+export const paymentEditInputSchema = paymentInputSchema
+  .omit({ method: true })
+  .extend({
+    expectedUpdatedAt: z.iso.datetime().nullable(),
+  });
 export const paymentSchema = paymentInputSchema
   .extend({
     id: idSchema,
     statementId: idSchema,
     studentId: idSchema,
     recordedAt: z.string(),
+    updatedAt: z.iso.datetime().optional(),
     voidedAt: z.string().nullable(),
     voidReason: z.string().max(500).nullable(),
     requestId: z.string().uuid(),

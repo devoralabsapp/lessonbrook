@@ -72,10 +72,18 @@ public final class MainActivity extends Activity {
     private int requestVersion;
     private boolean signingIn;
     private boolean signedIn;
+    private boolean scheduleInitialized;
     private boolean webFailed;
     private View webError;
     private boolean checkingDraft;
     private AlertDialog draftAlert;
+    private final Runnable dashboardTick = new Runnable() {
+        @Override
+        public void run() {
+            if (screen == Screen.TODAY && snapshot != null) loadDashboard(++requestVersion, true);
+            root.postDelayed(this, 60_000);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -93,6 +101,19 @@ public final class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         finishSignIn(intent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (screen == Screen.TODAY && snapshot != null) loadDashboard(++requestVersion, true);
+        root.postDelayed(dashboardTick, 60_000);
+    }
+
+    @Override
+    protected void onPause() {
+        root.removeCallbacks(dashboardTick);
+        super.onPause();
     }
 
     private void buildView() {
@@ -212,6 +233,7 @@ public final class MainActivity extends Activity {
     private void showWelcome(boolean expired) {
         int version = ++requestVersion;
         signedIn = false;
+        scheduleInitialized = false;
         snapshot = null;
         webTheme = null;
         screen = Screen.WELCOME;
@@ -264,15 +286,21 @@ public final class MainActivity extends Activity {
             ProgressBar loading = workspace().loading();
             content.addView(loading, new FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER));
         }
+        loadDashboard(version, false);
+    }
+
+    private void loadDashboard(int version, boolean quiet) {
         String saved = originCookies();
         String credentials = cookie(saved, SESSION);
         String language = cookie(saved, LOCALE);
         if (!credentials.isEmpty() && !language.isEmpty()) credentials += "; " + language;
         String headers = credentials;
+        boolean initialize = !scheduleInitialized;
         network.execute(() -> {
             try {
-                var result = NativeWorkspace.Snapshot.parse(MobileSignIn.get("/api/mobile/workspace", headers));
+                var result = NativeWorkspace.Snapshot.parse(MobileSignIn.workspace(headers, initialize));
                 deliver(version, () -> {
+                    scheduleInitialized = true;
                     snapshot = result;
                     webTheme = null;
                     locale = result.locale();
@@ -282,10 +310,10 @@ public final class MainActivity extends Activity {
                 deliver(version, () -> {
                     if (error.status == 401) expireSession();
                     else if (error.status == 423) openPage(DELETION);
-                    else showDashboardError();
+                    else if (!quiet) showDashboardError();
                 });
             } catch (IOException | JSONException error) {
-                deliver(version, this::showDashboardError);
+                if (!quiet) deliver(version, this::showDashboardError);
             }
         });
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import {
   upcomingLessonPath,
   sortUpcomingLessons,
@@ -13,15 +14,17 @@ import { Card } from "@/components/ui/card";
 
 export function UpcomingScheduleView() {
   const { t, locale } = useI18n();
-  const schedule = useResource<UpcomingSchedule>("/api/mobile/schedule");
-  if (schedule.error)
-    return <LoadError message={schedule.error} retry={schedule.reload} />;
-  if (!schedule.data) return <p role="status">{t("Đang tải…")}</p>;
-  const { today, through } = schedule.data;
-  const items = sortUpcomingLessons([
-    ...schedule.data.items,
-    ...(schedule.data.recurring ?? []),
-  ]);
+  const { data, error, reload } = useResource<UpcomingSchedule>(
+    "/api/mobile/schedule",
+  );
+  useEffect(() => {
+    window.addEventListener("class-lessons-created", reload);
+    return () => window.removeEventListener("class-lessons-created", reload);
+  }, [reload]);
+  if (error) return <LoadError message={error} retry={reload} />;
+  if (!data) return <p role="status">{t("Đang tải…")}</p>;
+  const { today, through } = data;
+  const items = sortUpcomingLessons([...data.items, ...(data.recurring ?? [])]);
   return (
     <div className="space-y-4">
       <h1 className="serif text-3xl">{t("Lịch dạy sắp tới")}</h1>

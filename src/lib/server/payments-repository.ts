@@ -5,6 +5,7 @@ import { z } from "zod";
 import { idSchema, vietnamToday } from "@/domain";
 import {
   MAX_ACTIVE_PAYMENTS,
+  paymentEditInputSchema,
   paymentInputSchema,
   paymentSchema,
   paymentVoidInputSchema,
@@ -196,26 +197,11 @@ export async function voidPayment(
     requestId,
     { paymentId, ...input },
     async (tx, root, now) => {
-      const ref = root.collection("payments").doc(paymentId);
-      const payment = paymentDto(await tx.get(ref));
-      const statementRef = root
-        .collection("statements")
-        .doc(payment.statementId);
-      const statement = statementDto(await tx.get(statementRef));
-      if (
-        payment.voidedAt ||
-        statement.status !== "issued" ||
-        statement.studentId !== payment.studentId
-      )
-        throw new AppError(
-          409,
-          "Khoản thu không còn hợp lệ hoặc không khớp bảng kê.",
-        );
-      if (
-        statement.activePaymentCount < 1 ||
-        statement.paidVnd < payment.amountVnd
-      )
-        throw new Error("Payment aggregate invariant failed");
+      const { ref, payment, statementRef, statement } = await readActivePayment(
+        tx,
+        root,
+        paymentId,
+      );
       tx.update(ref, { voidedAt: now, voidReason: input.reason });
       tx.update(statementRef, {
         paidVnd: statementMoneySchema.parse(
@@ -226,6 +212,75 @@ export async function voidPayment(
         updatedAt: now,
       });
       audit(tx, root, eventId, paymentId, "voided", now);
+      return { id: paymentId };
+    },
+  );
+}
+async function readActivePayment(
+  tx: FirebaseFirestore.Transaction,
+  root: FirebaseFirestore.DocumentReference,
+  paymentId: string,
+) {
+  const ref = root.collection("payments").doc(paymentId);
+  const payment = paymentDto(await tx.get(ref));
+  const statementRef = root.collection("statements").doc(payment.statementId);
+  const statement = statementDto(await tx.get(statementRef));
+  if (
+    payment.voidedAt ||
+    statement.status !== "issued" ||
+    statement.studentId !== payment.studentId
+  )
+    throw new AppError(
+      409,
+      "Khoản thu không còn hợp lệ hoặc không khớp bảng kê.",
+    );
+  if (statement.activePaymentCount < 1 || statement.paidVnd < payment.amountVnd)
+    throw new Error("Payment aggregate invariant failed");
+  return { ref, payment, statementRef, statement };
+}
+export async function updatePayment(
+  uid: string,
+  paymentId: string,
+  raw: unknown,
+  requestId: string,
+) {
+  idSchema.parse(paymentId);
+  const { expectedUpdatedAt, ...changes } = paymentEditInputSchema.parse(raw);
+  const eventId = randomUUID();
+  return operation(
+    uid,
+    "payment-edit",
+    requestId,
+    { paymentId, expectedUpdatedAt, ...changes },
+    async (tx, root, now) => {
+      const { ref, payment, statementRef, statement } = await readActivePayment(
+        tx,
+        root,
+        paymentId,
+      );
+      if ((payment.updatedAt ?? null) !== expectedUpdatedAt)
+        throw new AppError(
+          409,
+          "Khoản thu đã thay đổi. Vui lòng tải lại để chỉnh sửa.",
+        );
+      if (changes.receivedDate > vietnamToday(now.toDate()))
+        throw new AppError(
+          400,
+          "Ngày nhận tiền không được nằm trong tương lai.",
+        );
+      const paidVnd = statement.paidVnd - payment.amountVnd + changes.amountVnd;
+      if (paidVnd > statement.totalVnd)
+        throw new AppError(
+          409,
+          "Số tiền vượt khoản còn phải thu. Hãy tải lại bảng kê để đối chiếu.",
+        );
+      tx.update(ref, { ...changes, updatedAt: now });
+      tx.update(statementRef, {
+        paidVnd: statementMoneySchema.parse(paidVnd),
+        version: statementVersionSchema.parse(statement.version + 1),
+        updatedAt: now,
+      });
+      audit(tx, root, eventId, paymentId, "edited", now);
       return { id: paymentId };
     },
   );

@@ -11,9 +11,11 @@ const timestamps = { createdAt: timestamp, updatedAt: timestamp };
 export const appearanceDocumentSchema = appearanceSchema.extend({
   updatedAt: timestamp,
 });
-export const classDocumentSchema = classSchema
-  .omit({ id: true })
-  .extend({ ...timestamps, archivedAt: timestamp.nullable() });
+export const classDocumentSchema = classSchema.omit({ id: true }).extend({
+  ...timestamps,
+  archivedAt: timestamp.nullable(),
+  nextLessonAt: timestamp.nullable().optional(),
+});
 export const lessonDocumentSchema = lessonSchema
   .omit({ id: true })
   .extend(timestamps);
@@ -33,7 +35,11 @@ export const statementDocumentSchema = statementSchema
   });
 export const paymentDocumentSchema = paymentSchema
   .omit({ id: true })
-  .extend({ recordedAt: timestamp, voidedAt: timestamp.nullable() });
+  .extend({
+    recordedAt: timestamp,
+    updatedAt: timestamp.optional(),
+    voidedAt: timestamp.nullable(),
+  });
 export const shareTokenDocumentSchema = z
   .object({
     ownerUid: idSchema,

@@ -15,8 +15,10 @@ import {
   archiveClass,
   getClass,
   getLesson,
+  initializeClassSchedules,
   listClasses,
   listLessons,
+  materializeClassLessons,
   saveClass,
   saveLesson,
 } from "@/lib/server/classes-repository";
@@ -59,6 +61,7 @@ import {
 import {
   listPayments,
   recordPayment,
+  updatePayment,
   voidPayment,
 } from "@/lib/server/payments-repository";
 import {
@@ -70,6 +73,31 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
+async function mobileWorkspace(uid: string) {
+  const [summary, appearance, onboarding, { locale }, schedule] =
+    await Promise.all([
+      getSummary(uid),
+      getAppearance(uid),
+      getOnboarding(uid),
+      getI18n(),
+      getUpcomingSchedule(uid),
+    ]);
+  return {
+    summary,
+    theme: appearance.theme,
+    displayName: onboarding.profile.displayName,
+    needsOnboarding: !onboarding.completed,
+    locale,
+    schedule: {
+      ...schedule,
+      items: schedule.items.slice(0, 8),
+      ...(schedule.recurring
+        ? { recurring: schedule.recurring.slice(0, 8) }
+        : {}),
+    },
+  };
+}
+
 async function handle(request: Request, context: Context) {
   try {
     const { uid, exp } = await requireUser();
@@ -80,28 +108,7 @@ async function handle(request: Request, context: Context) {
       const query = Object.fromEntries(new URL(request.url).searchParams);
       if (resource === "mobile" && id === "workspace" && path.length === 2) {
         z.object({}).strict().parse(query);
-        const [summary, appearance, onboarding, { locale }, schedule] =
-          await Promise.all([
-            getSummary(uid),
-            getAppearance(uid),
-            getOnboarding(uid),
-            getI18n(),
-            getUpcomingSchedule(uid),
-          ]);
-        return json({
-          summary,
-          theme: appearance.theme,
-          displayName: onboarding.profile.displayName,
-          needsOnboarding: !onboarding.completed,
-          locale,
-          schedule: {
-            ...schedule,
-            items: schedule.items.slice(0, 8),
-            ...(schedule.recurring
-              ? { recurring: schedule.recurring.slice(0, 8) }
-              : {}),
-          },
-        });
+        return json(await mobileWorkspace(uid));
       }
       if (resource === "mobile" && id === "schedule" && path.length === 2) {
         z.object({}).strict().parse(query);
@@ -161,6 +168,18 @@ async function handle(request: Request, context: Context) {
         );
     } else {
       await checkMutation(request);
+      const syncSchedule = resource === "class-schedule" && path.length === 1;
+      const syncMobile =
+        resource === "mobile" && id === "workspace" && path.length === 2;
+      if ((syncSchedule || syncMobile) && request.method === "POST") {
+        const { initialize } = z
+          .object({ initialize: z.boolean() })
+          .strict()
+          .parse(await jsonBody(request));
+        if (initialize) await initializeClassSchedules(uid);
+        const result = await materializeClassLessons(uid);
+        return json(syncMobile ? await mobileWorkspace(uid) : result);
+      }
       const requestId = requestIdSchema.parse(
         request.headers.get("idempotency-key"),
       );
@@ -254,6 +273,12 @@ async function handle(request: Request, context: Context) {
         if (request.method === "POST" && path.length === 3 && action === "void")
           return json(await voidStatement(uid, id, body, requestId));
       }
+      if (
+        resource === "payments" &&
+        path.length === 2 &&
+        request.method === "PATCH"
+      )
+        return json(await updatePayment(uid, id, body, requestId));
       if (
         resource === "profile" &&
         path.length === 1 &&

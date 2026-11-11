@@ -4,17 +4,12 @@ import { useI18n } from "@/lib/i18n/client";
 import { useEffect, useState } from "react";
 import { formatVnd } from "@/domain";
 import { type Statement } from "@/domain/statements";
-import {
-  type SharePreview,
-  type ShareResult,
-  type ShareStatus,
-} from "@/domain/sharing";
+import { type ShareResult, type ShareStatus } from "@/domain/sharing";
 import { api } from "@/lib/client-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useStatementMutation } from "@/features/statements/shared";
-import { PublicStatementView } from "./public-statement";
 import { NATIVE_STATEMENT_SHARE } from "@/domain/mobile-sign-in";
 export function SharingPanel({
   statement,
@@ -30,9 +25,6 @@ export function SharingPanel({
     version: number;
     data: ShareStatus;
   } | null>(null);
-  const [preview, setPreview] = useState<SharePreview | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const [acceptedVersion, setAcceptedVersion] = useState<number | null>(null);
   const [newLink, setNewLink] = useState<
     | (ShareResult & {
         url: string;
@@ -41,8 +33,6 @@ export function SharingPanel({
   >(null);
   const [notice, setNotice] = useState("");
   const [statusError, setStatusError] = useState("");
-  const [previewError, setPreviewError] = useState("");
-  const loadError = statusError || (showPreview ? previewError : "");
   const [revision, setRevision] = useState(0);
   const mutation = useStatementMutation();
   useEffect(() => {
@@ -61,45 +51,20 @@ export function SharingPanel({
       active = false;
     };
   }, [statement.id, statement.version, revision, t]);
-  useEffect(() => {
-    if (!showPreview) return;
-    let active = true;
-    api<SharePreview>(`/api/statements/${statement.id}/public-preview`)
-      .then((data) => {
-        if (active) {
-          setPreview(data);
-          setPreviewError("");
-        }
-      })
-      .catch((error) => {
-        if (active) setPreviewError(error.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, [statement.id, statement.version, showPreview, revision, t]);
   const currentStatus =
     status?.version === statement.version ? status.data : null;
-  const currentPreview =
-    preview?.version === statement.version ? preview : null;
   const usableLink =
     newLink?.tokenHash === statement.activeShareTokenHash &&
     currentStatus?.active
       ? newLink
       : null;
   async function create() {
-    if (!currentPreview || acceptedVersion !== currentPreview.version) return;
     const result = await mutation.run<ShareResult>(
       `/api/statements/${statement.id}/share`,
       "POST",
-      {
-        version: currentPreview.version,
-        previewHash: currentPreview.previewHash,
-      },
+      { version: statement.version },
     );
     if (result) {
-      setShowPreview(false);
-      setAcceptedVersion(null);
       if (result.token) {
         setNewLink({
           ...result,
@@ -110,7 +75,7 @@ export function SharingPanel({
         setNewLink(null);
         setNotice(
           t(
-            "Link đã được tạo ở lần lưu trước, nhưng mã gốc không thể lấy lại. Bạn xem trước và tạo link mới để sao chép nhé.",
+            "Link đã được tạo ở lần lưu trước. Bấm Chia sẻ để tạo link mới nếu bạn cần sao chép.",
           ),
         );
       }
@@ -125,7 +90,6 @@ export function SharingPanel({
     );
     if (result) {
       setNewLink(null);
-      setShowPreview(false);
       setNotice(t("Đã thu hồi link chia sẻ."));
       onChanged();
     }
@@ -165,6 +129,7 @@ export function SharingPanel({
     <Card className="space-y-5 p-5 sm:p-7">
       <h2 className="serif text-2xl">{t("Chia sẻ bảng kê")}</h2>
       <p className="text-xs leading-5 text-muted-foreground">
+        {t("Kiểm tra thông tin trong bảng kê phía trên trước khi chia sẻ.")}{" "}
         {t(
           "Ai có link đều xem được và có thể chuyển tiếp. Link chỉ đọc, hết hạn sau 30 ngày. Mỗi bảng kê có một link đang dùng; tạo link mới sẽ thu hồi link cũ.",
         )}
@@ -181,9 +146,9 @@ export function SharingPanel({
               })
             : t("Chia sẻ đang tắt hoặc link đã hết hạn.")}
       </p>
-      {loadError && (
+      {statusError && (
         <div role="alert" className="space-y-2 text-sm text-destructive">
-          <p>{t(loadError)}</p>
+          <p>{t(statusError)}</p>
           <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
             {t("Tải lại trạng thái")}
           </Button>
@@ -247,16 +212,12 @@ export function SharingPanel({
         )
       )}
       <div className="flex flex-wrap gap-3">
-        <Button
-          variant="outline"
-          disabled={mutation.busy || showPreview}
-          onClick={() => {
-            setShowPreview(true);
-            setAcceptedVersion(null);
-            mutation.clearError();
-          }}
-        >
-          {t("Xem trước để tạo link")}
+        <Button type="button" disabled={mutation.busy} onClick={create}>
+          {mutation.busy
+            ? t("Đang xử lý…")
+            : currentStatus?.active
+              ? t("Tạo link chia sẻ mới")
+              : t("Chia sẻ")}
         </Button>
         {currentStatus?.active && (
           <Button variant="outline" disabled={mutation.busy} onClick={revoke}>
@@ -264,42 +225,6 @@ export function SharingPanel({
           </Button>
         )}
       </div>
-      {showPreview && (
-        <div className="space-y-4 border-t border-border pt-5">
-          <h3 className="font-semibold">{t("Nội dung người nhận sẽ thấy")}</h3>
-          {currentPreview ? (
-            <>
-              <PublicStatementView statement={currentPreview.statement} />
-              <label className="flex items-start gap-3 text-sm leading-5">
-                <input
-                  className="mt-1"
-                  type="checkbox"
-                  checked={acceptedVersion === currentPreview.version}
-                  onChange={(event) =>
-                    setAcceptedVersion(
-                      event.target.checked ? currentPreview.version : null,
-                    )
-                  }
-                  disabled={mutation.busy}
-                />
-                {t("Tôi đã kiểm tra nội dung công khai phía trên")}
-              </label>
-              <Button
-                onClick={create}
-                disabled={
-                  mutation.busy || acceptedVersion !== currentPreview.version
-                }
-              >
-                {mutation.busy ? t("Đang tạo…") : t("Tạo link chia sẻ mới")}
-              </Button>
-            </>
-          ) : (
-            <p role="status" className="text-sm">
-              {t("Đang chuẩn bị bản xem trước…")}
-            </p>
-          )}
-        </div>
-      )}
     </Card>
   );
 }

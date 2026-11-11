@@ -62,16 +62,35 @@ final class MobileSignIn {
     }
 
     static String exchange(String code, String verifier, String themeCookie) throws IOException, JSONException {
+        JSONObject body = new JSONObject().put("code", code).put("verifier", verifier);
+        HttpURLConnection request = post("/api/auth/mobile", body, themeCookie == null ? "" : themeCookie);
+        try {
+            return responseCookie(request, "chotcong_session");
+        } finally {
+            request.disconnect();
+        }
+    }
+
+    static JSONObject workspace(String cookies, boolean initialize) throws IOException, JSONException {
+        HttpURLConnection request = post("/api/mobile/workspace", new JSONObject().put("initialize", initialize), cookies);
+        try {
+            return responseJson(request);
+        } finally {
+            request.disconnect();
+        }
+    }
+
+    private static HttpURLConnection post(String path, JSONObject body, String cookies) throws IOException, JSONException {
         String csrfCookie;
         String token;
         HttpURLConnection csrf = connect("/api/auth/csrf");
         try {
             csrfCookie = responseCookie(csrf, "chotcong_csrf").split(";", 2)[0];
-            try (InputStream body = csrf.getInputStream()) {
+            try (InputStream csrfBody = csrf.getInputStream()) {
                 byte[] data = new byte[512];
                 int length = 0;
                 int read;
-                while (length < data.length && (read = body.read(data, length, data.length - length)) != -1) {
+                while (length < data.length && (read = csrfBody.read(data, length, data.length - length)) != -1) {
                     length += read;
                 }
                 if (length == data.length) throw new IOException("Invalid CSRF response");
@@ -81,23 +100,23 @@ final class MobileSignIn {
             csrf.disconnect();
         }
 
-        HttpURLConnection redeem = connect("/api/auth/mobile");
+        HttpURLConnection request = connect(path);
         try {
-            redeem.setRequestMethod("POST");
-            redeem.setDoOutput(true);
-            redeem.setRequestProperty("Content-Type", "application/json");
-            redeem.setRequestProperty("Origin", ORIGIN);
-            redeem.setRequestProperty("x-csrf-token", token);
-            redeem.setRequestProperty("Cookie", themeCookie == null ? csrfCookie : csrfCookie + "; " + themeCookie);
-            byte[] body = new JSONObject().put("code", code).put("verifier", verifier)
-                .toString().getBytes(StandardCharsets.UTF_8);
-            redeem.setFixedLengthStreamingMode(body.length);
-            try (var output = redeem.getOutputStream()) {
-                output.write(body);
+            request.setRequestMethod("POST");
+            request.setDoOutput(true);
+            request.setRequestProperty("Content-Type", "application/json");
+            request.setRequestProperty("Origin", ORIGIN);
+            request.setRequestProperty("x-csrf-token", token);
+            request.setRequestProperty("Cookie", cookies.isEmpty() ? csrfCookie : csrfCookie + "; " + cookies);
+            byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
+            request.setFixedLengthStreamingMode(payload.length);
+            try (var output = request.getOutputStream()) {
+                output.write(payload);
             }
-            return responseCookie(redeem, "chotcong_session");
-        } finally {
-            redeem.disconnect();
+            return request;
+        } catch (IOException error) {
+            request.disconnect();
+            throw error;
         }
     }
 
@@ -105,20 +124,24 @@ final class MobileSignIn {
         HttpURLConnection connection = connect(path);
         try {
             if (!cookies.isEmpty()) connection.setRequestProperty("Cookie", cookies);
-            int status = connection.getResponseCode();
-            if (status != 200) throw new HttpFailure(status);
-            try (InputStream body = connection.getInputStream()) {
-                byte[] data = new byte[8192];
-                int length = 0;
-                int read;
-                while (length < data.length && (read = body.read(data, length, data.length - length)) != -1) {
-                    length += read;
-                }
-                if (length == data.length) throw new IOException("Invalid workspace response");
-                return new JSONObject(new String(data, 0, length, StandardCharsets.UTF_8));
-            }
+            return responseJson(connection);
         } finally {
             connection.disconnect();
+        }
+    }
+
+    private static JSONObject responseJson(HttpURLConnection connection) throws IOException, JSONException {
+        int status = connection.getResponseCode();
+        if (status != 200) throw new HttpFailure(status);
+        try (InputStream body = connection.getInputStream()) {
+            byte[] data = new byte[8192];
+            int length = 0;
+            int read;
+            while (length < data.length && (read = body.read(data, length, data.length - length)) != -1) {
+                length += read;
+            }
+            if (length == data.length) throw new IOException("Invalid workspace response");
+            return new JSONObject(new String(data, 0, length, StandardCharsets.UTF_8));
         }
     }
 

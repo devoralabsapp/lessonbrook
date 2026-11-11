@@ -160,7 +160,7 @@ export async function createShare(
     if (statement.version !== input.version)
       throw new AppError(
         409,
-        "Bảng kê đã thay đổi. Hãy xem trước lại trước khi tạo link.",
+        "Bảng kê đã thay đổi. Hãy kiểm tra lại thông tin trước khi chia sẻ.",
       );
     const old = statement.activeShareTokenHash
       ? await tx.get(tokens().doc(statement.activeShareTokenHash))
@@ -171,7 +171,7 @@ export async function createShare(
     )
       throw new Error("Share ownership invariant failed");
     const snapshot = await publicSnapshot(tx, root, statement);
-    if (publicHash(snapshot) !== input.previewHash)
+    if (input.previewHash && publicHash(snapshot) !== input.previewHash)
       throw new AppError(
         409,
         "Nội dung đã đổi. Hãy xem trước lại trước khi tạo link.",

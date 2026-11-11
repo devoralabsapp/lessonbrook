@@ -42,7 +42,7 @@ export default async function PrivacyPage() {
         <h2 className="serif text-2xl">{t("Khi gửi link bảng kê")}</h2>
         <p>
           {t(
-            "Bạn xem trước nội dung công khai rồi chủ động bật chia sẻ. Ai có link đều có thể xem và chuyển tiếp mà không cần tài khoản.",
+            "Bạn có thể đọc bảng kê rồi bấm Chia sẻ để tạo link. Ai có link đều có thể xem và chuyển tiếp mà không cần tài khoản.",
           )}
         </p>
         <p>

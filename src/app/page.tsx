@@ -1,14 +1,27 @@
 import { formatVnd } from "@/domain";
 import { getI18n } from "@/lib/i18n/server";
 import Link from "next/link";
-import { ArrowRight, Leaf, NotebookPen } from "lucide-react";
+import { ArrowRight, Leaf, NotebookPen, Play } from "lucide-react";
+import { redirect } from "next/navigation";
 import { HomeAppearance } from "@/components/home-appearance";
 import { HomeLedgerMotion } from "@/components/home-ledger-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { InfoLinks } from "@/components/info-links";
 import { getGuestTheme } from "@/lib/server/guest-theme";
+import { hasFirebaseServerConfig } from "@/lib/firebase/server-config";
+import { AppError } from "@/lib/server/errors";
+import { requireUser } from "@/lib/server/session";
 export default async function Home() {
+  if (hasFirebaseServerConfig()) {
+    const signedIn = await requireUser({ allowDeleting: true }).catch(
+      (error: unknown) => {
+        if (error instanceof AppError && error.status === 401) return null;
+        throw error;
+      },
+    );
+    if (signedIn) redirect("/app");
+  }
   const [{ t, locale }, theme] = await Promise.all([
     getI18n(),
     getGuestTheme(),
@@ -31,12 +44,20 @@ export default async function Home() {
               "Một nơi gọn gàng để ghi buổi dạy và giữ đúng học phí từng học viên. Bắt đầu từ buổi dạy hôm nay.",
             )}
           </p>
-          <Button asChild className="mt-8 h-12">
-            <Link href="/login">
-              {t("Bắt đầu ghi buổi dạy ")}
-              <ArrowRight />
-            </Link>
-          </Button>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild className="h-12">
+              <Link href="/login">
+                {t("Bắt đầu ghi buổi dạy ")}
+                <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="h-12">
+              <Link href="/demo">
+                <Play aria-hidden="true" />
+                {t("Xem demo")}
+              </Link>
+            </Button>
+          </div>
           <p className="mt-4 text-xs text-muted-foreground">
             {t("Dạy cá nhân & lớp học · Theo buổi · Thu học phí sau")}
           </p>

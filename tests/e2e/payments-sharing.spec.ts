@@ -94,6 +94,15 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
   await expect(
     page.getByText("Chia sẻ đang tắt hoặc link đã hết hạn.", { exact: true }),
   ).toBeVisible();
+  const statementCard = page.getByTestId("statement-preview");
+  await expect(
+    statementCard.getByRole("status").filter({ hasText: "Chưa thu" }),
+  ).toHaveClass(/bg-danger-soft/);
+  const cash = statementCard.getByRole("button", {
+    name: "Đã trả bằng tiền mặt",
+    exact: true,
+  });
+  await cash.click();
   await page.getByLabel("Số tiền nhận (VND)", { exact: true }).fill("1000000");
   await page
     .getByLabel("Ghi chú khoản thu (riêng)", { exact: true })
@@ -104,7 +113,7 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
   await expect(page.getByTestId("payment-row")).toHaveCount(1);
   await expect(
     page.getByLabel("Số tiền nhận (VND)", { exact: true }),
-  ).toHaveValue("");
+  ).toHaveCount(0);
   await page.goto("/app/statements?status=partial");
   const status = page.getByRole("combobox", { name: "Trạng thái bảng kê" });
   await expect(status).toHaveText("Thu một phần");
@@ -117,30 +126,6 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
   ).toBeVisible();
   await chooseOption(status, "overdue");
   await page.getByRole("link", { name: /Lan thu học phí/ }).click();
-  const beginPreview = async () => {
-    await page
-      .getByRole("button", { name: "Xem trước để tạo link", exact: true })
-      .click();
-    await expect(page.getByTestId("public-remaining")).toContainText("600.000");
-    await expect(page.getByTestId("public-statement")).toHaveCSS(
-      "color-scheme",
-      "light",
-    );
-    await expect(page.getByTestId("public-statement")).toHaveCSS(
-      "color",
-      "rgb(37, 58, 48)",
-    );
-    await expect(page.getByTestId("public-statement")).not.toContainText(
-      "PRIVATE",
-    );
-    await page
-      .getByRole("checkbox", {
-        name: "Tôi đã kiểm tra nội dung công khai phía trên",
-        exact: true,
-      })
-      .check();
-  };
-  await beginPreview();
   const keys: string[] = [];
   await page.route(`**/api/statements/${statement.id}/share`, async (route) => {
     if (route.request().method() !== "POST") return route.continue();
@@ -150,24 +135,19 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       await route.abort("failed");
     } else await route.continue();
   });
-  await page
-    .getByRole("button", { name: "Tạo link chia sẻ mới", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Chia sẻ", exact: true }).click();
   await expect(
     page.getByRole("alert").filter({ hasText: "Nội dung vẫn được giữ" }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Tạo link chia sẻ mới", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Chia sẻ", exact: true }).click();
   await expect(
-    page.getByRole("status").filter({ hasText: "mã gốc không thể lấy lại" }),
+    page.getByRole("status").filter({ hasText: "Bấm Chia sẻ để tạo link mới" }),
   ).toBeVisible();
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
   await expect(
     page.getByLabel("Link chia sẻ mới", { exact: true }),
   ).toHaveCount(0);
-  await beginPreview();
   await page
     .getByRole("button", { name: "Tạo link chia sẻ mới", exact: true })
     .click();
@@ -233,11 +213,27 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       path: "docs/screenshots/public-statement.png",
       fullPage: true,
     });
-    await page.getByLabel("Số tiền nhận (VND)", { exact: true }).fill("600000");
+    await cash.click();
+    await page.getByLabel("Số tiền nhận (VND)", { exact: true }).fill("500000");
     await page
       .getByRole("button", { name: "Lưu khoản thu", exact: true })
       .click();
     await expect(page.getByTestId("payment-row")).toHaveCount(2);
+    const second = page
+      .getByTestId("payment-row")
+      .filter({ hasText: "500.000" });
+    await second
+      .getByRole("button", { name: "Sửa khoản thu", exact: true })
+      .click();
+    await second
+      .getByLabel("Số tiền nhận (VND)", { exact: true })
+      .fill("600000");
+    await second
+      .getByRole("button", { name: "Lưu thay đổi khoản thu", exact: true })
+      .click();
+    await expect(
+      statementCard.getByRole("status").filter({ hasText: /^Đã thu đủ$/ }),
+    ).toHaveClass(/status-completed/);
     await recipient
       .getByRole("button", { name: "Cập nhật số liệu", exact: true })
       .click();
@@ -249,10 +245,10 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       .filter({ hasText: "1.000.000" });
     await first.locator("summary").click();
     await first
-      .getByLabel("Lý do vô hiệu hóa", { exact: true })
+      .getByLabel("Lý do xóa (tùy chọn)", { exact: true })
       .fill("PRIVATE REASON");
     await first
-      .getByRole("button", { name: "Xác nhận vô hiệu hóa", exact: true })
+      .getByRole("button", { name: "Xác nhận xóa khoản thu", exact: true })
       .click();
     await expect(first).toContainText("Đã vô hiệu hóa");
     await recipient

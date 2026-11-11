@@ -1,7 +1,7 @@
 "use client";
 import { useI18n } from "@/lib/i18n/client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Student } from "@/domain";
 import { MAX_CLASS_STUDENTS } from "@/domain/classes";
 import { api } from "@/lib/client-api";
@@ -12,6 +12,7 @@ import type { Page } from "@/features/statements/shared";
 export function useResource<T>(endpoint: string) {
   const { t } = useI18n();
   const [revision, setRevision] = useState(0);
+  const reload = useCallback(() => setRevision((v) => v + 1), []);
   const key = `${endpoint}:${revision}`;
   const [result, setResult] = useState<{
     key: string;
@@ -44,7 +45,7 @@ export function useResource<T>(endpoint: string) {
   return {
     data: result?.key === key ? result.data : null,
     error: failure?.key === key ? failure.message : "",
-    reload: () => setRevision((v) => v + 1),
+    reload,
   };
 }
 export function usePaged<

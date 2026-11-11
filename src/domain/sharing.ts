@@ -8,7 +8,10 @@ export const shareTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 export const shareCreateInputSchema = z
   .object({
     version: statementVersionSchema,
-    previewHash: z.string().regex(/^[a-f0-9]{64}$/),
+    previewHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
   })
   .strict();
 export const shareRevokeInputSchema = z

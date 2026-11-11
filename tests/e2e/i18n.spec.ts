@@ -4,6 +4,67 @@ import { vietnamToday } from "../../src/domain";
 
 test.use({ locale: "vi-VN", storageState: { cookies: [], origins: [] } });
 
+test("guest demo is read-only and a signed-in visit to home opens the dashboard", async ({
+  page,
+  context,
+}) => {
+  const businessRequests: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith("/api/")) businessRequests.push(path);
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "View demo", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Demo teaching ledger" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Sign in", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toHaveCount(0);
+  const nav = page.getByRole("navigation", { name: "Demo navigation" });
+  for (const [tab, count] of [
+    ["Students", 45],
+    ["Classes", 10],
+    ["Lessons", 30],
+    ["Statements", 15],
+  ] as const) {
+    await nav.getByRole("link", { name: tab, exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `${count} of ${count} results`,
+    );
+  }
+  await page.getByText("DEMO-001", { exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Payment history" }),
+  ).toBeVisible();
+  await expect(page.getByText(/· Cash$/)).toBeVisible();
+  await expect(page.getByText(/· Bank transfer$/)).toBeVisible();
+  await page
+    .getByRole("searchbox", { name: "Search the list" })
+    .fill("DEMO-004");
+  await expect(page.getByRole("status")).toHaveText("1 of 15 results");
+  await expect(page.getByText("Overdue", { exact: true })).toBeVisible();
+  expect(businessRequests).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+
+  const { token } = await (await context.request.get("/api/auth/csrf")).json();
+  const { idToken } = await googleToken();
+  const session = await context.request.post("/api/auth/session", {
+    headers: { Origin: origin, "x-csrf-token": token },
+    data: { idToken },
+  });
+  expect(session.ok()).toBe(true);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/app$/);
+});
+
 test("native workspace opens account tools, planned lessons and filtered statements", async ({
   browser,
 }) => {
@@ -131,7 +192,9 @@ test("visitors can preview themes on the home page without saving an account pre
   await theme.click();
   const themeMenu = page.getByRole("listbox", { name: "Preview theme" });
   await expect(themeMenu.getByRole("option")).toHaveCount(8);
-  await themeMenu.getByRole("option", { name: "Command Line", exact: true }).click();
+  await themeMenu
+    .getByRole("option", { name: "Command Line", exact: true })
+    .click();
   await expect(home).toHaveCSS("background-color", "rgb(0, 0, 0)");
   await expect(home.locator('[data-slot="card"]')).toHaveCSS(
     "background-color",
@@ -327,9 +390,13 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   await page.goto("/app/settings");
   await page.getByRole("combobox", { name: "Bank name", exact: true }).click();
   await page.getByRole("option", { name: "Vietcombank", exact: true }).click();
-  await page.getByLabel("Account number", { exact: true }).fill("12345678901234");
+  await page
+    .getByLabel("Account number", { exact: true })
+    .fill("12345678901234");
   await page.getByLabel("Account holder name").fill("DEMO ACCOUNT HOLDER");
-  await page.getByRole("button", { name: "Save bank transfer details" }).click();
+  await page
+    .getByRole("button", { name: "Save bank transfer details" })
+    .click();
   await expect(page.getByText("Bank transfer details saved.")).toBeVisible();
   await page.goto("/app/students");
   await page
@@ -372,14 +439,10 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     .getByRole("button", { name: "Issue statement", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: /^CC-/ })).toBeVisible();
-  await expect(page.getByRole("img", { name: "VietQR payment code" })).toBeVisible();
-  await page
-    .getByRole("button", { name: "Preview to create a link", exact: true })
-    .click();
-  await page.getByLabel("I have checked the public content above").check();
-  await page
-    .getByRole("button", { name: "Create new shared link", exact: true })
-    .click();
+  await expect(
+    page.getByRole("img", { name: "VietQR payment code" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Share", exact: true }).click();
   const link = await page
     .getByLabel("New shared link", { exact: true })
     .inputValue();
@@ -399,8 +462,12 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     await expect(recipient.getByTestId("public-remaining")).toContainText(
       "200,000",
     );
-    await expect(recipient.getByRole("img", { name: "VietQR payment code" })).toBeVisible();
-    await expect(recipient.getByTestId("public-statement")).toContainText("DEMO ACCOUNT HOLDER");
+    await expect(
+      recipient.getByRole("img", { name: "VietQR payment code" }),
+    ).toBeVisible();
+    await expect(recipient.getByTestId("public-statement")).toContainText(
+      "DEMO ACCOUNT HOLDER",
+    );
     await recipient
       .getByRole("combobox", { name: "Language", exact: true })
       .click();
@@ -469,7 +536,9 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   await expect(page.locator('[data-theme="playful-retro"]')).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(saveAppearance).toHaveCount(0);
-  await expect(page.getByLabel("Account number", { exact: true })).toHaveValue("12345678901234");
+  await expect(page.getByLabel("Account number", { exact: true })).toHaveValue(
+    "12345678901234",
+  );
   const popupPromise = page.waitForEvent("popup");
   await page
     .getByRole("button", { name: "Create shortcut key", exact: true })

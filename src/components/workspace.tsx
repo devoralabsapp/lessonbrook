@@ -141,6 +141,12 @@ export function Workspace({
   const key = `${endpoint}:${mode}:${studentId ?? ""}`;
   const requestKey = `${key}:${revision}`;
   useEffect(() => {
+    if (mode === "students") return;
+    const refresh = () => setRevision((value) => value + 1);
+    window.addEventListener("class-lessons-created", refresh);
+    return () => window.removeEventListener("class-lessons-created", refresh);
+  }, [mode]);
+  useEffect(() => {
     let active = true;
     const empty = { items: [], nextCursor: null };
     Promise.all([

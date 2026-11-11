@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatementEditor } from "./editor";
 import { formatDate, useStatementMutation } from "./shared";
-import { PaymentPanel } from "@/features/payments/payment-panel";
+import { CashPayment, PaymentPanel } from "@/features/payments/payment-panel";
 import { BankTransferDetails } from "@/features/payments/bank-transfer-details";
 import { SharingPanel } from "@/features/sharing/sharing-panel";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
@@ -32,18 +32,33 @@ export function StatementDetail({
   const cancellationDraft = useMobileDraft(mutation.busy);
   useEffect(() => {
     let active = true;
-    api<StatementDetailData>(`/api/statements/${encodeURIComponent(id)}`)
-      .then((statement) => {
-        if (active) {
-          setData(statement);
-          setError("");
-        }
-      })
-      .catch((error) => {
-        if (active) setError(error.message);
-      });
+    let issued = false;
+    let generation = 0;
+    function load(quiet = false) {
+      const request = ++generation;
+      api<StatementDetailData>(`/api/statements/${encodeURIComponent(id)}`)
+        .then((statement) => {
+          if (active && request === generation) {
+            issued = statement.status === "issued";
+            setData(statement);
+            setError("");
+          }
+        })
+        .catch((error) => {
+          if (active && request === generation && !quiet)
+            setError(error.message);
+        });
+    }
+    function refreshWhenVisible() {
+      if (issued && document.visibilityState === "visible") load(true);
+    }
+    load();
+    const timer = window.setInterval(refreshWhenVisible, 30_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       active = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [id, revision, t]);
   if (error)
@@ -67,7 +82,8 @@ export function StatementDetail({
         {t("Đang mở bảng kê…")}
       </p>
     );
-  const canEditIssued = data.status === "issued" && !data.activePaymentCount && !data.paidVnd;
+  const canEditIssued =
+    data.status === "issued" && !data.activePaymentCount && !data.paidVnd;
   if (editing && (data.status === "draft" || canEditIssued))
     return (
       <StatementEditor
@@ -82,6 +98,15 @@ export function StatementDetail({
       />
     );
   const display = statementDisplayStatus(data, vietnamToday());
+  const paymentTone =
+    data.status !== "issued"
+      ? "bg-card text-foreground"
+      : data.paidVnd === data.totalVnd
+        ? "status-completed"
+        : data.paidVnd > 0
+          ? "bg-warning-soft text-warning-foreground"
+          : "bg-danger-soft text-destructive";
+  const refresh = () => setRevision((value) => value + 1);
   async function issue() {
     const result = await mutation.run(`/api/statements/${id}/issue`, "POST", {
       version: data!.version,
@@ -113,12 +138,12 @@ export function StatementDetail({
           <h1 className="serif break-words text-3xl">
             {data.number ?? t("Xem trước bản nháp")}
           </h1>
-          <span className="rounded-full bg-muted px-3 py-1 text-xs">
-            {display.label}
-            {display.overdue ? t(" · Quá hạn") : ""}
-          </span>
           {canEditIssued && (
-            <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
               {t("Sửa bảng kê")}
             </Button>
           )}
@@ -126,9 +151,18 @@ export function StatementDetail({
       </div>
       <Card className="overflow-hidden" data-testid="statement-preview">
         <div className="space-y-4 border-b border-border bg-accent-soft p-5 sm:p-7">
-          <p className="text-xs font-semibold tracking-widest text-primary">
-            {t("BẢNG KÊ HỌC PHÍ")}
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="py-1 text-xs font-semibold tracking-widest text-primary">
+              {t("BẢNG KÊ HỌC PHÍ")}
+            </p>
+            <span
+              role="status"
+              className={`shrink-0 rounded-lg border border-current px-2.5 py-1 text-xs font-bold ${paymentTone}`}
+            >
+              {t(display.label)}
+              {display.overdue ? t(" · Quá hạn") : ""}
+            </span>
+          </div>
           <h2 className="serif break-words text-2xl">
             {data.teacherSnapshot.displayName}
           </h2>
@@ -201,6 +235,9 @@ export function StatementDetail({
               </p>
             </>
           )}
+          {data.status === "issued" && (
+            <CashPayment key={data.id} statement={data} onChanged={refresh} />
+          )}
         </div>
         <BankTransferDetails
           bank={data.status === "issued" ? data.bankTransferSnapshot : null}
@@ -240,10 +277,7 @@ export function StatementDetail({
         </Card>
       ) : data.status === "issued" ? (
         <>
-          <PaymentPanel
-            statement={data}
-            onChanged={() => setRevision((value) => value + 1)}
-          />
+          <PaymentPanel statement={data} onChanged={refresh} />
           <SharingPanel
             statement={data}
             nativeShare={nativeShare}
@@ -312,10 +346,7 @@ export function StatementDetail({
         </Card>
       )}
       {data.status === "void" && (
-        <PaymentPanel
-          statement={data}
-          onChanged={() => setRevision((value) => value + 1)}
-        />
+        <PaymentPanel statement={data} onChanged={refresh} />
       )}
       <Link
         href={`/app/students/${data.studentId}`}

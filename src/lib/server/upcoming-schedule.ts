@@ -3,12 +3,13 @@ import "server-only";
 import { sessionSchema, vietnamToday } from "@/domain";
 import { addBusinessDays } from "@/domain/statements";
 import { classSchema } from "@/domain/classes";
+import { vietnamLessonTime } from "@/domain/weekly-schedule";
 import {
   sortUpcomingLessons,
   type UpcomingLesson,
   type UpcomingSchedule,
 } from "@/domain/upcoming-schedule";
-import { userRef } from "./repository";
+import { dto, userRef } from "./repository";
 
 const scheduleSession = sessionSchema.pick({
   id: true,
@@ -24,6 +25,7 @@ const scheduleClass = classSchema.pick({
   id: true,
   displayName: true,
   weeklySchedule: true,
+  nextLessonAt: true,
 });
 
 export async function getUpcomingSchedule(
@@ -53,7 +55,7 @@ export async function getUpcomingSchedule(
     root
       .collection("classes")
       .where("archivedAt", "==", null)
-      .select("displayName", "weeklySchedule")
+      .select("displayName", "weeklySchedule", "nextLessonAt")
       .get(),
   ]);
   const lessons = new Map<string, UpcomingLesson>();
@@ -83,11 +85,14 @@ export async function getUpcomingSchedule(
   });
   const recurring: UpcomingLesson[] = [];
   for (const doc of classes.docs) {
-    const item = scheduleClass.parse({ ...doc.data(), id: doc.id });
+    const item = scheduleClass.parse(dto(doc));
     for (const slot of item.weeklySchedule) {
       for (const { date, weekday } of dates) {
         if (
           weekday === slot.weekday &&
+          (!item.nextLessonAt ||
+            vietnamLessonTime(date, slot.time) >=
+              Date.parse(item.nextLessonAt)) &&
           !recorded.has(`${item.id}:${date}:${slot.time}`)
         ) {
           recurring.push({

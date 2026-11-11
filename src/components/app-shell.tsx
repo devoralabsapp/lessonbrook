@@ -59,6 +59,39 @@ export function AppShell({
       // A failed preload is retried when the user submits a form.
     });
   }, []);
+  useEffect(() => {
+    let active = true;
+    let pending = false;
+    let initialize = true;
+    async function sync() {
+      if (pending || document.visibilityState !== "visible") return;
+      pending = true;
+      try {
+        const { created } = await api<{ created: number }>(
+          "/api/class-schedule",
+          {
+            method: "POST",
+            body: { initialize },
+          },
+        );
+        initialize = false;
+        if (active && created)
+          window.dispatchEvent(new Event("class-lessons-created"));
+      } catch {
+        // Leave the current view available. The next check can safely retry.
+      } finally {
+        pending = false;
+      }
+    }
+    void sync();
+    const timer = window.setInterval(sync, 60_000);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, []);
   async function logout() {
     setBusy(true);
     try {

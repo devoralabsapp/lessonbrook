@@ -16,6 +16,7 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
     private struct CSRF: Decodable { let token: String }
     private struct Proof: Encodable { let code: String; let verifier: String }
     private struct GoogleProof: Encodable { let idToken: String }
+    private struct ScheduleSync: Encodable { let initialize: Bool }
     private struct SessionResponse: Decodable { let redirect: String? }
 
     static func isFirstParty(_ url: URL) -> Bool {
@@ -44,14 +45,14 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
 
     func exchange(code: String, verifier: String, theme: HTTPCookie?) async throws -> Session {
         let (_, response) = try await post(
-            path: "api/auth/mobile", body: Proof(code: code, verifier: verifier), theme: theme
+            path: "api/auth/mobile", body: Proof(code: code, verifier: verifier), cookies: [theme].compactMap { $0 }
         )
         return Session(cookie: try cookie(Self.sessionName, from: response))
     }
 
     func exchange(idToken: String, theme: HTTPCookie?) async throws -> Session {
         let (data, response) = try await post(
-            path: "api/auth/session", body: GoogleProof(idToken: idToken), theme: theme
+            path: "api/auth/session", body: GoogleProof(idToken: idToken), cookies: [theme].compactMap { $0 }
         )
         let result = try JSONDecoder().decode(SessionResponse.self, from: data)
         let name = result.redirect == "/account/deletion" ? "chotcong_deletion" : Self.sessionName
@@ -66,6 +67,17 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
             request.setValue(value, forHTTPHeaderField: name)
         }
         let (data, response) = try await session.data(for: request)
+        return try decode(data, response)
+    }
+
+    func workspace(cookies: [HTTPCookie], initialize: Bool) async throws -> WorkspaceSnapshot {
+        let (data, response) = try await post(
+            path: "api/mobile/workspace", body: ScheduleSync(initialize: initialize), cookies: cookies
+        )
+        return try decode(data, response)
+    }
+
+    private func decode<T: Decodable>(_ data: Data, _ response: URLResponse) throws -> T {
         switch (response as? HTTPURLResponse)?.statusCode {
         case 200: return try JSONDecoder().decode(T.self, from: data)
         case 401: throw Failure.expired
@@ -83,7 +95,7 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }
 
-    private func post(path: String, body: some Encodable, theme: HTTPCookie?) async throws -> (Data, URLResponse) {
+    private func post(path: String, body: some Encodable, cookies: [HTTPCookie]) async throws -> (Data, URLResponse) {
         let session = makeSession()
         defer { session.finishTasksAndInvalidate() }
 
@@ -95,8 +107,7 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(Self.origin.absoluteString, forHTTPHeaderField: "Origin")
         request.setValue(token, forHTTPHeaderField: "x-csrf-token")
-        let cookies = [csrf, theme].compactMap { $0 }
-        for (name, value) in HTTPCookie.requestHeaderFields(with: cookies) {
+        for (name, value) in HTTPCookie.requestHeaderFields(with: [csrf] + cookies) {
             request.setValue(value, forHTTPHeaderField: name)
         }
         request.httpBody = try JSONEncoder().encode(body)

@@ -157,7 +157,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
   const recordDialog = page.getByRole("dialog");
-  const requiredStudent = recordDialog.getByRole("combobox", { name: "Học viên *" });
+  const requiredStudent = recordDialog.getByRole("combobox", {
+    name: "Học viên *",
+  });
   await recordDialog.getByRole("button", { name: "Lưu buổi dạy" }).click();
   await expect(requiredStudent).toHaveAttribute("aria-invalid", "true");
   await expect(requiredStudent).toBeFocused();
@@ -273,7 +275,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
 
   await page.goto("/app/classes");
   const classSearch = page.getByRole("searchbox", { name: "Tìm tên lớp" });
-  const classStatus = page.getByRole("combobox", { name: "Trạng thái lớp học" });
+  const classStatus = page.getByRole("combobox", {
+    name: "Trạng thái lớp học",
+  });
   const classLink = page.getByRole("link", { name: /Piano chiều/ });
   await expect(classLink).toContainText("3 học viên");
   await classSearch.fill("không có lớp này");
@@ -722,9 +726,13 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
   await cancel.click();
   await expect(shell).toBeVisible();
   await page.goto(`/app/statements/${statement.id}`);
-  await page
-    .getByRole("button", { name: "Xem trước để tạo link", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Chia sẻ", exact: true }).click();
+  const openShare = page.getByRole("link", {
+    name: "Mở bảng kê công khai",
+    exact: true,
+  });
+  await expect(openShare).toBeVisible();
+  await page.goto((await openShare.getAttribute("href"))!);
   const publicStatement = page.getByTestId("public-statement");
   await expect(publicStatement).toHaveCSS("color-scheme", "light");
   await expect(publicStatement).toHaveCSS("color", "rgb(37, 58, 48)");

@@ -52,6 +52,7 @@ export const classSchema = classInputSchema.extend({
   weeklySchedule: weeklyScheduleSchema.default([]),
   id: idSchema,
   archivedAt: z.string().nullable(),
+  nextLessonAt: z.iso.datetime().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
   schemaVersion: z.literal(1),
