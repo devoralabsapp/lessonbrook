@@ -8,4 +8,27 @@
     <string name="sign_in_error">Couldn’t sign in</string>
     <string name="sign_in_retry">Return to LessonBrook and start Google sign-in again.</string>
     <string name="browser_error">No browser is available to open this link.</string>
+    <string name="today">Today</string>
+    <string name="students">Students</string>
+    <string name="lessons">Lessons</string>
+    <string name="tuition">Tuition</string>
+    <string name="more">More</string>
+    <string name="hello">Hello, %1$s</string>
+    <string name="outstanding_tuition">Outstanding tuition</string>
+    <string name="overdue_amount">%1$s overdue</string>
+    <string name="unbilled_lessons">Unbilled lessons</string>
+    <string name="lesson_count">%1$s lessons</string>
+    <string name="received_this_month">Received this month</string>
+    <string name="active_students">Active students</string>
+    <string name="record_lesson">Record a lesson</string>
+    <string name="get_started">Get started</string>
+    <string name="classes">Classes</string>
+    <string name="account_settings">Account settings</string>
+    <string name="account_deletion">Account deletion</string>
+    <string name="help_support">Help &amp; support</string>
+    <string name="welcome_description">Your lessons and tuition in one place.</string>
+    <string name="session_expired">Your session expired. Sign in again.</string>
+    <string name="continue_google">Continue with Google</string>
+    <string name="sign_in_unavailable">Sign-in is currently unavailable.</string>
+    <string name="loading">Loading</string>
 </resources>

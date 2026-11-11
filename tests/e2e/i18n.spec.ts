@@ -4,6 +4,40 @@ import { vietnamToday } from "../../src/domain";
 
 test.use({ locale: "vi-VN", storageState: { cookies: [], origins: [] } });
 
+test("native workspace keeps account tools without the duplicate web tab bar", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    userAgent: "Mozilla/5.0 LessonBrookApp/Android NativeWorkspace/1",
+    viewport: { width: 390, height: 800 },
+  });
+  try {
+    const { token } = await (
+      await context.request.get(`${origin}/api/auth/csrf`)
+    ).json();
+    const { idToken } = await googleToken();
+    const session = await context.request.post(`${origin}/api/auth/session`, {
+      headers: { Origin: origin, "x-csrf-token": token },
+      data: { idToken },
+    });
+    expect(session.ok()).toBeTruthy();
+    const page = await context.newPage();
+    await page.goto(`${origin}/app/settings`);
+    await expect(
+      page.getByRole("navigation", { name: "Main navigation" }),
+    ).toHaveCount(0);
+    await expect(page.locator('[data-slot="workspace-header"]')).toHaveCount(0);
+    await expect(
+      page.getByRole("combobox", { name: "Language" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Sign out", exact: true }),
+    ).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
 test("configured iOS presents the native Google action while Android keeps browser sign-in", async ({
   browser,
 }) => {

@@ -66,6 +66,19 @@ async function handle(request: Request, context: Context) {
     if (path.length > 3) throw new AppError(404, "Không tìm thấy chức năng.");
     if (request.method === "GET") {
       const query = Object.fromEntries(new URL(request.url).searchParams);
+      if (resource === "mobile" && id === "workspace" && path.length === 2) {
+        z.object({}).strict().parse(query);
+        const [summary, appearance, onboarding, { locale }] = await Promise.all(
+          [getSummary(uid), getAppearance(uid), getOnboarding(uid), getI18n()],
+        );
+        return json({
+          summary,
+          theme: appearance.theme,
+          displayName: onboarding.profile.displayName,
+          needsOnboarding: !onboarding.completed,
+          locale,
+        });
+      }
       if (resource === "appearance" && path.length === 1) {
         z.object({}).strict().parse(query);
         return json(await getAppearance(uid));

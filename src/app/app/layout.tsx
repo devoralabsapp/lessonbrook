@@ -4,6 +4,8 @@ import { AppError } from "@/lib/server/errors";
 import { getProfile } from "@/lib/server/repository";
 import { AppShell } from "@/components/app-shell";
 import { getAppearance } from "@/lib/server/appearance";
+import { hasNativeWorkspace } from "@/domain/mobile-sign-in";
+import { headers } from "next/headers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export default async function PrivateLayout({
@@ -21,12 +23,17 @@ export default async function PrivateLayout({
       redirect("/login?expired=1");
     throw error;
   }
-  const [profile, appearance] = await Promise.all([
+  const [profile, appearance, requestHeaders] = await Promise.all([
     getProfile(user.uid),
     getAppearance(user.uid),
+    headers(),
   ]);
   return (
-    <AppShell name={profile.displayName} initialTheme={appearance.theme}>
+    <AppShell
+      name={profile.displayName}
+      initialTheme={appearance.theme}
+      embedded={hasNativeWorkspace(requestHeaders.get("user-agent"))}
+    >
       {children}
     </AppShell>
   );

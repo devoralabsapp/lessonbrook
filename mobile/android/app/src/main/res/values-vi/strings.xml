@@ -8,4 +8,27 @@
     <string name="sign_in_error">Không đăng nhập được</string>
     <string name="sign_in_retry">Quay lại LessonBrook và bắt đầu đăng nhập Google lần nữa.</string>
     <string name="browser_error">Không có trình duyệt để mở liên kết này.</string>
+    <string name="today">Hôm nay</string>
+    <string name="students">Học viên</string>
+    <string name="lessons">Buổi dạy</string>
+    <string name="tuition">Học phí</string>
+    <string name="more">Thêm</string>
+    <string name="hello">Chào %1$s</string>
+    <string name="outstanding_tuition">Học phí chưa thu</string>
+    <string name="overdue_amount">%1$s quá hạn</string>
+    <string name="unbilled_lessons">Buổi chưa lập bảng kê</string>
+    <string name="lesson_count">%1$s buổi</string>
+    <string name="received_this_month">Đã thu tháng này</string>
+    <string name="active_students">Học viên đang học</string>
+    <string name="record_lesson">Ghi buổi dạy</string>
+    <string name="get_started">Bắt đầu</string>
+    <string name="classes">Lớp học</string>
+    <string name="account_settings">Cài đặt tài khoản</string>
+    <string name="account_deletion">Xóa tài khoản</string>
+    <string name="help_support">Trợ giúp</string>
+    <string name="welcome_description">Quản lý buổi dạy và học phí trong một cuốn sổ.</string>
+    <string name="session_expired">Phiên đã hết hạn. Vui lòng đăng nhập lại.</string>
+    <string name="continue_google">Tiếp tục với Google</string>
+    <string name="sign_in_unavailable">Hiện chưa thể đăng nhập.</string>
+    <string name="loading">Đang tải</string>
 </resources>

@@ -12,7 +12,7 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         var needsAccountDeletion: Bool { cookie.name == "chotcong_deletion" }
     }
 
-    private enum Failure: Error { case invalidResponse }
+    enum Failure: Error { case invalidResponse, expired, deleting }
     private struct CSRF: Decodable { let token: String }
     private struct Proof: Encodable { let code: String; let verifier: String }
     private struct GoogleProof: Encodable { let idToken: String }
@@ -58,13 +58,33 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         return Session(cookie: try cookie(name, from: response))
     }
 
-    private func post(path: String, body: some Encodable, theme: HTTPCookie?) async throws -> (Data, URLResponse) {
+    func get<T: Decodable>(_ path: String, cookies: [HTTPCookie] = []) async throws -> T {
+        let session = makeSession()
+        defer { session.finishTasksAndInvalidate() }
+        var request = URLRequest(url: Self.origin.appending(path: path))
+        for (name, value) in HTTPCookie.requestHeaderFields(with: cookies) {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
+        let (data, response) = try await session.data(for: request)
+        switch (response as? HTTPURLResponse)?.statusCode {
+        case 200: return try JSONDecoder().decode(T.self, from: data)
+        case 401: throw Failure.expired
+        case 423: throw Failure.deleting
+        default: throw Failure.invalidResponse
+        }
+    }
+
+    private func makeSession() -> URLSession {
         let config = URLSessionConfiguration.ephemeral
         config.httpShouldSetCookies = false
         config.urlCache = nil
         config.timeoutIntervalForRequest = 15
         config.timeoutIntervalForResource = 30
-        let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        return URLSession(configuration: config, delegate: self, delegateQueue: nil)
+    }
+
+    private func post(path: String, body: some Encodable, theme: HTTPCookie?) async throws -> (Data, URLResponse) {
+        let session = makeSession()
         defer { session.finishTasksAndInvalidate() }
 
         let (data, csrfResponse) = try await session.data(from: Self.origin.appending(path: "api/auth/csrf"))

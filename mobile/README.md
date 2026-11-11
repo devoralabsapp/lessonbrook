@@ -1,6 +1,8 @@
 # LessonBrook for iOS and Android
 
-The mobile apps load the responsive LessonBrook interface in WKWebView on iOS and WebView on Android. They use the same account, lesson data, themes, and English and Vietnamese options as the web app. The ledger needs an internet connection.
+The iOS and Android apps have native sign-in screens, a Today dashboard, a bottom tab bar, and a More menu. The Students, Lessons, Tuition, Classes, and account workflows open the existing LessonBrook screens inside the app. Both apps use the same accounts, server APIs, lesson data, theme preferences, and English and Vietnamese options as the web app. The ledger needs an internet connection.
+
+Today shows the current outstanding, unbilled, received, and student totals. Pull down to refresh on iOS or use the refresh button on Android. Open **More → Account settings** to change language or save a theme. Returning to Today applies the saved preferences to the native screens.
 
 ## iOS
 
@@ -31,11 +33,11 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install
 
 On a configured iOS build, tap **Continue with Google** and select your account in the Google sign-in sheet. LessonBrook exchanges the Firebase token for the usual HttpOnly server session and opens the ledger. Android and unconfigured iOS builds use these steps.
 
-1. Tap **Sign in with Google in browser** in the app.
+1. Tap **Continue with Google** in the app.
 2. Finish Google sign-in in the system browser, then tap **Open LessonBrook** to return. If the attempt expires or the app was closed during sign-in, start again from the app.
-3. For data export or account deletion, use the link in **Settings** to open the web tools in your browser. The browser may ask you to sign in again.
+3. For data export or account deletion, use the link in **More → Account settings** to open the web tools in your browser. The browser may ask you to sign in again.
 
-The app keeps a random verifier in memory. The server ties the browser handoff to a hash of that verifier, expires the code after two minutes, and consumes it once. The browser link carries the handoff code. The HTTPS exchange returns the usual HttpOnly session cookie. Expired handoffs are removed in bounded batches on subsequent sign-ins. Sign-in uses the existing Firebase Google provider and server credentials.
+The app keeps a random verifier in memory. The server ties the browser handoff to a hash of that verifier, expires the code after two minutes, and consumes it once. The browser link carries the handoff code. The HTTPS exchange returns the usual HttpOnly session cookie. Expired handoffs are removed in bounded batches on subsequent sign-ins. Sign-in uses the existing Firebase Google provider and server credentials. Today uses that same session cookie to load the latest totals from the server.
 
 ## Use your own deployment
 

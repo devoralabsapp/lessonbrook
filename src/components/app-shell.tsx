@@ -33,10 +33,12 @@ const links = [
 export function AppShell({
   name,
   initialTheme = DEFAULT_THEME,
+  embedded = false,
   children,
 }: {
   name: string;
   initialTheme?: Theme;
+  embedded?: boolean;
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
@@ -71,106 +73,110 @@ export function AppShell({
         >
           {t("Đến nội dung")}
         </a>
-        <aside className="fixed inset-y-0 left-0 z-20 hidden w-[242px] flex-col border-r border-border bg-surface px-5 py-8 lg:flex">
-          <div className="px-2">
-            <Brand />
-          </div>
-          <p className="mb-3 mt-12 px-3 text-[10px] font-semibold tracking-[.2em] text-muted-foreground">
-            {t("CUỐN SỔ CỦA BẠN")}
-          </p>
-          <nav className="space-y-1.5">
-            {links.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                aria-current={activeLink(href) ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm",
-                  activeLink(href)
-                    ? "bg-accent-soft font-semibold text-primary"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <Icon size={18} />
-                {t(label)}
-                {path === href && (
-                  <ChevronRight size={14} className="ml-auto" />
-                )}
-              </Link>
-            ))}
-          </nav>
-          <div className="mt-auto">
-            <div className="mb-6 rounded-2xl bg-accent-soft p-4">
-              <Sprout size={23} className="mb-3 text-primary" />
-              <p className="serif text-lg">{t("Ghi một chút mỗi ngày.")}</p>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                {t("Để cuối tháng, mọi buổi dạy đều có trong sổ.")}
-              </p>
+        {!embedded && (
+          <aside className="fixed inset-y-0 left-0 z-20 hidden w-[242px] flex-col border-r border-border bg-surface px-5 py-8 lg:flex">
+            <div className="px-2">
+              <Brand />
             </div>
-            <Link
-              href="/app/settings"
-              className="flex items-center gap-3 rounded-xl p-3 text-sm text-muted-foreground"
-            >
-              <Settings size={18} />
-              {t("Cài đặt tài khoản")}
-            </Link>
-            <Button
-              onClick={logout}
-              disabled={busy}
-              variant="ghost"
-              className="w-full justify-start px-3 text-muted-foreground"
-            >
-              <LogOut />
-              {busy ? t("Đang đăng xuất…") : t("Đăng xuất")}
-            </Button>
-            {error && (
-              <p role="alert" className="text-xs text-destructive">
-                {t(error)}
-              </p>
-            )}
-          </div>
-        </aside>
-        <div className="lg:ml-[242px]">
-          <header
-            data-slot="workspace-header"
-            className="flex h-[82px] items-center justify-between border-b border-border bg-surface/80 px-5 sm:px-9"
-          >
-            <div className="lg:hidden">
-              <Brand compact />
-            </div>
-            <p className="hidden text-xs text-muted-foreground lg:block">
-              {t("Không gian dạy học")}{" "}
-              <span className="mx-2 text-muted-foreground">/</span>{" "}
-              <span className="text-foreground">
-                {path.includes("students")
-                  ? t("Học viên")
-                  : path.includes("classes")
-                    ? t("Lớp học")
-                    : path.includes("sessions") || path.includes("lessons")
-                      ? t("Buổi dạy")
-                      : path.includes("statements")
-                        ? t("Bảng kê")
-                        : path.includes("settings")
-                          ? t("Cài đặt")
-                          : path === "/onboarding"
-                            ? t("Bắt đầu")
-                            : t("Tổng quan")}
-              </span>
+            <p className="mb-3 mt-12 px-3 text-[10px] font-semibold tracking-[.2em] text-muted-foreground">
+              {t("CUỐN SỔ CỦA BẠN")}
             </p>
-            <div className="ml-auto flex items-center gap-3">
-              <LanguageSwitcher />
+            <nav className="space-y-1.5">
+              {links.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={activeLink(href) ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm",
+                    activeLink(href)
+                      ? "bg-accent-soft font-semibold text-primary"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  <Icon size={18} />
+                  {t(label)}
+                  {path === href && (
+                    <ChevronRight size={14} className="ml-auto" />
+                  )}
+                </Link>
+              ))}
+            </nav>
+            <div className="mt-auto">
+              <div className="mb-6 rounded-2xl bg-accent-soft p-4">
+                <Sprout size={23} className="mb-3 text-primary" />
+                <p className="serif text-lg">{t("Ghi một chút mỗi ngày.")}</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {t("Để cuối tháng, mọi buổi dạy đều có trong sổ.")}
+                </p>
+              </div>
               <Link
                 href="/app/settings"
-                aria-label={t("Cài đặt tài khoản")}
-                className="flex items-center gap-3"
+                className="flex items-center gap-3 rounded-xl p-3 text-sm text-muted-foreground"
               >
-                <span className="hidden text-xs sm:block">{name}</span>
-                <span className="flex size-9 items-center justify-center rounded-full border border-border bg-accent-soft text-sm font-bold text-primary">
-                  {name[0]?.toUpperCase()}
-                </span>
+                <Settings size={18} />
+                {t("Cài đặt tài khoản")}
               </Link>
+              <Button
+                onClick={logout}
+                disabled={busy}
+                variant="ghost"
+                className="w-full justify-start px-3 text-muted-foreground"
+              >
+                <LogOut />
+                {busy ? t("Đang đăng xuất…") : t("Đăng xuất")}
+              </Button>
+              {error && (
+                <p role="alert" className="text-xs text-destructive">
+                  {t(error)}
+                </p>
+              )}
             </div>
-          </header>
+          </aside>
+        )}
+        <div className={embedded ? undefined : "lg:ml-[242px]"}>
+          {!embedded && (
+            <header
+              data-slot="workspace-header"
+              className="flex h-[82px] items-center justify-between border-b border-border bg-surface/80 px-5 sm:px-9"
+            >
+              <div className="lg:hidden">
+                <Brand compact />
+              </div>
+              <p className="hidden text-xs text-muted-foreground lg:block">
+                {t("Không gian dạy học")}{" "}
+                <span className="mx-2 text-muted-foreground">/</span>{" "}
+                <span className="text-foreground">
+                  {path.includes("students")
+                    ? t("Học viên")
+                    : path.includes("classes")
+                      ? t("Lớp học")
+                      : path.includes("sessions") || path.includes("lessons")
+                        ? t("Buổi dạy")
+                        : path.includes("statements")
+                          ? t("Bảng kê")
+                          : path.includes("settings")
+                            ? t("Cài đặt")
+                            : path === "/onboarding"
+                              ? t("Bắt đầu")
+                              : t("Tổng quan")}
+                </span>
+              </p>
+              <div className="ml-auto flex items-center gap-3">
+                <LanguageSwitcher />
+                <Link
+                  href="/app/settings"
+                  aria-label={t("Cài đặt tài khoản")}
+                  className="flex items-center gap-3"
+                >
+                  <span className="hidden text-xs sm:block">{name}</span>
+                  <span className="flex size-9 items-center justify-center rounded-full border border-border bg-accent-soft text-sm font-bold text-primary">
+                    {name[0]?.toUpperCase()}
+                  </span>
+                </Link>
+              </div>
+            </header>
+          )}
           {process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" && (
             <div className="bg-warning-soft px-5 py-1.5 text-center text-[11px] text-warning-foreground">
               {t("Firebase Emulator · Chỉ dùng dữ liệu giả")}
@@ -179,32 +185,37 @@ export function AppShell({
           <main
             id="main"
             tabIndex={-1}
-            className="mx-auto max-w-[1320px] p-5 pb-28 sm:p-9 sm:pb-28 lg:pb-9"
+            className={cn(
+              "mx-auto max-w-[1320px] p-5 sm:p-9",
+              !embedded && "pb-28 sm:pb-28 lg:pb-9",
+            )}
           >
             {children}
           </main>
         </div>
-        <nav
-          aria-label={t("Điều hướng chính")}
-          className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
-        >
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              aria-current={activeLink(href) ? "page" : undefined}
-              className={cn(
-                "flex flex-1 flex-col items-center gap-1 py-3 text-[10px]",
-                activeLink(href)
-                  ? "font-bold text-primary"
-                  : "text-muted-foreground",
-              )}
-            >
-              <Icon size={20} />
-              {t(label)}
-            </Link>
-          ))}
-        </nav>
+        {!embedded && (
+          <nav
+            aria-label={t("Điều hướng chính")}
+            className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
+          >
+            {links.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                aria-current={activeLink(href) ? "page" : undefined}
+                className={cn(
+                  "flex flex-1 flex-col items-center gap-1 py-3 text-[10px]",
+                  activeLink(href)
+                    ? "font-bold text-primary"
+                    : "text-muted-foreground",
+                )}
+              >
+                <Icon size={20} />
+                {t(label)}
+              </Link>
+            ))}
+          </nav>
+        )}
       </div>
     </AppearanceContext.Provider>
   );

@@ -22,6 +22,15 @@ final class MobileSignIn {
     private static final String HOST = Uri.parse(ORIGIN).getHost();
     private static final Pattern PROOF = Pattern.compile("[A-Za-z0-9_-]{43}");
 
+    static final class HttpFailure extends IOException {
+        final int status;
+
+        HttpFailure(int status) {
+            super("Request failed");
+            this.status = status;
+        }
+    }
+
     static boolean isFirstParty(Uri url) {
         return "https".equals(url.getScheme()) && HOST.equals(url.getHost())
             && (url.getPort() == -1 || url.getPort() == 443) && url.getUserInfo() == null;
@@ -89,6 +98,27 @@ final class MobileSignIn {
             return responseCookie(redeem, "chotcong_session");
         } finally {
             redeem.disconnect();
+        }
+    }
+
+    static JSONObject get(String path, String cookies) throws IOException, JSONException {
+        HttpURLConnection connection = connect(path);
+        try {
+            if (!cookies.isEmpty()) connection.setRequestProperty("Cookie", cookies);
+            int status = connection.getResponseCode();
+            if (status != 200) throw new HttpFailure(status);
+            try (InputStream body = connection.getInputStream()) {
+                byte[] data = new byte[8192];
+                int length = 0;
+                int read;
+                while (length < data.length && (read = body.read(data, length, data.length - length)) != -1) {
+                    length += read;
+                }
+                if (length == data.length) throw new IOException("Invalid workspace response");
+                return new JSONObject(new String(data, 0, length, StandardCharsets.UTF_8));
+            }
+        } finally {
+            connection.disconnect();
         }
     }
 

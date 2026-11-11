@@ -54,6 +54,39 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
         .status,
     ).toBe(401);
   });
+  it("serves only the signed-in teacher's mobile workspace and locale", async () => {
+    const status = await fetch(origin + "/api/auth/availability");
+    expect(await status.json()).toEqual({ available: true });
+    expect((await fetch(origin + "/api/mobile/workspace")).status).toBe(401);
+
+    const teacher = await client("vi");
+    const other = await client("en");
+    await teacher.login((await googleToken()).idToken);
+    await other.login((await googleToken()).idToken);
+    expect((await teacher.call("/api/students", "POST", student)).status).toBe(
+      200,
+    );
+    expect(
+      (await teacher.call("/api/appearance", "PATCH", { theme: "ocean" }))
+        .status,
+    ).toBe(200);
+
+    const workspace = await teacher.call("/api/mobile/workspace");
+    expect(workspace.status).toBe(200);
+    expect(await workspace.json()).toEqual({
+      summary: await (await teacher.call("/api/summary")).json(),
+      theme: "ocean",
+      displayName: "Giáo viên thử nghiệm",
+      needsOnboarding: true,
+      locale: "vi",
+    });
+    expect(
+      await (await other.call("/api/mobile/workspace")).json(),
+    ).toMatchObject({
+      summary: { activeStudents: 0 },
+      locale: "en",
+    });
+  });
   it("sign-in applies a valid guest theme to the verified account and preserves it on later sign-ins", async () => {
     const c = await client();
     const { idToken } = await googleToken();

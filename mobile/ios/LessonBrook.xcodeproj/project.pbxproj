@@ -11,6 +11,7 @@
 		73EF40BD4426F497B1FBD026 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE16A7B650742CE6EC2ACD19 /* AppDelegate.swift */; };
 		8271DDC1C444218E601B76B2 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1A08BCE1EC91432DAC73B79F /* Localizable.strings */; };
 		8DA9B29959E2288E8BCC953E /* BrowserViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2756913D3A0994B45114F22A /* BrowserViewController.swift */; };
+		B858009A5AE59F0AA3033B65 /* NativeWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50C38D19580B1FAEFE3E7F3 /* NativeWorkspace.swift */; };
 		C1FECC370D2C20E72B3522EC /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 864FF7E806B3CDA7D61ED921 /* FirebaseCore */; };
 		D44B89EC1E4FC77158BA1FCD /* MobileSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D711185E1F90EFE3122B35A /* MobileSignIn.swift */; };
 		D4658394922AF42865097CD4 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 2296D826A4574052198F742F /* GoogleSignIn */; };
@@ -28,6 +29,7 @@
 		C6A9AC6F8EDC6A6F47F4B4FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D5FE1BD4EB8BF8146DD644E3 /* LessonBrook.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LessonBrook.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DE16A7B650742CE6EC2ACD19 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		E50C38D19580B1FAEFE3E7F3 /* NativeWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWorkspace.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +73,7 @@
 				1A08BCE1EC91432DAC73B79F /* Localizable.strings */,
 				0D711185E1F90EFE3122B35A /* MobileSignIn.swift */,
 				9944FA4ECE3C801ED4750694 /* NativeGoogleSignIn.swift */,
+				E50C38D19580B1FAEFE3E7F3 /* NativeWorkspace.swift */,
 			);
 			path = LessonBrook;
 			sourceTree = "<group>";
@@ -187,6 +190,7 @@
 				8DA9B29959E2288E8BCC953E /* BrowserViewController.swift in Sources */,
 				D44B89EC1E4FC77158BA1FCD /* MobileSignIn.swift in Sources */,
 				F1E3AD0678589DFB5CA9C963 /* NativeGoogleSignIn.swift in Sources */,
+				B858009A5AE59F0AA3033B65 /* NativeWorkspace.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -227,7 +231,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -246,7 +250,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -330,7 +334,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -343,7 +347,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

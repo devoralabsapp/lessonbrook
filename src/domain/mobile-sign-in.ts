@@ -10,3 +10,9 @@ export function isMobileApp(userAgent: string | null) {
 export function hasNativeGoogleSignIn(userAgent: string | null) {
   return /\bLessonBrookApp\/iOS NativeGoogleSignIn\/1\b/.test(userAgent ?? "");
 }
+
+export function hasNativeWorkspace(userAgent: string | null) {
+  return (
+    isMobileApp(userAgent) && /\bNativeWorkspace\/1\b/.test(userAgent ?? "")
+  );
+}

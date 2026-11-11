@@ -4,11 +4,13 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
-import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
@@ -20,8 +22,8 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -32,23 +34,42 @@ import java.util.concurrent.Executors;
 import org.json.JSONException;
 
 public final class MainActivity extends Activity {
-    private final ExecutorService network = Executors.newSingleThreadExecutor();
+    private enum Screen { WELCOME, TODAY, MORE, PAGE }
+
+    private static final String SESSION = "chotcong_session";
+    private static final String LOCALE = "chotcong_locale";
+    private static final String DELETION = "/account/deletion";
+
+    private final ExecutorService network = Executors.newFixedThreadPool(2);
+    private LinearLayout root;
+    private LinearLayout toolbar;
+    private LinearLayout tabs;
+    private FrameLayout content;
     private WebView webView;
-    private View errorPanel;
     private ProgressBar progress;
-    private Button back;
     private AlertDialog signInError;
+    private Screen screen = Screen.WELCOME;
+    private NativeWorkspace.Tab tab = NativeWorkspace.Tab.TODAY;
+    private NativeWorkspace.Tab returnTab = NativeWorkspace.Tab.TODAY;
+    private NativeWorkspace.Snapshot snapshot;
+    private String locale = "en";
+    private String webRoot;
     private String verifier;
+    private int requestVersion;
     private boolean signingIn;
+    private boolean signedIn;
+    private boolean webFailed;
+    private View webError;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         buildView();
-        configureWebView();
-        String cookies = CookieManager.getInstance().getCookie(MobileSignIn.ORIGIN);
-        boolean signedIn = cookies != null && cookies.matches("(^|.*; )chotcong_session=[^;]+(;.*|$)");
-        webView.loadUrl(signedIn ? MobileSignIn.ORIGIN + "/app" : MobileSignIn.ORIGIN);
+        String saved = originCookies();
+        updateLocale(saved);
+        if (!cookie(saved, SESSION).isEmpty()) showToday();
+        else if (!cookie(saved, "chotcong_deletion").isEmpty()) openPage(DELETION);
+        else showWelcome(false);
         finishSignIn(getIntent());
     }
 
@@ -59,9 +80,8 @@ public final class MainActivity extends Activity {
     }
 
     private void buildView() {
-        LinearLayout root = new LinearLayout(this);
+        root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.WHITE);
         if (Build.VERSION.SDK_INT >= 35) {
             root.setOnApplyWindowInsetsListener((view, insets) -> {
                 var safe = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -71,80 +91,232 @@ public final class MainActivity extends Activity {
             });
         }
         setContentView(root);
-        if (Build.VERSION.SDK_INT >= 35) {
-            int lightBars = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-            getWindow().getInsetsController().setSystemBarsAppearance(lightBars, lightBars);
-        }
-
-        LinearLayout toolbar = new LinearLayout(this);
+        toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(8), 0, dp(8), 0);
-        back = new Button(this);
-        back.setText(R.string.back);
-        back.setEnabled(false);
-        back.setOnClickListener(view -> goBack());
-        toolbar.addView(back);
-
-        TextView title = new TextView(this);
-        title.setText(R.string.app_name);
-        title.setTextSize(17);
-        title.setGravity(Gravity.CENTER);
-        toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-
-        Button refresh = new Button(this);
-        refresh.setText(R.string.reload);
-        refresh.setOnClickListener(view -> reload());
-        toolbar.addView(refresh);
-        root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(56)));
-
-        FrameLayout content = new FrameLayout(this);
+        root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(58)));
+        content = new FrameLayout(this);
         root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
-        webView = new WebView(this);
-        content.addView(webView, new FrameLayout.LayoutParams(-1, -1));
-
-        LinearLayout fallback = new LinearLayout(this);
-        fallback.setOrientation(LinearLayout.VERTICAL);
-        fallback.setGravity(Gravity.CENTER);
-        fallback.setPadding(dp(24), dp(24), dp(24), dp(24));
-        TextView message = new TextView(this);
-        message.setText(R.string.load_error);
-        message.setGravity(Gravity.CENTER);
-        message.setTextSize(16);
-        fallback.addView(message);
-        Button retry = new Button(this);
-        retry.setText(R.string.try_again);
-        retry.setOnClickListener(view -> reload());
-        fallback.addView(retry);
-        errorPanel = fallback;
-        errorPanel.setVisibility(View.GONE);
-        content.addView(errorPanel, new FrameLayout.LayoutParams(-1, -1));
-
-        progress = new ProgressBar(this);
-        progress.setVisibility(View.GONE);
-        content.addView(progress, new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.CENTER));
+        tabs = new LinearLayout(this);
+        root.addView(tabs, new LinearLayout.LayoutParams(-1, -2));
     }
 
-    private void configureWebView() {
-        WebSettings settings = webView.getSettings();
+    private NativeWorkspace.Palette palette() {
+        return NativeWorkspace.Palette.from(snapshot == null ? "natura" : snapshot.theme());
+    }
+
+    private NativeWorkspace workspace() {
+        return new NativeWorkspace(this, locale, palette());
+    }
+
+    @SuppressWarnings("deprecation")
+    private void chrome() {
+        NativeWorkspace ui = workspace();
+        NativeWorkspace.Palette colors = palette();
+        root.setBackgroundColor(colors.background());
+        int lightBars = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+        if (Build.VERSION.SDK_INT >= 35) {
+            getWindow().getInsetsController().setSystemBarsAppearance(colors.dark() ? 0 : lightBars, lightBars);
+        } else {
+            getWindow().setStatusBarColor(colors.background());
+            getWindow().setNavigationBarColor(colors.background());
+            int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            getWindow().getDecorView().setSystemUiVisibility(colors.dark() ? 0 : light);
+        }
+
+        toolbar.removeAllViews();
+        toolbar.setVisibility(screen == Screen.WELCOME ? View.GONE : View.VISIBLE);
+        toolbar.setBackgroundColor(colors.background());
+        if (screen == Screen.PAGE) toolbar.addView(tool(R.drawable.ic_back, R.string.back, this::goBack));
+
+        TextView title = new TextView(this);
+        title.setText(ui.text(screen == Screen.PAGE ? pageTitle(webPath()) : tab.title));
+        title.setTextColor(colors.foreground());
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setTextSize(20);
+        if (Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
+        title.setPadding(dp(screen == Screen.PAGE ? 2 : 20), 0, dp(8), 0);
+        toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        if (screen == Screen.TODAY) toolbar.addView(tool(R.drawable.ic_refresh, R.string.reload, this::showToday));
+
+        tabs.removeAllViews();
+        boolean showTabs = screen != Screen.WELCOME && !DELETION.equals(webRoot);
+        tabs.setVisibility(showTabs ? View.VISIBLE : View.GONE);
+        if (showTabs) tabs.addView(ui.tabs(tab, this::selectTab), new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    private ImageButton tool(int icon, int label, Runnable action) {
+        ImageButton button = new ImageButton(this);
+        TypedValue background = new TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, background, true);
+        button.setBackgroundResource(background.resourceId);
+        button.setLayoutParams(new LinearLayout.LayoutParams(dp(54), dp(48)));
+        button.setImageResource(icon);
+        button.setImageTintList(ColorStateList.valueOf(palette().accent()));
+        button.setContentDescription(workspace().text(label));
+        button.setOnClickListener(view -> action.run());
+        return button;
+    }
+
+    private void selectTab(NativeWorkspace.Tab target) {
+        if (target.path != null) openPage(target.path);
+        else if (target == NativeWorkspace.Tab.MORE) showMore();
+        else showToday();
+    }
+
+    private void nativeView(View child) {
+        closePage();
+        content.removeAllViews();
+        content.addView(child, new FrameLayout.LayoutParams(-1, -1));
+        chrome();
+    }
+
+    private void showWelcome(boolean expired) {
+        int version = ++requestVersion;
+        signedIn = false;
+        snapshot = null;
+        screen = Screen.WELCOME;
+        tab = NativeWorkspace.Tab.TODAY;
+        renderWelcome(null, expired, false);
+        network.execute(() -> {
+            try {
+                boolean available = MobileSignIn.get("/api/auth/availability", "").getBoolean("available");
+                deliver(version, () -> renderWelcome(available, expired, false));
+            } catch (IOException | JSONException error) {
+                deliver(version, () -> renderWelcome(null, expired, true));
+            }
+        });
+    }
+
+    private void renderWelcome(Boolean available, boolean expired, boolean failed) {
+        nativeView(workspace().welcome(
+            available, expired, failed, this::startSignIn, () -> showWelcome(expired),
+            () -> chooseLanguage(expired), () -> openBrowser(Uri.parse(MobileSignIn.ORIGIN + "/help"))
+        ));
+    }
+
+    private void chooseLanguage(boolean expired) {
+        new AlertDialog.Builder(this)
+            .setSingleChoiceItems(new String[] {"English", "Tiếng Việt"}, "vi".equals(locale) ? 1 : 0,
+                (dialog, choice) -> {
+                    dialog.dismiss();
+                    String language = choice == 1 ? "vi" : "en";
+                    if (language.equals(locale)) return;
+                    CookieManager.getInstance().setCookie(MobileSignIn.ORIGIN,
+                        LOCALE + "=" + language + "; Max-Age=31536000; Path=/; Secure; HttpOnly; SameSite=Lax",
+                        saved -> {
+                            if (!saved || isDestroyed() || screen != Screen.WELCOME) return;
+                            locale = language;
+                            network.execute(() -> CookieManager.getInstance().flush());
+                            showWelcome(expired);
+                        });
+                })
+            .show();
+    }
+
+    private void showToday() {
+        int version = ++requestVersion;
+        signedIn = true;
+        screen = Screen.TODAY;
+        tab = NativeWorkspace.Tab.TODAY;
+        if (snapshot != null) renderToday();
+        else {
+            nativeView(new FrameLayout(this));
+            ProgressBar loading = workspace().loading();
+            content.addView(loading, new FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER));
+        }
+        String saved = originCookies();
+        String credentials = cookie(saved, SESSION);
+        String language = cookie(saved, LOCALE);
+        if (!credentials.isEmpty() && !language.isEmpty()) credentials += "; " + language;
+        String headers = credentials;
+        network.execute(() -> {
+            try {
+                var result = NativeWorkspace.Snapshot.parse(MobileSignIn.get("/api/mobile/workspace", headers));
+                deliver(version, () -> {
+                    snapshot = result;
+                    locale = result.locale();
+                    renderToday();
+                });
+            } catch (MobileSignIn.HttpFailure error) {
+                deliver(version, () -> {
+                    if (error.status == 401) expireSession();
+                    else if (error.status == 423) openPage(DELETION);
+                    else showDashboardError();
+                });
+            } catch (IOException | JSONException error) {
+                deliver(version, this::showDashboardError);
+            }
+        });
+    }
+
+    private void renderToday() { nativeView(workspace().today(snapshot, this::openPage)); }
+
+    private void showDashboardError() { nativeView(workspace().error(this::showToday)); }
+
+    private void showMore() {
+        ++requestVersion;
+        tab = NativeWorkspace.Tab.MORE;
+        screen = Screen.MORE;
+        nativeView(workspace().more(this::openPage));
+    }
+
+    private void deliver(int version, Runnable display) {
+        runOnUiThread(() -> {
+            if (!isDestroyed() && requestVersion == version) display.run();
+        });
+    }
+
+    private void openPage(String path) {
+        ++requestVersion;
+        returnTab = screen == Screen.MORE ? NativeWorkspace.Tab.MORE : NativeWorkspace.Tab.TODAY;
+        closePage();
+        content.removeAllViews();
+        screen = Screen.PAGE;
+        webRoot = path;
+        tab = pageTab(path);
+        WebView web = new WebView(this);
+        webView = web;
+        configureWebView(web);
+        content.addView(web, new FrameLayout.LayoutParams(-1, -1));
+        chrome();
+        web.loadUrl(MobileSignIn.ORIGIN + path);
+    }
+
+    private void closePage() {
+        if (webView != null) {
+            WebView previous = webView;
+            webView = null;
+            previous.stopLoading();
+            content.removeView(previous);
+            previous.destroy();
+        }
+        webRoot = null;
+        webFailed = false;
+        if (webError != null) {
+            content.removeView(webError);
+            webError = null;
+        }
+    }
+
+    private void configureWebView(WebView web) {
+        WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " LessonBrookApp/Android");
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
-        webView.setWebViewClient(new WebViewClient() {
+        settings.setUserAgentString(settings.getUserAgentString() + " LessonBrookApp/Android NativeWorkspace/1");
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
+        web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri url = request.getUrl();
                 if (MobileSignIn.isFirstParty(url)) return false;
                 String current = view.getUrl();
-                if (request.isForMainFrame() && request.hasGesture() && !request.isRedirect()
+                if (view == webView && request.isForMainFrame() && request.hasGesture() && !request.isRedirect()
                     && current != null && MobileSignIn.isFirstParty(Uri.parse(current))) {
-                    if ((MobileSignIn.SCHEME + "://start").equals(url.toString())) {
-                        startSignIn();
-                    } else if ((MobileSignIn.SCHEME + "://data").equals(url.toString())) {
+                    if ((MobileSignIn.SCHEME + "://data").equals(url.toString())) {
                         openBrowser(Uri.parse(MobileSignIn.ORIGIN + "/login?next=data"));
                     } else if ("https".equals(url.getScheme()) || "http".equals(url.getScheme())
                         || "mailto".equals(url.getScheme())) {
@@ -156,25 +328,69 @@ public final class MainActivity extends Activity {
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                webView.setVisibility(View.VISIBLE);
-                errorPanel.setVisibility(View.GONE);
+                if (view != webView) return;
+                webFailed = false;
+                view.setVisibility(View.VISIBLE);
+                if (webError != null) {
+                    content.removeView(webError);
+                    webError = null;
+                }
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                if (view != webView || webFailed) return;
+                updateLocale(originCookies());
+                track(view, url);
             }
 
             @Override
             public void doUpdateVisitedHistory(WebView view, String url, boolean reload) {
-                back.setEnabled(view.canGoBack());
+                track(view, url);
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame()) showLoadError();
+                if (request.isForMainFrame()) showLoadError(view);
             }
 
             @Override
             public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
-                if (request.isForMainFrame() && response.getStatusCode() >= 500) showLoadError();
+                if (request.isForMainFrame() && response.getStatusCode() >= 500) showLoadError(view);
             }
         });
+    }
+
+    private void track(WebView view, String url) {
+        if (view != webView || url == null) return;
+        Uri uri = Uri.parse(url);
+        if (!MobileSignIn.isFirstParty(uri)) return;
+        String path = uri.getPath();
+        if (path == null) return;
+        switch (path) {
+            case "/app" -> showToday();
+            case "/" -> { if (signedIn) showToday(); else showWelcome(false); }
+            case "/login" -> { if (uri.getQueryParameter("expired") == null) showWelcome(false); else expireSession(); }
+            case DELETION -> {
+                webRoot = DELETION;
+                chrome();
+            }
+            default -> {
+                tab = pageTab(path);
+                chrome();
+            }
+        }
+    }
+
+    private void showLoadError(WebView view) {
+        if (view != webView || webFailed) return;
+        webFailed = true;
+        view.setVisibility(View.INVISIBLE);
+        webError = workspace().error(() -> {
+            if (view.getUrl() == null) view.loadUrl(MobileSignIn.ORIGIN + webRoot);
+            else view.reload();
+        });
+        content.addView(webError, new FrameLayout.LayoutParams(-1, -1));
     }
 
     private void startSignIn() {
@@ -188,7 +404,7 @@ public final class MainActivity extends Activity {
             startActivity(new Intent(Intent.ACTION_VIEW, url));
             return true;
         } catch (ActivityNotFoundException error) {
-            Toast.makeText(this, R.string.browser_error, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, workspace().text(R.string.browser_error), Toast.LENGTH_LONG).show();
             return false;
         }
     }
@@ -201,26 +417,26 @@ public final class MainActivity extends Activity {
             showSignInError();
             return;
         }
+        ++requestVersion;
         String proof = verifier;
         verifier = null;
         signingIn = true;
-        progress.setVisibility(View.VISIBLE);
+        progress = workspace().loading();
+        content.addView(progress, new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER));
         CookieManager cookies = CookieManager.getInstance();
-        String guestTheme = guestTheme(cookies.getCookie(MobileSignIn.ORIGIN));
+        String theme = cookie(originCookies(), MobileSignIn.GUEST_THEME);
+        String guest = theme.matches(MobileSignIn.GUEST_THEME + "=[a-z-]{1,32}") ? theme : null;
         network.execute(() -> {
             try {
-                String session = MobileSignIn.exchange(code, proof, guestTheme);
+                String session = MobileSignIn.exchange(code, proof, guest);
                 runOnUiThread(() -> {
                     if (isDestroyed()) return;
                     cookies.setCookie(MobileSignIn.ORIGIN, session, saved -> {
-                        if (!saved) {
-                            completeSignIn(false);
-                        } else if (guestTheme == null) {
-                            completeSignIn(true);
-                        } else {
-                            cookies.setCookie(MobileSignIn.ORIGIN,
-                                MobileSignIn.GUEST_THEME + "=; Max-Age=0; Path=/; Secure",
+                        if (saved && guest != null) {
+                            cookies.setCookie(MobileSignIn.ORIGIN, expiredCookie(MobileSignIn.GUEST_THEME),
                                 removed -> completeSignIn(true));
+                        } else {
+                            completeSignIn(saved);
                         }
                     });
                 });
@@ -233,47 +449,84 @@ public final class MainActivity extends Activity {
     private void completeSignIn(boolean saved) {
         if (isDestroyed()) return;
         signingIn = false;
-        progress.setVisibility(View.GONE);
-        if (!saved) {
+        content.removeView(progress);
+        progress = null;
+        if (saved) {
+            network.execute(() -> CookieManager.getInstance().flush());
+            showToday();
+        } else {
+            showWelcome(false);
             showSignInError();
-            return;
         }
-        network.execute(() -> CookieManager.getInstance().flush());
-        webView.loadUrl(MobileSignIn.ORIGIN + "/app");
     }
 
-    private static String guestTheme(String cookieHeader) {
-        if (cookieHeader == null) return null;
-        for (String cookie : cookieHeader.split(";")) {
-            String candidate = cookie.trim();
-            if (candidate.matches(MobileSignIn.GUEST_THEME + "=[a-z-]{1,32}")) return candidate;
-        }
-        return null;
+    private void expireSession() {
+        CookieManager.getInstance().setCookie(MobileSignIn.ORIGIN, expiredCookie(SESSION));
+        showWelcome(true);
     }
+
+    private static String expiredCookie(String name) { return name + "=; Max-Age=0; Path=/; Secure"; }
 
     private void showSignInError() {
         if (signInError != null && signInError.isShowing()) return;
         signInError = new AlertDialog.Builder(this)
-            .setTitle(R.string.sign_in_error)
-            .setMessage(R.string.sign_in_retry)
+            .setTitle(workspace().text(R.string.sign_in_error))
+            .setMessage(workspace().text(R.string.sign_in_retry))
             .setPositiveButton(android.R.string.ok, null)
             .show();
     }
 
-    private void showLoadError() {
-        webView.setVisibility(View.INVISIBLE);
-        errorPanel.setVisibility(View.VISIBLE);
+    private String originCookies() { return CookieManager.getInstance().getCookie(MobileSignIn.ORIGIN); }
+
+    private static String cookie(String headers, String name) {
+        if (headers != null) {
+            for (String item : headers.split(";")) {
+                String candidate = item.trim();
+                if (candidate.startsWith(name + "=") && candidate.length() > name.length() + 1) return candidate;
+            }
+        }
+        return "";
     }
 
-    private void reload() {
-        if (webView.getUrl() == null) webView.loadUrl(MobileSignIn.ORIGIN);
-        else webView.reload();
+    private void updateLocale(String saved) { locale = cookie(saved, LOCALE).equals(LOCALE + "=vi") ? "vi" : "en"; }
+
+    private String webPath() {
+        String url = webView == null ? null : webView.getUrl();
+        String path = url == null ? null : Uri.parse(url).getPath();
+        return path == null ? webRoot : path;
+    }
+
+    private static NativeWorkspace.Tab pageTab(String path) {
+        if (path.startsWith("/app/students")) return NativeWorkspace.Tab.STUDENTS;
+        if (path.startsWith("/app/sessions") || path.startsWith("/app/lessons")) return NativeWorkspace.Tab.LESSONS;
+        if (path.startsWith("/app/statements")) return NativeWorkspace.Tab.TUITION;
+        return NativeWorkspace.Tab.MORE;
+    }
+
+    private static int pageTitle(String path) {
+        return switch (path) {
+            case "/app/lessons/new" -> R.string.record_lesson;
+            case "/app/classes" -> R.string.classes;
+            case "/app/settings" -> R.string.account_settings;
+            case DELETION -> R.string.account_deletion;
+            case "/onboarding" -> R.string.get_started;
+            case "/help" -> R.string.help_support;
+            default -> pageTab(path).title;
+        };
     }
 
     private boolean goBack() {
-        if (!webView.canGoBack()) return false;
-        webView.goBack();
-        return true;
+        if (screen == Screen.PAGE) {
+            if (webView != null && webView.canGoBack()) webView.goBack();
+            else if (DELETION.equals(webRoot)) showWelcome(false);
+            else selectTab(returnTab);
+            return true;
+        }
+        if (screen == Screen.MORE) {
+            showToday();
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -284,12 +537,11 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        ++requestVersion;
         network.shutdown();
-        webView.destroy();
+        closePage();
         super.onDestroy();
     }
 
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
+    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 }
