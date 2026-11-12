@@ -26,3 +26,20 @@ it.each(["- 30,000", "+ 30,00", "+ 0", "+ 30.00", "+ 999999999999999999"])(
   "rejects malformed or outgoing amounts (%s)",
   (amount) => expect(parseBankNotification(notice(amount, memo))).toBeNull(),
 );
+
+it("accepts an explicitly credited VND amount with a multiline memo and typographic dashes", () => {
+  expect(
+    parseBankNotification(
+      "Account: 12345678901234\rAmount: + 30.000 VND\rBalance: 50.000 ₫\rDEMO SENDER\rMemo: CC–2026–000001–4EA8C340B1",
+    ),
+  ).toEqual({
+    accountNumber: "12345678901234",
+    amountVnd: 30000,
+    reference: "CC-2026-000001-4EA8C340B1",
+  });
+  expect(
+    parseBankNotification(
+      "Account 12345678901234\nAmount: + 30,000\nBalance: 50,000",
+    )?.reference,
+  ).toBeNull();
+});

@@ -9,6 +9,18 @@ import { recordBankPayment } from "@/lib/server/payments-repository";
 
 export const runtime = "nodejs";
 
+function result(
+  status:
+    | "recorded"
+    | "duplicate"
+    | "unsupported_message"
+    | "account_mismatch"
+    | "missing_reference",
+) {
+  console.info(JSON.stringify({ event: "bank-notification", status }));
+  return json({ status });
+}
+
 export async function POST(request: Request) {
   try {
     const shortcut = await verifyBankShortcut(
@@ -18,18 +30,18 @@ export async function POST(request: Request) {
       throw new AppError(415, "Yêu cầu phải là JSON.");
     const { message } = bankNotificationSchema.parse(await jsonBody(request));
     const notification = parseBankNotification(message);
-    if (!notification) return json({ status: "unsupported_message" });
+    if (!notification) return result("unsupported_message");
     if (notification.accountNumber !== shortcut.accountNumber)
-      return json({ status: "account_mismatch" });
-    if (!notification.reference) return json({ status: "missing_reference" });
-    const result = await recordBankPayment(
+      return result("account_mismatch");
+    if (!notification.reference) return result("missing_reference");
+    const payment = await recordBankPayment(
       shortcut.uid,
       shortcut.keyHash,
       notification.accountNumber,
       notification.reference,
       notification.amountVnd,
     );
-    return json({ status: result.record ? "recorded" : "duplicate" });
+    return result(payment.record ? "recorded" : "duplicate");
   } catch (error) {
     return errorResponse(error);
   }

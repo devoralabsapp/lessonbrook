@@ -98,7 +98,14 @@ describe("iPhone bank notification Shortcut", () => {
     ).toBe(409);
     const key = await teacher.connect();
     expect((await send(message(reference, "20,000"), key)).status).toBe(409);
-    expect(await (await send(message(reference), key)).json()).toEqual({
+    const reformatted = [
+      `Account: ${accountNumber}`,
+      "Amount: + 30.000 VND",
+      "Balance: 30.000 ₫",
+      "DEMO SENDER",
+      `Memo: ${reference.replaceAll("-", "–")}`,
+    ].join("\r");
+    expect(await (await send(reformatted, key)).json()).toEqual({
       status: "recorded",
     });
     expect(await (await send(message(reference), key)).json()).toEqual({
