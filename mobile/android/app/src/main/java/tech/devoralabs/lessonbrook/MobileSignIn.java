@@ -1,6 +1,7 @@
 package tech.devoralabs.lessonbrook;
 
 import android.net.Uri;
+import android.os.SystemClock;
 import android.util.Base64;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +22,8 @@ final class MobileSignIn {
     static final String GUEST_THEME = "chotcong_guest_theme";
     private static final String HOST = Uri.parse(ORIGIN).getHost();
     private static final Pattern PROOF = Pattern.compile("[A-Za-z0-9_-]{43}");
+    private record CsrfPair(String cookie, String token, long refreshAt) {}
+    private static volatile CsrfPair csrfPair;
 
     static final class HttpFailure extends IOException {
         final int status;
@@ -75,12 +78,18 @@ final class MobileSignIn {
         HttpURLConnection request = post("/api/mobile/workspace", new JSONObject().put("initialize", initialize), cookies);
         try {
             return responseJson(request);
+        } catch (HttpFailure error) {
+            if (error.status == 403) csrfPair = null;
+            throw error;
         } finally {
             request.disconnect();
         }
     }
 
-    private static HttpURLConnection post(String path, JSONObject body, String cookies) throws IOException, JSONException {
+    private static CsrfPair csrf() throws IOException, JSONException {
+        CsrfPair cached = csrfPair;
+        long now = SystemClock.elapsedRealtime();
+        if (cached != null && now < cached.refreshAt()) return cached;
         String csrfCookie;
         String token;
         HttpURLConnection csrf = connect("/api/auth/csrf");
@@ -99,15 +108,21 @@ final class MobileSignIn {
         } finally {
             csrf.disconnect();
         }
+        CsrfPair fresh = new CsrfPair(csrfCookie, token, now + 55 * 60_000L);
+        csrfPair = fresh;
+        return fresh;
+    }
 
+    private static HttpURLConnection post(String path, JSONObject body, String cookies) throws IOException, JSONException {
+        CsrfPair csrf = csrf();
         HttpURLConnection request = connect(path);
         try {
             request.setRequestMethod("POST");
             request.setDoOutput(true);
             request.setRequestProperty("Content-Type", "application/json");
             request.setRequestProperty("Origin", ORIGIN);
-            request.setRequestProperty("x-csrf-token", token);
-            request.setRequestProperty("Cookie", cookies.isEmpty() ? csrfCookie : csrfCookie + "; " + cookies);
+            request.setRequestProperty("x-csrf-token", csrf.token());
+            request.setRequestProperty("Cookie", cookies.isEmpty() ? csrf.cookie() : csrf.cookie() + "; " + cookies);
             byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
             request.setFixedLengthStreamingMode(payload.length);
             try (var output = request.getOutputStream()) {

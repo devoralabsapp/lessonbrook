@@ -210,8 +210,31 @@ public final class MainActivity extends Activity {
     }
 
     private void openTab(NativeWorkspace.Tab target) {
-        if (target.path != null) openPage(target.path);
+        if (target.path != null) switchWebTab(target);
         else showToday();
+    }
+
+    private void switchWebTab(NativeWorkspace.Tab target) {
+        WebView web = webView;
+        String source = web == null ? null : web.getUrl();
+        Uri uri = source == null ? null : Uri.parse(source);
+        if (webFailed || uri == null || !MobileSignIn.isFirstParty(uri)
+            || uri.getPath() == null || !uri.getPath().startsWith("/app/")) {
+            openPage(target.path);
+            return;
+        }
+        String script = "!window.dispatchEvent(new CustomEvent('lessonbrook:navigate-tab', {cancelable: true, detail: "
+            + JSONObject.quote(target.path) + "}))";
+        web.evaluateJavascript(script, accepted -> {
+            if (web != webView || isDestroyed()) return;
+            if ("true".equals(accepted)) {
+                webRoot = target.path;
+                tab = target;
+                chrome();
+            } else if (source.equals(web.getUrl())) {
+                openPage(target.path);
+            }
+        });
     }
 
     private void openToolbarPage(String path) {
@@ -607,7 +630,7 @@ public final class MainActivity extends Activity {
     private boolean goBack() {
         if (screen == Screen.PAGE) {
             beforeLeavingPage(() -> {
-                if (webView != null && webView.canGoBack()) webView.goBack();
+                if (webView != null && webView.canGoBack() && !java.util.Objects.equals(webPath(), webRoot)) webView.goBack();
                 else if (DELETION.equals(webRoot)) showWelcome(false);
                 else showToday();
             });

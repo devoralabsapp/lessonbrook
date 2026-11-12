@@ -14,6 +14,12 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
 
     enum Failure: Error { case invalidResponse, expired, deleting }
     private struct CSRF: Decodable { let token: String }
+    private struct CSRFPair {
+        let token: String
+        let cookie: HTTPCookie
+        let refreshAt: TimeInterval
+    }
+    private var csrfPair: CSRFPair?
     private struct Proof: Encodable { let code: String; let verifier: String }
     private struct GoogleProof: Encodable { let idToken: String }
     private struct ScheduleSync: Encodable { let initialize: Bool }
@@ -95,23 +101,36 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }
 
+    @MainActor
     private func post(path: String, body: some Encodable, cookies: [HTTPCookie]) async throws -> (Data, URLResponse) {
         let session = makeSession()
         defer { session.finishTasksAndInvalidate() }
 
-        let (data, csrfResponse) = try await session.data(from: Self.origin.appending(path: "api/auth/csrf"))
-        let token = try JSONDecoder().decode(CSRF.self, from: data).token
-        let csrf = try cookie("chotcong_csrf", from: csrfResponse)
+        let now = ProcessInfo.processInfo.systemUptime
+        let pair: CSRFPair
+        if let cached = csrfPair, now < cached.refreshAt {
+            pair = cached
+        } else {
+            let (data, response) = try await session.data(from: Self.origin.appending(path: "api/auth/csrf"))
+            pair = CSRFPair(
+                token: try JSONDecoder().decode(CSRF.self, from: data).token,
+                cookie: try cookie("chotcong_csrf", from: response),
+                refreshAt: now + 55 * 60
+            )
+            csrfPair = pair
+        }
         var request = URLRequest(url: Self.origin.appending(path: path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(Self.origin.absoluteString, forHTTPHeaderField: "Origin")
-        request.setValue(token, forHTTPHeaderField: "x-csrf-token")
-        for (name, value) in HTTPCookie.requestHeaderFields(with: [csrf] + cookies) {
+        request.setValue(pair.token, forHTTPHeaderField: "x-csrf-token")
+        for (name, value) in HTTPCookie.requestHeaderFields(with: [pair.cookie] + cookies) {
             request.setValue(value, forHTTPHeaderField: name)
         }
         request.httpBody = try JSONEncoder().encode(body)
-        return try await session.data(for: request)
+        let result = try await session.data(for: request)
+        if (result.1 as? HTTPURLResponse)?.statusCode == 403 { csrfPair = nil }
+        return result
     }
 
     func urlSession(

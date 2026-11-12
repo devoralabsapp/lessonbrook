@@ -25,6 +25,7 @@ test("guest demo is read-only and a signed-in visit to home opens the dashboard"
     page.getByRole("button", { name: "Sign out", exact: true }),
   ).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "Demo navigation" });
+  await expect(nav).toHaveAttribute("data-position", "bottom");
   for (const [tab, count] of [
     ["Students", 45],
     ["Classes", 10],
@@ -54,6 +55,17 @@ test("guest demo is read-only and a signed-in visit to home opens the dashboard"
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(nav).toHaveAttribute("data-position", "sidebar");
+  await expect(nav.getByRole("link", { name: "Statements" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await nav.getByRole("link", { name: "Dashboard" }).click();
+  await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 
   const { token } = await (await context.request.get("/api/auth/csrf")).json();
   const { idToken } = await googleToken();
@@ -70,7 +82,8 @@ test("native workspace opens account tools, planned lessons and filtered stateme
   browser,
 }) => {
   const context = await browser.newContext({
-    userAgent: "Mozilla/5.0 LessonBrookApp/Android NativeWorkspace/1",
+    userAgent:
+      "Mozilla/5.0 LessonBrookApp/Android NativeWorkspace/1 NativeChrome/1",
     viewport: { width: 390, height: 800 },
   });
   try {
@@ -142,6 +155,24 @@ test("native workspace opens account tools, planned lessons and filtered stateme
     await expect(
       page.getByRole("combobox", { name: "Statement status" }),
     ).toHaveText("Overdue");
+    const documentStart = await page.evaluate(() => performance.timeOrigin);
+    const switchTab = (path: string) =>
+      page.evaluate(
+        (detail) =>
+          !window.dispatchEvent(
+            new CustomEvent("lessonbrook:navigate-tab", {
+              cancelable: true,
+              detail,
+            }),
+          ),
+        path,
+      );
+    expect(await switchTab("/login")).toBe(false);
+    expect(await switchTab("/app/classes")).toBe(true);
+    await expect(page).toHaveURL(`${origin}/app/classes`);
+    expect(await page.evaluate(() => performance.timeOrigin)).toBe(
+      documentStart,
+    );
   } finally {
     await context.close();
   }

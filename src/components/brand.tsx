@@ -3,11 +3,17 @@ import { useI18n } from "@/lib/i18n/client";
 
 import { NotebookPen } from "lucide-react";
 import Link from "next/link";
-export function Brand({ compact = false }: { compact?: boolean }) {
+export function Brand({
+  compact = false,
+  href = "/app",
+}: {
+  compact?: boolean;
+  href?: string;
+}) {
   const { t } = useI18n();
   return (
     <Link
-      href="/app"
+      href={href}
       data-slot="brand"
       className={
         compact

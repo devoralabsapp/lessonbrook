@@ -3,6 +3,7 @@ import { z } from "zod";
 import { cookies } from "next/headers";
 import { requestIdSchema } from "@/domain";
 import { AppError } from "@/lib/server/errors";
+import { assertAccountAvailable } from "@/lib/server/account-access";
 import { getAppearance, saveAppearance } from "@/lib/server/appearance";
 import {
   connectBankShortcut,
@@ -32,7 +33,11 @@ import {
   getOnboarding,
   confirmOnboardingProfile,
 } from "@/lib/server/onboarding";
-import { requireUser, SESSION_COOKIE } from "@/lib/server/session";
+import {
+  requireUser,
+  SESSION_COOKIE,
+  verifyUserSession,
+} from "@/lib/server/session";
 import { getUpcomingSchedule } from "@/lib/server/upcoming-schedule";
 import { exportPage, startExport } from "@/lib/server/data-export";
 import {
@@ -73,14 +78,16 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
-async function mobileWorkspace(uid: string) {
+async function mobileWorkspace(uid: string, scheduleReady?: Promise<unknown>) {
   const [summary, appearance, onboarding, { locale }, schedule] =
     await Promise.all([
       getSummary(uid),
       getAppearance(uid),
       getOnboarding(uid),
       getI18n(),
-      getUpcomingSchedule(uid),
+      scheduleReady
+        ? scheduleReady.then(() => getUpcomingSchedule(uid))
+        : getUpcomingSchedule(uid),
     ]);
   return {
     summary,
@@ -99,10 +106,19 @@ async function mobileWorkspace(uid: string) {
 }
 
 async function handle(request: Request, context: Context) {
+  let savingRecordFor: string | undefined;
   try {
-    const { uid, exp } = await requireUser();
     const { path } = await context.params;
     const [resource, id, action] = path;
+    const recordSave =
+      (resource === "students" || resource === "sessions") &&
+      ((request.method === "POST" && path.length === 1) ||
+        (request.method === "PATCH" && path.length === 2));
+    // These save transactions already read both account controls before writing.
+    const { uid, exp } = await (recordSave
+      ? verifyUserSession()
+      : requireUser());
+    if (recordSave) savingRecordFor = uid;
     if (path.length > 3) throw new AppError(404, "Không tìm thấy chức năng.");
     if (request.method === "GET") {
       const query = Object.fromEntries(new URL(request.url).searchParams);
@@ -176,9 +192,13 @@ async function handle(request: Request, context: Context) {
           .object({ initialize: z.boolean() })
           .strict()
           .parse(await jsonBody(request));
-        if (initialize) await initializeClassSchedules(uid);
-        const result = await materializeClassLessons(uid);
-        return json(syncMobile ? await mobileWorkspace(uid) : result);
+        const sync = async () => {
+          if (initialize) await initializeClassSchedules(uid);
+          return materializeClassLessons(uid);
+        };
+        return json(
+          syncMobile ? await mobileWorkspace(uid, sync()) : await sync(),
+        );
       }
       const requestId = requestIdSchema.parse(
         request.headers.get("idempotency-key"),
@@ -256,9 +276,17 @@ async function handle(request: Request, context: Context) {
       if (resource === "statements") {
         if (request.method === "POST" && path.length === 2 && id === "issue")
           return json(await createIssuedStatement(uid, body, requestId));
-        if (request.method === "POST" && path.length === 3 && action === "publish")
+        if (
+          request.method === "POST" &&
+          path.length === 3 &&
+          action === "publish"
+        )
           return json(await createIssuedStatement(uid, body, requestId, id));
-        if (request.method === "PATCH" && path.length === 3 && action === "issued")
+        if (
+          request.method === "PATCH" &&
+          path.length === 3 &&
+          action === "issued"
+        )
           return json(await amendStatement(uid, id, body, requestId));
         if (request.method === "POST" && path.length === 1)
           return json(await saveStatementDraft(uid, body, requestId));
@@ -294,19 +322,19 @@ async function handle(request: Request, context: Context) {
         const input = z.object({ archived: z.boolean() }).strict().parse(body);
         return json(await archiveStudent(uid, id, input.archived, requestId));
       }
+      if (recordSave) {
+        const save = resource === "students" ? saveStudent : saveSession;
+        const result = await save(uid, body, requestId, id);
+        return json(
+          request.headers.get("prefer") === "return=representation"
+            ? result
+            : { id: result.id },
+        );
+      }
       if (
         (request.method === "POST" && path.length === 1) ||
         (request.method === "PATCH" && path.length === 2)
       ) {
-        if (resource === "students" || resource === "sessions") {
-          const save = resource === "students" ? saveStudent : saveSession;
-          const result = await save(uid, body, requestId, id);
-          return json(
-            request.headers.get("prefer") === "return=representation"
-              ? result
-              : { id: result.id },
-          );
-        }
         if (resource === "classes")
           return json(await saveClass(uid, body, requestId, id));
         if (resource === "lessons")
@@ -315,6 +343,19 @@ async function handle(request: Request, context: Context) {
     }
     throw new AppError(404, "Không tìm thấy chức năng.");
   } catch (error) {
+    if (
+      savingRecordFor &&
+      (error instanceof z.ZodError ||
+        (error instanceof AppError &&
+          [400, 403, 413, 415].includes(error.status)))
+    ) {
+      // Invalid saves can fail before the transaction checks the account controls.
+      try {
+        await assertAccountAvailable(savingRecordFor);
+      } catch (accountError) {
+        return errorResponse(accountError);
+      }
+    }
     return errorResponse(error);
   }
 }

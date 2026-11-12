@@ -25,7 +25,7 @@ export function cookieOptions() {
     path: "/",
   };
 }
-export async function requireUser(options?: { allowDeleting?: boolean }) {
+export async function verifyUserSession() {
   const value = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!value)
     throw new AppError(
@@ -33,9 +33,12 @@ export async function requireUser(options?: { allowDeleting?: boolean }) {
       "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
     );
   const { auth } = admin();
-  const user = await auth.verifySessionCookie(value, true).catch(() => {
+  return auth.verifySessionCookie(value, true).catch(() => {
     throw new AppError(401, "Phiên đăng nhập đã hết hạn hoặc bị thu hồi.");
   });
+}
+export async function requireUser(options?: { allowDeleting?: boolean }) {
+  const user = await verifyUserSession();
   if (!options?.allowDeleting) await assertAccountAvailable(user.uid);
   return user;
 }

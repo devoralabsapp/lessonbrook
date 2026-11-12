@@ -100,7 +100,11 @@ export async function operation<T = never>(
     tx: FirebaseFirestore.Transaction,
     root: FirebaseFirestore.DocumentReference,
     now: Timestamp,
+    documents: DocumentSnapshot[],
   ) => Promise<OperationResult<T>>,
+  readRefs?: (
+    root: FirebaseFirestore.DocumentReference,
+  ) => FirebaseFirestore.DocumentReference[],
 ): Promise<OperationResult<T>> {
   requestIdSchema.parse(requestId);
   const root = userRef(uid);
@@ -112,9 +116,10 @@ export async function operation<T = never>(
     .doc(`${name}_${requestId}`);
   const now = nowIso();
   return admin().db.runTransaction(async (tx) => {
-    const [maintenance, control, previous] = await tx.getAll(
+    const [maintenance, control, previous, ...documents] = await tx.getAll(
       ...accountAccessRefs(uid),
       requestRef,
+      ...(readRefs?.(root) ?? []),
     );
     assertAccountAccess(maintenance.exists, control.exists);
     if (previous.exists) {
@@ -125,7 +130,7 @@ export async function operation<T = never>(
         );
       return { id: previous.get("resultId") as string };
     }
-    const result = await action(tx, root, now);
+    const result = await action(tx, root, now, documents);
     tx.create(requestRef, {
       operation: name,
       requestId,
@@ -240,11 +245,10 @@ export async function saveStudent(
     id ? "student-update" : "student-create",
     requestId,
     { id: id ?? null, ...input },
-    async (tx, root, now) => {
+    async (tx, root, now, [current]) => {
       const ref = root.collection("students").doc(resultId);
       const timestamp = now.toDate().toISOString();
       if (id) {
-        const current = await tx.get(ref);
         if (!current.exists)
           throw new AppError(404, "Không tìm thấy học viên.");
         const record = studentSchema.parse({
@@ -276,6 +280,7 @@ export async function saveStudent(
         };
       }
     },
+    id ? (root) => [root.collection("students").doc(id)] : undefined,
   );
 }
 export async function archiveStudent(
@@ -353,13 +358,9 @@ export async function saveSession(
     id ? "session-update" : "session-create",
     requestId,
     { id: id ?? null, ...input },
-    async (tx, root, now) => {
+    async (tx, root, now, [studentDoc, currentDoc]) => {
       const ref = root.collection("sessions").doc(resultId);
       // All reads precede all writes. Student read also serializes archive/default-rate changes.
-      const studentRef = root.collection("students").doc(input.studentId);
-      const [studentDoc, currentDoc] = id
-        ? await tx.getAll(studentRef, ref)
-        : ([await tx.get(studentRef), null] as const);
       if (!studentDoc.exists)
         throw new AppError(404, "Không tìm thấy học viên trong tài khoản này.");
       const student = studentDto(studentDoc);
@@ -421,6 +422,10 @@ export async function saveSession(
         };
       }
     },
+    (root) => [
+      root.collection("students").doc(input.studentId),
+      ...(id ? [root.collection("sessions").doc(id)] : []),
+    ],
   );
 }
 export async function getSession(uid: string, id: string) {

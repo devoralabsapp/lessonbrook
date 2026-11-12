@@ -32,6 +32,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private var webTheme: String?
     private var locale = "en"
     private var request: Task<Void, Never>?
+    private let dashboardClient = MobileSignIn()
     private var dashboardTimer: Timer?
     private var scheduleInitialized = false
     private var verifier: String?
@@ -256,6 +257,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     }
 
     private func showNative(_ next: Screen, body: some View) {
+        activity.stopAnimating()
         dashboardTimer?.invalidate()
         dashboardTimer = nil
         webURL = nil
@@ -342,7 +344,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func loadDashboard(quiet: Bool = false) async {
         let saved = await originCookies()
         do {
-            let value = try await MobileSignIn().workspace(
+            let value = try await dashboardClient.workspace(
                 cookies: saved.filter { [MobileSignIn.sessionName, "chotcong_locale"].contains($0.name) },
                 initialize: !scheduleInitialized
             )
@@ -373,8 +375,27 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         guard let next = WorkspaceTab(rawValue: item.tag) else { return }
         tabBar.selectedItem = tabs.items?[selectedTab.rawValue]
         beforeLeavingPage { [self] in
-            if let path = next.path { openPage(path) }
+            if let path = next.path { switchWebTab(next, path: path) }
             else { showToday() }
+        }
+    }
+
+    private func switchWebTab(_ next: WorkspaceTab, path: String) {
+        guard let web = webView, !web.isHidden, let source = web.url,
+              MobileSignIn.isFirstParty(source), source.path.hasPrefix("/app/") else {
+            return openPage(path)
+        }
+        // WorkspaceTab paths are fixed first-party destinations.
+        let script = "!window.dispatchEvent(new CustomEvent('lessonbrook:navigate-tab', {cancelable: true, detail: '\(path)'}))"
+        web.evaluateJavaScript(script) { [weak self, weak web] accepted, _ in
+            guard let self, let web, web === webView else { return }
+            if accepted as? Bool == true {
+                webRoot = path
+                selectedTab = next
+                tabs.selectedItem = tabs.items?[next.rawValue]
+            } else if web.url == source {
+                openPage(path)
+            }
         }
     }
 
@@ -408,6 +429,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             DispatchQueue.main.async { self?.track(web) }
         }
         configureChrome()
+        activity.startAnimating()
         web.load(URLRequest(url: url))
     }
 
@@ -416,7 +438,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     }
 
     private func goBackFromPage() {
-        if let webView, webView.canGoBack {
+        if let webView, webView.canGoBack, webView.url?.path != webRoot {
             webView.goBack()
         } else if webRoot == "/account/deletion" {
             showWelcome()
@@ -584,6 +606,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard webView === self.webView else { return }
+        activity.stopAnimating()
         native.view.isHidden = true
         webView.isHidden = false
         track(webView)
@@ -616,6 +639,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
     private func showLoadError(_ web: WKWebView, _ error: Error) {
         guard web === webView, (error as NSError).code != NSURLErrorCancelled else { return }
+        activity.stopAnimating()
         web.isHidden = true
         native.view.isHidden = false
         native.rootView = AnyView(failure { [weak web] in web?.reload() })

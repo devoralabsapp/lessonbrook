@@ -2,18 +2,16 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import {
-  CalendarDays,
-  ChevronDown,
-  LayoutDashboard,
-  ReceiptText,
-  School,
-  Users,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ThemedSelect } from "@/components/ui/themed-select";
+import {
+  WorkspaceNavigation,
+  workspaceTabs,
+} from "@/components/workspace-navigation";
 import { formatVnd, statusLabels } from "@/domain";
 import { normalizeSearch, statementFilterLabels } from "@/domain/list-filters";
 import { formatDate } from "@/features/statements/shared";
@@ -21,13 +19,42 @@ import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import type { DemoData } from "./sample-data";
 
-const tabs = [
-  { id: "dashboard", label: "Tổng quan", icon: LayoutDashboard },
-  { id: "students", label: "Học viên", icon: Users },
-  { id: "classes", label: "Lớp học", icon: School },
-  { id: "lessons", label: "Buổi dạy", icon: CalendarDays },
-  { id: "statements", label: "Bảng kê", icon: ReceiptText },
-] as const;
+const tabs = workspaceTabs.map((tab) => ({
+  ...tab,
+  href: tab.id === "dashboard" ? "/demo" : `/demo?view=${tab.id}`,
+}));
+
+export function DemoNavigation({
+  view,
+  mobile,
+}: {
+  view?: string;
+  mobile?: boolean;
+}) {
+  const { t } = useI18n();
+  const current = tabs.find(({ id }) => id === view) ?? tabs[0];
+  const navigation = (
+    <WorkspaceNavigation
+      mobile={mobile}
+      label="Điều hướng bản demo"
+      links={tabs}
+      currentHref={current.href}
+      isActive={(href) => href === current.href}
+    />
+  );
+  if (mobile) return navigation;
+  return (
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-[242px] flex-col border-r border-border bg-surface px-5 py-8 lg:flex">
+      <div className="px-2">
+        <Brand href="/demo" />
+      </div>
+      <p className="mb-3 mt-12 px-3 text-[10px] font-semibold tracking-[.2em] text-muted-foreground">
+        {t("Sổ dạy học mẫu")}
+      </p>
+      {navigation}
+    </aside>
+  );
+}
 
 const lessonTypes = {
   individual: "Buổi cá nhân",
@@ -189,7 +216,7 @@ export function DemoLedger({
     ["partial", "unpaid", "overdue"].includes(status),
   );
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-6 pb-16">
+    <div className="mx-auto max-w-[1320px] space-y-6 p-5 pb-28 sm:p-9 sm:pb-28 lg:pb-9">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="serif text-4xl sm:text-5xl">{t("Sổ dạy học mẫu")}</h1>
@@ -198,39 +225,15 @@ export function DemoLedger({
           </p>
         </div>
       </header>
-      <nav
-        aria-label={t("Điều hướng bản demo")}
-        className="flex flex-wrap gap-2 pt-3"
-      >
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <Button
-            key={id}
-            asChild
-            size="sm"
-            variant={id === current.id ? "default" : "outline"}
-          >
-            <Link
-              href={id === "dashboard" ? "/demo" : `/demo?view=${id}`}
-              aria-current={id === current.id ? "page" : undefined}
-            >
-              <Icon aria-hidden="true" />
-              {t(label)}
-            </Link>
-          </Button>
-        ))}
-      </nav>
       {current.id === "dashboard" ? (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            {tabs.slice(1).map(({ id, label, icon: Icon }, index) => (
+            {tabs.slice(1).map(({ id, href, label, icon: Icon }, index) => (
               <Card
                 key={id}
                 data-tone={["yellow", "mint", "blue", "pink"][index]}
               >
-                <Link
-                  className="block rounded-2xl p-4 sm:p-5"
-                  href={`/demo?view=${id}`}
-                >
+                <Link className="block rounded-2xl p-4 sm:p-5" href={href}>
                   <Icon className="mb-3 size-5" aria-hidden="true" />
                   <strong className="serif block text-3xl">
                     {counts[id as keyof typeof counts]}

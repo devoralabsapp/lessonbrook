@@ -3,19 +3,10 @@ import { useI18n } from "@/lib/i18n/client";
 
 import { LanguageSwitcher } from "./language-switcher";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  CalendarDays,
-  ChevronRight,
-  LayoutDashboard,
-  LogOut,
-  ReceiptText,
-  Settings,
-  Sprout,
-  Users,
-  School,
-} from "lucide-react";
+import { LogOut, Settings, Sprout } from "lucide-react";
+import { WorkspaceNavigation, workspaceTabs } from "./workspace-navigation";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
 import { api, csrfToken } from "@/lib/client-api";
@@ -23,13 +14,6 @@ import { cn } from "@/lib/utils";
 import { useAppearancePreview } from "@/lib/use-appearance-preview";
 import { AppearanceContext, AppearancePicker } from "./appearance";
 import { DEFAULT_THEME, type Theme } from "@/domain/appearance";
-const links = [
-  { href: "/app", label: "Tổng quan", icon: LayoutDashboard },
-  { href: "/app/students", label: "Học viên", icon: Users },
-  { href: "/app/classes", label: "Lớp học", icon: School },
-  { href: "/app/sessions", label: "Buổi dạy", icon: CalendarDays },
-  { href: "/app/statements", label: "Bảng kê", icon: ReceiptText },
-];
 export function AppShell({
   name,
   initialTheme = DEFAULT_THEME,
@@ -45,6 +29,7 @@ export function AppShell({
 }) {
   const { t } = useI18n();
   const path = usePathname();
+  const router = useRouter();
   const appearance = useAppearancePreview(initialTheme, path);
   const activeLink = (href: string) =>
     href === "/app"
@@ -54,6 +39,19 @@ export function AppShell({
           (path.startsWith("/app/lessons") || path === "/app/schedule"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (!nativeChrome) return;
+    function navigate(event: Event) {
+      const target: unknown = (event as CustomEvent).detail;
+      if (!workspaceTabs.some(({ href }) => href !== "/app" && href === target))
+        return;
+      event.preventDefault();
+      if (typeof target === "string" && target !== path) router.replace(target);
+    }
+    window.addEventListener("lessonbrook:navigate-tab", navigate);
+    return () =>
+      window.removeEventListener("lessonbrook:navigate-tab", navigate);
+  }, [nativeChrome, path, router]);
   useEffect(() => {
     void csrfToken().catch(() => {
       // A failed preload is retried when the user submits a form.
@@ -123,27 +121,11 @@ export function AppShell({
             <p className="mb-3 mt-12 px-3 text-[10px] font-semibold tracking-[.2em] text-muted-foreground">
               {t("CUỐN SỔ CỦA BẠN")}
             </p>
-            <nav className="space-y-1.5">
-              {links.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={activeLink(href) ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm",
-                    activeLink(href)
-                      ? "bg-accent-soft font-semibold text-primary"
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  <Icon size={18} />
-                  {t(label)}
-                  {path === href && (
-                    <ChevronRight size={14} className="ml-auto" />
-                  )}
-                </Link>
-              ))}
-            </nav>
+            <WorkspaceNavigation
+              links={workspaceTabs}
+              currentHref={path}
+              isActive={activeLink}
+            />
             <div className="mt-auto">
               <div className="mb-6 rounded-2xl bg-accent-soft p-4">
                 <Sprout size={23} className="mb-3 text-primary" />
@@ -246,27 +228,13 @@ export function AppShell({
           </main>
         </div>
         {!embedded && (
-          <nav
-            aria-label={t("Điều hướng chính")}
-            className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
-          >
-            {links.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                aria-current={activeLink(href) ? "page" : undefined}
-                className={cn(
-                  "flex flex-1 flex-col items-center gap-1 py-3 text-[10px]",
-                  activeLink(href)
-                    ? "font-bold text-primary"
-                    : "text-muted-foreground",
-                )}
-              >
-                <Icon size={20} />
-                {t(label)}
-              </Link>
-            ))}
-          </nav>
+          <WorkspaceNavigation
+            mobile
+            label="Điều hướng chính"
+            links={workspaceTabs}
+            currentHref={path}
+            isActive={activeLink}
+          />
         )}
       </div>
     </AppearanceContext.Provider>

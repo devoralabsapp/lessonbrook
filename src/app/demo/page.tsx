@@ -1,5 +1,5 @@
 import { HomeAppearance } from "@/components/home-appearance";
-import { DemoLedger } from "@/features/demo/ledger";
+import { DemoLedger, DemoNavigation } from "@/features/demo/ledger";
 import { createDemoData } from "@/features/demo/sample-data";
 import { getGuestTheme } from "@/lib/server/guest-theme";
 
@@ -13,7 +13,13 @@ export default async function DemoPage({
     searchParams,
   ]);
   return (
-    <HomeAppearance initialTheme={theme}>
+    <HomeAppearance
+      initialTheme={theme}
+      navigation={{
+        sidebar: <DemoNavigation view={view} />,
+        bottom: <DemoNavigation view={view} mobile />,
+      }}
+    >
       <DemoLedger
         key={`${view}:${status}`}
         data={createDemoData()}
