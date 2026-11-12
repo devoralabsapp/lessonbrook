@@ -254,6 +254,19 @@ test("visitors can preview themes on the home page without saving an account pre
   await theme.click();
   await expect(themeMenu).toHaveCSS("background-color", "rgb(29, 29, 29)");
   await expect(themeMenu).toHaveCSS("color", "rgb(250, 249, 243)");
+  await themeMenu.getByRole("option", { name: "Sticker Sprint" }).click();
+  await page.getByRole("link", { name: "View demo", exact: true }).click();
+  const outstanding = page.locator('[data-slot="card"][data-tone="yellow"]');
+  const caption = outstanding.getByText(
+    "Unpaid balance on all issued statements",
+  );
+  await expect(caption).toHaveCSS("color", "rgb(17, 17, 17)");
+  await expect(caption).toHaveCSS("font-size", "12px");
+  await expect(
+    outstanding.getByRole("link", { name: "Outstanding" }),
+  ).toHaveCSS("font-size", "14px");
+  await page.goto("/");
+  await theme.click();
   await themeMenu
     .getByRole("option", { name: "Playful Retro Neo-Brutalism", exact: true })
     .click();
