@@ -18,6 +18,7 @@ import {
 import { api } from "@/lib/client-api";
 import { useI18n } from "@/lib/i18n/client";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -163,78 +164,93 @@ export function StatementEditor({
       </div>
       <form onSubmit={save} {...draft.form}>
         <fieldset disabled={mutation.busy} className="min-w-0 space-y-4">
-          <Card className="space-y-4 p-4 sm:p-6">
-            <StudentPicker
-              value={studentId}
-              disabled={issued}
-              onChange={(id) => {
-                draft.changed();
-                setStudentId(id);
-                setSelection(new Set());
-              }}
-            />
-            <ThemedSelect
-              label={t("Kỳ học")}
-              field
-              value={period}
-              options={[
-                { value: "week", label: t("Tuần này") },
-                { value: "month", label: t("Tháng này") },
-                { value: "custom", label: t("Tùy chỉnh") },
-              ]}
-              onChange={(next) => {
-                draft.changed();
-                if (next === "custom")
-                  setCustom({ start: periodStart, end: periodEnd });
-                setPeriod(next);
-              }}
-            />
-            {period === "custom" ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="field-label min-w-0">
-                  {t("Từ ngày")}
-                  <Input
-                    type="date"
-                    required
-                    min="1900-01-01"
-                    max="2100-12-31"
-                    value={periodStart}
-                    onChange={(e) =>
-                      setCustom({ ...custom, start: e.target.value })
-                    }
-                  />
-                </label>
-                <label className="field-label min-w-0">
-                  {t("Đến ngày")}
-                  <Input
-                    type="date"
-                    required
-                    min={periodStart || "1900-01-01"}
-                    max="2100-12-31"
-                    value={periodEnd}
-                    onChange={(e) =>
-                      setCustom({ ...custom, end: e.target.value })
-                    }
-                  />
-                </label>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {formatDate(periodStart, locale)} –{" "}
-                {formatDate(periodEnd, locale)}
-              </p>
-            )}
-            <label className="field-label min-w-0">
-              {t("Ngày đến hạn")}
-              <Input
-                type="date"
-                required
-                min="1900-01-01"
-                max="2100-12-31"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+          <Card className="@container p-4 sm:p-5">
+            <div
+              className={cn(
+                "grid items-start gap-x-3 gap-y-4",
+                period === "custom"
+                  ? "@min-[30rem]:grid-cols-2 @min-[40rem]:grid-cols-[minmax(0,1.35fr)_repeat(4,minmax(0,1fr))]"
+                  : "@min-[30rem]:grid-cols-[minmax(0,1.35fr)_repeat(2,minmax(0,1fr))]",
+              )}
+            >
+              <StudentPicker
+                value={studentId}
+                disabled={issued}
+                onChange={(id) => {
+                  draft.changed();
+                  setStudentId(id);
+                  setSelection(new Set());
+                }}
               />
-            </label>
+              <div className="min-w-0 space-y-2">
+                <ThemedSelect
+                  label={t("Kỳ học")}
+                  field
+                  value={period}
+                  options={[
+                    { value: "week", label: t("Tuần này") },
+                    { value: "month", label: t("Tháng này") },
+                    { value: "custom", label: t("Tùy chỉnh") },
+                  ]}
+                  onChange={(next) => {
+                    draft.changed();
+                    if (next === "custom")
+                      setCustom({ start: periodStart, end: periodEnd });
+                    setPeriod(next);
+                  }}
+                />
+                {period !== "custom" && (
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(periodStart, locale)} –{" "}
+                    {formatDate(periodEnd, locale)}
+                  </p>
+                )}
+              </div>
+              {period === "custom" && (
+                <>
+                  <label className="field-label min-w-0">
+                    {t("Từ ngày")}
+                    <Input
+                      className="h-[42px]"
+                      type="date"
+                      required
+                      min="1900-01-01"
+                      max="2100-12-31"
+                      value={periodStart}
+                      onChange={(e) =>
+                        setCustom({ ...custom, start: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="field-label min-w-0">
+                    {t("Đến ngày")}
+                    <Input
+                      className="h-[42px]"
+                      type="date"
+                      required
+                      min={periodStart || "1900-01-01"}
+                      max="2100-12-31"
+                      value={periodEnd}
+                      onChange={(e) =>
+                        setCustom({ ...custom, end: e.target.value })
+                      }
+                    />
+                  </label>
+                </>
+              )}
+              <label className="field-label min-w-0">
+                {t("Ngày đến hạn")}
+                <Input
+                  className="h-[42px]"
+                  type="date"
+                  required
+                  min="1900-01-01"
+                  max="2100-12-31"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </label>
+            </div>
           </Card>
           <Card className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">

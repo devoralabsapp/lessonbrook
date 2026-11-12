@@ -54,12 +54,23 @@ test("360px: tìm học viên → chọn buổi → phát hành trực tiếp �
   await page.getByRole("option", { name: "Lan bảng kê", exact: true }).click();
   await expect(search).toHaveCount(0);
   const period = page.getByRole("combobox", { name: "Kỳ học" });
+  const dueDate = page.getByLabel("Ngày đến hạn", { exact: true });
+  await page.setViewportSize({ width: 1280, height: 800 });
   await expect(period).toHaveText("Tháng này");
+  const presetTop = (await studentPicker.boundingBox())!.y;
+  for (const field of [period, dueDate])
+    expect((await field.boundingBox())!.y).toBeCloseTo(presetTop, 0);
   await chooseOption(period, "week");
   await expect(period).toHaveText("Tuần này");
   await chooseOption(period, "custom");
-  await page.getByLabel("Từ ngày", { exact: true }).fill("2026-10-01");
-  await page.getByLabel("Đến ngày", { exact: true }).fill("2026-10-31");
+  const from = page.getByLabel("Từ ngày", { exact: true });
+  const to = page.getByLabel("Đến ngày", { exact: true });
+  const customTop = (await studentPicker.boundingBox())!.y;
+  for (const field of [period, from, to, dueDate])
+    expect((await field.boundingBox())!.y).toBeCloseTo(customTop, 0);
+  await page.setViewportSize({ width: 360, height: 800 });
+  await from.fill("2026-10-01");
+  await to.fill("2026-10-31");
   await expect(page.getByRole("checkbox", { name: /^Buổi / })).toHaveCount(8);
   const selectAll = page.getByRole("checkbox", { name: "Chọn tất cả buổi" });
   await selectAll.check();
