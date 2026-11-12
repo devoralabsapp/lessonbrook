@@ -63,6 +63,9 @@
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
 }
+:root {
+  --font-size-offset: 1px;
+}
 [data-theme="statement"] {
   --font-size-offset: 0px;
   font-size: 1rem;
@@ -180,7 +183,6 @@
 }
 
 [data-theme="sticker-sprint"] {
-  --font-size-offset: 1px;
   --background: #fff8ec;
   --foreground: #111;
   --card: #fffaf1;
@@ -208,7 +210,6 @@
   --dashboard-blue: #ded2f9;
   --dashboard-mint: #bdebd9;
   --dashboard-ink: var(--foreground);
-  font-size: calc(1rem + var(--font-size-offset));
   background-color: var(--background);
   background-image: radial-gradient(#e5d7c3 1px, transparent 1px);
   background-size: 14px 14px;
@@ -229,14 +230,20 @@
   font-size: calc(0.875rem + var(--font-size-offset));
   line-height: var(--tw-leading, 1.4);
 }
-[data-theme="sticker-sprint"] .text-\[29px\] {
+.text-\[10px\] {
+  font-size: calc(10px + var(--font-size-offset));
+}
+.text-\[11px\] {
+  font-size: calc(11px + var(--font-size-offset));
+}
+.text-\[29px\] {
   font-size: calc(29px + var(--font-size-offset));
 }
-[data-theme="sticker-sprint"] aside :is(a:not([data-slot="brand"]), button) {
+[data-slot="workspace-sidebar"] :is(a:not([data-slot="brand"]), button) {
   font-weight: 700;
 }
 @media (width < 360px) {
-  [data-theme="sticker-sprint"] [data-slot="workspace-header"] {
+  [data-slot="workspace-header"] {
     min-height: 82px;
     height: auto;
     flex-wrap: wrap;
@@ -310,6 +317,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--content-font);
+  font-size: calc(1rem + var(--font-size-offset));
 }
 button,
 a,

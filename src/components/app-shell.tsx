@@ -131,7 +131,10 @@ export function AppShell({
           {t("Đến nội dung")}
         </a>
         {!embedded && (
-          <aside className="fixed inset-y-0 left-0 z-20 hidden w-[242px] flex-col border-r border-border bg-surface px-5 py-8 lg:flex">
+          <aside
+            data-slot="workspace-sidebar"
+            className="fixed inset-y-0 left-0 z-20 hidden w-[242px] flex-col overflow-y-auto border-r border-border bg-surface px-5 py-8 lg:flex"
+          >
             <div className="px-2">
               <Brand />
             </div>

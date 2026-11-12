@@ -357,6 +357,20 @@ test("dropdown gọn trên desktop/360px, sáu theme đổi màu và tồn tại
     await page.getByRole("radio", { name, exact: false }).check();
     const shell = page.locator(`[data-theme="${id}"]`);
     await expect(shell).toBeVisible();
+    await expect(shell).toHaveCSS("font-size", "17px");
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const sidebar = shell.locator('nav[data-position="sidebar"]');
+    for (const link of await sidebar.getByRole("link").all()) {
+      await expect(link).toHaveCSS("font-size", "15px");
+      await expect(link).toHaveCSS("font-weight", "700");
+    }
+    await page.setViewportSize({ width: 320, height: 800 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.setViewportSize({ width: 360, height: 800 });
     expect(appearanceWrites).toBe(writesBeforePreview);
     expect(
       (await (await context.request.get("/api/appearance")).json()).theme,
