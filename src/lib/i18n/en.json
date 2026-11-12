@@ -958,5 +958,19 @@
   "Mã QR mẫu": "Sample QR code",
   "Link demo mở trong phiên hiện tại.": "This sample link opens in the current demo tab.",
   "Tải lại demo để bắt đầu phiên mới.": "Reload the demo to start a new session.",
-  "Dữ liệu demo không hợp lệ.": "Invalid demo data."
+  "Dữ liệu demo không hợp lệ.": "Invalid demo data.",
+  "Cách xem": "View",
+  "Danh sách": "List",
+  "Lịch tháng": "Month calendar",
+  "Tháng trước": "Previous month",
+  "Tháng sau": "Next month",
+  "Thời khóa biểu lặp hằng tuần, không phải xác nhận buổi đã dạy. Lớp chưa có lịch vẫn nằm trong Danh sách.": "Weekly class timetable, not a record of completed lessons. Classes without a schedule are still available in List view.",
+  "Các buổi đã ghi nhận trong tháng theo bộ lọc. Buổi nhóm/lớp được gộp thành một mục; số học viên theo bộ lọc.": "Recorded lessons for this month and the selected filters. Group/class lessons appear once; student counts reflect the filters.",
+  "{0} mục trong tháng · Chọn một ngày để xem chi tiết.": "{0} events this month · Select a day for details.",
+  "{0} mục": "{0} events",
+  "mục": "events",
+  "Chi tiết ngày đã chọn": "Selected day details",
+  "Không có lịch trong ngày này.": "Nothing scheduled for this day.",
+  "Chưa tải được lịch. Vui lòng thử lại.": "Could not load the calendar. Please try again.",
+  "Đang tải lịch…": "Loading calendar…"
 }

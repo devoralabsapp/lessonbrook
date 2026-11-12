@@ -1,4 +1,8 @@
 "use client";
+import {
+  CalendarViewSwitch,
+  WorkspaceMonthCalendar,
+} from "@/features/calendar/month-view";
 import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -84,6 +88,8 @@ export function Workspace({
   initialBilling?: string;
 }) {
   const { t, locale } = useI18n();
+  const [calendarView, setCalendarView] = useState<"list" | "month">("list");
+  const showCalendar = mode === "sessions" && calendarView === "month";
   const [revision, setRevision] = useState(0);
   const [archived, setArchived] = useState(false);
   const [search, setSearch] = useState("");
@@ -150,7 +156,7 @@ export function Workspace({
     return () => window.removeEventListener("class-lessons-created", refresh);
   }, [mode]);
   useEffect(() => {
-    if (invalidRange) return;
+    if (invalidRange || showCalendar) return;
     let active = true;
     const empty = { items: [], nextCursor: null };
     Promise.all([
@@ -184,7 +190,17 @@ export function Workspace({
     return () => {
       active = false;
     };
-  }, [endpoint, invalidRange, key, mode, requestKey, revision, studentId, t]);
+  }, [
+    endpoint,
+    invalidRange,
+    key,
+    mode,
+    requestKey,
+    revision,
+    studentId,
+    t,
+    showCalendar,
+  ]);
   const view = data?.key === key ? data : null;
   const loadError = error?.key === requestKey ? error.message : "";
   const loading =
@@ -525,7 +541,12 @@ export function Workspace({
               {t("Xem tất cả ")}
               <ArrowRight size={14} />
             </Link>
-          ) : null}
+          ) : (
+            <CalendarViewSwitch
+              value={calendarView}
+              onChange={setCalendarView}
+            />
+          )}
         </div>
         {mode === "students" && (
           <div className="border-b border-border p-4">
@@ -543,34 +564,38 @@ export function Workspace({
         )}
         {mode === "sessions" && (
           <div className="grid grid-cols-2 items-start gap-x-3 gap-y-2.5 border-b border-border bg-surface p-3 sm:grid-cols-4 sm:px-5">
-            <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
-              {t("Từ ngày")}
-              <Input
-                className="h-[42px]"
-                name="from"
-                type="date"
-                min="1900-01-01"
-                max="2100-12-31"
-                value={range.from}
-                onChange={(event) =>
-                  setRange({ ...range, from: event.target.value })
-                }
-              />
-            </label>
-            <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
-              {t("Đến ngày")}
-              <Input
-                className="h-[42px]"
-                name="to"
-                type="date"
-                min="1900-01-01"
-                max="2100-12-31"
-                value={range.to}
-                onChange={(event) =>
-                  setRange({ ...range, to: event.target.value })
-                }
-              />
-            </label>
+            {!showCalendar && (
+              <>
+                <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
+                  {t("Từ ngày")}
+                  <Input
+                    className="h-[42px]"
+                    name="from"
+                    type="date"
+                    min="1900-01-01"
+                    max="2100-12-31"
+                    value={range.from}
+                    onChange={(event) =>
+                      setRange({ ...range, from: event.target.value })
+                    }
+                  />
+                </label>
+                <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
+                  {t("Đến ngày")}
+                  <Input
+                    className="h-[42px]"
+                    name="to"
+                    type="date"
+                    min="1900-01-01"
+                    max="2100-12-31"
+                    value={range.to}
+                    onChange={(event) =>
+                      setRange({ ...range, to: event.target.value })
+                    }
+                  />
+                </label>
+              </>
+            )}
             {!studentId && (
               <div className="col-span-2 grid min-w-0 items-start gap-x-3 gap-y-2.5 sm:grid-cols-2">
                 <label className="field-label">
@@ -661,7 +686,7 @@ export function Workspace({
                 />
               </label>
             )}
-            {invalidRange && (
+            {!showCalendar && invalidRange && (
               <p
                 role="alert"
                 className="col-span-full text-sm text-destructive"
@@ -670,36 +695,40 @@ export function Workspace({
               </p>
             )}
             <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-4">
-              <Button
-                variant="ghost"
-                type="button"
-                size="sm"
-                onClick={() => {
-                  const today = vietnamToday();
-                  setRange({ ...range, from: today, to: today });
-                }}
-              >
-                {t("Hôm nay")}
-              </Button>
-              <Button
-                variant="ghost"
-                type="button"
-                size="sm"
-                onClick={() => {
-                  const today = vietnamToday();
-                  const [year, month] = today.split("-").map(Number);
-                  const last = new Date(Date.UTC(year, month, 0))
-                    .toISOString()
-                    .slice(0, 10);
-                  setRange({
-                    ...range,
-                    from: today.slice(0, 8) + "01",
-                    to: last,
-                  });
-                }}
-              >
-                {t("Tháng này")}
-              </Button>
+              {!showCalendar && (
+                <>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      const today = vietnamToday();
+                      setRange({ ...range, from: today, to: today });
+                    }}
+                  >
+                    {t("Hôm nay")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      const today = vietnamToday();
+                      const [year, month] = today.split("-").map(Number);
+                      const last = new Date(Date.UTC(year, month, 0))
+                        .toISOString()
+                        .slice(0, 10);
+                      setRange({
+                        ...range,
+                        from: today.slice(0, 8) + "01",
+                        to: last,
+                      });
+                    }}
+                  >
+                    {t("Tháng này")}
+                  </Button>
+                </>
+              )}
               <Button
                 variant="ghost"
                 type="button"
@@ -714,7 +743,7 @@ export function Workspace({
             </div>
           </div>
         )}
-        {loadError && (
+        {!showCalendar && loadError && (
           <div role="alert" className="p-8 text-center">
             <p className="mb-4 text-sm text-destructive">{t(loadError)}</p>
             <Button variant="outline" onClick={() => setRevision((v) => v + 1)}>
@@ -722,7 +751,13 @@ export function Workspace({
             </Button>
           </div>
         )}
-        {loading ? (
+        {showCalendar ? (
+          <WorkspaceMonthCalendar
+            kind="lessons"
+            endpoint={endpoint}
+            revision={revision}
+          />
+        ) : loading ? (
           <div
             role="status"
             className="flex justify-center gap-2 p-14 text-sm text-muted-foreground"
@@ -889,7 +924,8 @@ export function Workspace({
         ) : (
           <Empty kind="session" onAdd={() => setModal({ kind: "session" })} />
         )}
-        {!loading &&
+        {!showCalendar &&
+          !loading &&
           (mode === "students"
             ? view?.students.nextCursor
             : view?.sessions.nextCursor) && (

@@ -787,3 +787,29 @@ dialog::backdrop {
     box-shadow: 1px 1px 0 var(--retro-ink);
   }
 }
+
+/* Calendar cells use the active theme's surfaces; event colors also work in dark themes. */
+.calendar-day {
+  min-height: 5rem;
+}
+@media (min-width: 640px) {
+  .calendar-day {
+    min-height: 8rem;
+  }
+}
+[data-calendar-tone="blue"] {
+  background: color-mix(in srgb, #79c8ff 25%, var(--card));
+  color: var(--foreground);
+}
+[data-calendar-tone="yellow"] {
+  background: color-mix(in srgb, #ffd02c 25%, var(--card));
+  color: var(--foreground);
+}
+[data-calendar-tone="pink"] {
+  background: color-mix(in srgb, #ff86b0 25%, var(--card));
+  color: var(--foreground);
+}
+[data-calendar-tone="mint"] {
+  background: color-mix(in srgb, #83e5b0 25%, var(--card));
+  color: var(--foreground);
+}

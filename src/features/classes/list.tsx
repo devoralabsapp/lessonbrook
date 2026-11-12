@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  CalendarViewSwitch,
+  WorkspaceMonthCalendar,
+} from "@/features/calendar/month-view";
 import { useState } from "react";
 import Link, { useWorkspaceHref } from "@/components/workspace-link";
 import { useRouter } from "next/navigation";
@@ -20,6 +24,8 @@ export function ClassesList() {
   const { t } = useI18n();
   const router = useRouter();
   const workspaceHref = useWorkspaceHref();
+  const [calendarView, setCalendarView] = useState<"list" | "month">("list");
+  const [calendarRevision, setCalendarRevision] = useState(0);
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
   const [form, setForm] = useState<{ record?: ClassDetail } | null>(null);
@@ -57,6 +63,7 @@ export function ClassesList() {
     );
     if (result) {
       list.reload();
+      setCalendarRevision((value) => value + 1);
       setNotice(
         item.archivedAt ? t("Đã khôi phục lớp.") : t("Đã lưu trữ lớp."),
       );
@@ -100,21 +107,27 @@ export function ClassesList() {
               {t("Chạm vào tên để mở chi tiết lớp")}
             </p>
           </div>
-          <ThemedSelect
-            label={t("Trạng thái lớp học")}
-            toolbar
-            value={String(archived)}
-            onChange={(value) => {
-              setArchived(value === "true");
-              setNotice("");
-              setEditError("");
-              mutation.clearError();
-            }}
-            options={[
-              { value: "false", label: t("Đang hoạt động") },
-              { value: "true", label: t("Đã lưu trữ") },
-            ]}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <CalendarViewSwitch
+              value={calendarView}
+              onChange={setCalendarView}
+            />
+            <ThemedSelect
+              label={t("Trạng thái lớp học")}
+              toolbar
+              value={String(archived)}
+              onChange={(value) => {
+                setArchived(value === "true");
+                setNotice("");
+                setEditError("");
+                mutation.clearError();
+              }}
+              options={[
+                { value: "false", label: t("Đang hoạt động") },
+                { value: "true", label: t("Đã lưu trữ") },
+              ]}
+            />
+          </div>
         </div>
         <div className="border-b border-border p-4">
           <label className="field-label min-w-0">
@@ -128,7 +141,7 @@ export function ClassesList() {
             />
           </label>
         </div>
-        {list.error && (
+        {calendarView === "list" && list.error && (
           <div className="px-5">
             <LoadError message={list.error} retry={list.reload} />
           </div>
@@ -141,7 +154,7 @@ export function ClassesList() {
             {t(editError || mutation.error)}
           </p>
         )}
-        {!list.page && !list.error && (
+        {calendarView === "list" && !list.page && !list.error && (
           <p
             role="status"
             className="flex justify-center gap-2 p-14 text-sm text-muted-foreground"
@@ -150,7 +163,15 @@ export function ClassesList() {
             {t("Đang tải lớp học…")}
           </p>
         )}
-        {list.page &&
+        {calendarView === "month" && (
+          <WorkspaceMonthCalendar
+            kind="classes"
+            endpoint={`/api/classes?${new URLSearchParams({ q: term, archived: String(archived) })}`}
+            revision={calendarRevision}
+          />
+        )}
+        {calendarView === "list" &&
+          list.page &&
           (list.page.items.length ? (
             <div className="divide-y divide-border">
               {list.page.items.map((item, index) => (
@@ -204,7 +225,7 @@ export function ClassesList() {
                 : t("Chưa có lớp trong danh sách này.")}
             </div>
           ))}
-        {list.page?.nextCursor && (
+        {calendarView === "list" && list.page?.nextCursor && (
           <div className="border-t border-border p-4 text-center">
             <Button
               variant="outline"
@@ -223,8 +244,10 @@ export function ClassesList() {
           onClose={() => setForm(null)}
           onSaved={(id) => {
             setForm(null);
-            if (form.record) list.reload();
-            else router.push(workspaceHref(`/app/classes/${id}`));
+            if (form.record) {
+              list.reload();
+              setCalendarRevision((value) => value + 1);
+            } else router.push(workspaceHref(`/app/classes/${id}`));
           }}
         />
       )}
