@@ -5,10 +5,11 @@ import { idSchema, profileSchema, sessionSchema, studentSchema } from ".";
 import { statementSchema } from "./statements";
 import { paymentSchema } from "./payments";
 import { classSchema, lessonSchema } from "./classes";
-import { appearanceSchema } from "./appearance";
+import { appearanceSchema, storedThemeSchema } from "./appearance";
 const timestamp = z.instanceof(Timestamp);
 const timestamps = { createdAt: timestamp, updatedAt: timestamp };
 export const appearanceDocumentSchema = appearanceSchema.extend({
+  theme: storedThemeSchema,
   updatedAt: timestamp,
 });
 export const classDocumentSchema = classSchema.omit({ id: true }).extend({
@@ -33,13 +34,11 @@ export const statementDocumentSchema = statementSchema
     issuedAt: timestamp.nullable(),
     voidedAt: timestamp.nullable(),
   });
-export const paymentDocumentSchema = paymentSchema
-  .omit({ id: true })
-  .extend({
-    recordedAt: timestamp,
-    updatedAt: timestamp.optional(),
-    voidedAt: timestamp.nullable(),
-  });
+export const paymentDocumentSchema = paymentSchema.omit({ id: true }).extend({
+  recordedAt: timestamp,
+  updatedAt: timestamp.optional(),
+  voidedAt: timestamp.nullable(),
+});
 export const shareTokenDocumentSchema = z
   .object({
     ownerUid: idSchema,

@@ -3,7 +3,7 @@ import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { api } from "@/lib/client-api";

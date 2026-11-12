@@ -22,12 +22,12 @@ English interface preview · Playful Retro Neo-Brutalism · Fictional sample dat
 - Students, default rates, archiving/restoring, classes of up to 50 students, and group lessons with saved price snapshots.
 - Per-student statements, issue/void workflows, partial payments, and voiding incorrect payment records.
 - Expiring and revocable statement links; dashboard, search, filters, CSV/ZIP/JSON export, and account deletion.
-- Eight themes with mobile-friendly layouts: Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code, and the default Playful Retro Neo-Brutalism. Command Line uses black panels and green accents. Playful Retro adds cream and pastel cards, bold outlines, hard shadows, pill controls and self-hosted Nunito (SIL OFL 1.1). Preview themes from the palette button in the workspace header and select **Save appearance** to keep your choice across devices.
+- The six mobile-friendly themes are Playful Retro Neo-Brutalism (default), Mono OS, Chapter Desk, Afterhours FM, Margin Notes, and Sticker Sprint. Preview themes with the palette button in the workspace header and select **Save appearance** to keep your choice across devices. The palettes are adapted from the [Creative Theme System](https://github.com/devoralabsapp/creative-theme-system-skill).
 - Optional iPhone Shortcut for recording matching bank transfer notifications. Teachers can record cash in the statement. See [Shortcut setup](mobile/README.md#bank-transfer-notifications).
 
 All business reads and writes go through Node server APIs. The Firebase client is used only for Auth; Firestore Rules deny direct client access. Tuition data is not stored offline.
 
-Visitors can try all eight themes from **Preview theme** on the home page. A selection follows them to the sign-in page and becomes their account theme after successful sign-in. The sample ledger plays a brief entrance sequence and respects the browser’s reduced motion preference.
+Visitors can try all six themes from **Preview theme** on the home page. A selection follows them to the sign-in page and becomes their account theme after successful sign-in. The demo opens the same workspace with 45 fictional students, 10 classes, 30 lessons, and 15 statements. Changes stay in the current tab and reset when you reload.
 
 ## Quick start
 

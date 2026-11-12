@@ -299,7 +299,7 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await expect(classLink).toBeVisible();
 });
 
-test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại sau tải lại", async ({
+test("dropdown gọn trên desktop/360px, sáu theme đổi màu và tồn tại sau tải lại", async ({
   page,
   context,
 }) => {
@@ -353,14 +353,12 @@ test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại
       appearanceWrites++;
   });
   for (const [name, id] of [
-    ["Modern", "modern"],
-    ["Vintage", "vintage"],
-    ["Art", "art"],
-    ["Natura", "natura"],
-    ["Ocean", "ocean"],
-    ["Command Line", "command-line"],
-    ["Visual Code", "visual-code"],
     ["Playful Retro Neo-Brutalism", "playful-retro"],
+    ["Mono OS", "mono-os"],
+    ["Chapter Desk", "chapter-desk"],
+    ["Afterhours FM", "afterhours-fm"],
+    ["Margin Notes", "margin-notes"],
+    ["Sticker Sprint", "sticker-sprint"],
   ]) {
     const writesBeforePreview = appearanceWrites;
     await page.getByRole("radio", { name, exact: false }).check();
@@ -386,13 +384,13 @@ test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại
     await expect(page.getByRole("radio", { name, exact: false })).toBeChecked();
     // Read persisted colours after reload, outside the save button transition.
     if (
-      id === "command-line" ||
-      id === "visual-code" ||
-      id === "playful-retro"
+      ["mono-os", "afterhours-fm", "playful-retro", "sticker-sprint"].includes(
+        id,
+      )
     ) {
       await expect(shell).toHaveCSS(
         "color-scheme",
-        id === "playful-retro" ? "light" : "dark",
+        id === "afterhours-fm" ? "dark" : "light",
       );
       await expect(page.locator('input[name="displayName"]')).toBeVisible();
       const contrast = await shell.evaluate((element) => {
@@ -448,7 +446,7 @@ test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại
         action: contrast.action,
       }))
         expect(value, `${id}: ${sample} contrast`).toBeGreaterThanOrEqual(4.5);
-      if (id === "command-line") expect(contrast.font).toContain("monospace");
+      if (id === "mono-os") expect(contrast.font).toContain("monospace");
     }
     expect(
       await page.evaluate(
@@ -456,7 +454,7 @@ test("dropdown gọn trên desktop/360px, tám theme đổi màu và tồn tại
       ),
     ).toBe(true);
   }
-  expect(backgrounds.size).toBe(8);
+  expect(backgrounds.size).toBe(6);
   await page.screenshot({
     path: "/tmp/chotcong-024-theme-mobile.png",
     fullPage: true,
@@ -496,11 +494,13 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   await page.goto("/app/settings");
   await chooseTheme.click();
   await expect(save).toBeDisabled();
-  await page.getByRole("radio", { name: "Command Line", exact: false }).check();
-  await expect(shell("command-line")).toBeVisible();
-  await expect(shell("command-line")).toHaveCSS(
+  await page
+    .getByRole("radio", { name: "Afterhours FM", exact: false })
+    .check();
+  await expect(shell("afterhours-fm")).toBeVisible();
+  await expect(shell("afterhours-fm")).toHaveCSS(
     "background-color",
-    "rgb(0, 0, 0)",
+    "rgb(16, 16, 16)",
   );
   await expect(
     page.getByRole("status").filter({ hasText: "Đang xem trước, chưa lưu." }),
@@ -508,7 +508,7 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   expect(await stored()).toBe("playful-retro");
   expect(writes).toBe(0);
   await page.screenshot({
-    path: "/tmp/lessonbrook-command-line-preview.png",
+    path: "/tmp/lessonbrook-afterhours-fm-preview.png",
     fullPage: true,
     animations: "disabled",
   });
@@ -517,8 +517,8 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
     .click();
   await expect(shell("playful-retro")).toBeVisible();
   await expect(save).toBeDisabled();
-  await page.getByRole("radio", { name: "Visual Code", exact: false }).check();
-  await expect(shell("visual-code")).toBeVisible();
+  await page.getByRole("radio", { name: "Mono OS", exact: false }).check();
+  await expect(shell("mono-os")).toBeVisible();
   await page
     .getByRole("navigation", { name: "Điều hướng chính", exact: true })
     .getByRole("link", { name: "Tổng quan", exact: true })
@@ -536,7 +536,9 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
       exact: false,
     }),
   ).toBeChecked();
-  await page.getByRole("radio", { name: "Command Line", exact: false }).check();
+  await page
+    .getByRole("radio", { name: "Afterhours FM", exact: false })
+    .check();
   await page.reload();
   await expect(shell("playful-retro")).toBeVisible();
   expect(await stored()).toBe("playful-retro");
@@ -557,22 +559,22 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
     }
     return route.continue();
   });
-  await page.getByRole("radio", { name: "Visual Code", exact: false }).check();
+  await page.getByRole("radio", { name: "Mono OS", exact: false }).check();
   await save.click();
   await expect(
     page.getByRole("alert").filter({ hasText: "Chưa thể lưu giao diện." }),
   ).toBeVisible();
-  await expect(shell("visual-code")).toBeVisible();
+  await expect(shell("mono-os")).toBeVisible();
   expect(await stored()).toBe("playful-retro");
   await save.click();
   await expect(
     page.getByRole("status").filter({ hasText: "Đã lưu giao diện." }),
   ).toBeVisible();
-  expect(await stored()).toBe("visual-code");
+  expect(await stored()).toBe("mono-os");
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
   await page.reload();
-  await expect(shell("visual-code")).toBeVisible();
+  await expect(shell("mono-os")).toBeVisible();
   await expect(save).toHaveCount(0);
   await chooseTheme.click();
   await expect(save).toBeDisabled();
@@ -719,9 +721,9 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
     await save.evaluate((el) => getComputedStyle(el).transitionProperty),
   ).not.toContain("transform");
   // Leaving the retro theme removes its outlines/shadows, and cancel restores the default retro theme.
-  await page.getByRole("radio", { name: "Natura", exact: false }).check();
+  await page.getByRole("radio", { name: "Margin Notes", exact: false }).check();
   await expect(
-    page.locator('[data-theme="natura"] [data-slot="card"]').first(),
+    page.locator('[data-theme="margin-notes"] [data-slot="card"]').first(),
   ).toHaveCSS("border-top-width", "1px");
   await cancel.click();
   await expect(shell).toBeVisible();

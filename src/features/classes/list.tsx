@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link, { useWorkspaceHref } from "@/components/workspace-link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus } from "lucide-react";
 import type { TeachingClass } from "@/domain/classes";
@@ -19,6 +19,7 @@ import { LoadError, usePaged } from "./shared";
 export function ClassesList() {
   const { t } = useI18n();
   const router = useRouter();
+  const workspaceHref = useWorkspaceHref();
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
   const [form, setForm] = useState<{ record?: ClassDetail } | null>(null);
@@ -152,9 +153,12 @@ export function ClassesList() {
         {list.page &&
           (list.page.items.length ? (
             <div className="divide-y divide-border">
-              {list.page.items.map((item) => (
+              {list.page.items.map((item, index) => (
                 <div
                   key={item.id}
+                  data-list-tone={
+                    item.archivedAt ? "neutral" : index % 2 ? "blue" : "yellow"
+                  }
                   className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
                 >
                   <span
@@ -220,7 +224,7 @@ export function ClassesList() {
           onSaved={(id) => {
             setForm(null);
             if (form.record) list.reload();
-            else router.push(`/app/classes/${id}`);
+            else router.push(workspaceHref(`/app/classes/${id}`));
           }}
         />
       )}

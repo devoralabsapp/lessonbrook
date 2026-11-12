@@ -1,3 +1,4 @@
+import { useDemoWorkspace } from "@/components/workspace-link";
 import { encode } from "uqr";
 import { type BankTransfer, vietQrPayload } from "@/domain/bank-transfer";
 import { formatVnd } from "@/domain";
@@ -17,15 +18,21 @@ export function BankTransferDetails({
   className: string;
 }) {
   const { t, locale } = useI18n();
+  const demo = useDemoWorkspace();
   const payable = remainingVnd > 0 && reference;
   if (!bank && !legacyDetails && !payable) return null;
 
   const qr =
     bank && payable
-      ? encode(vietQrPayload(bank, remainingVnd, payable), {
-          ecc: "M",
-          border: 4,
-        })
+      ? encode(
+          demo
+            ? `LessonBrook demo ${payable}`
+            : vietQrPayload(bank, remainingVnd, payable),
+          {
+            ecc: "M",
+            border: 4,
+          },
+        )
       : null;
   const path = qr?.data
     .map((row, y) =>
@@ -72,16 +79,18 @@ export function BankTransferDetails({
           )}
           {qr && (
             <p className="mt-2 text-muted-foreground">
-              {t("Quét VietQR để chuyển {0}.", {
-                "0": formatVnd(remainingVnd, locale),
-              })}
+              {demo
+                ? t("Đây là mã QR mẫu.")
+                : t("Quét VietQR để chuyển {0}.", {
+                    "0": formatVnd(remainingVnd, locale),
+                  })}
             </p>
           )}
         </div>
         {qr && (
           <svg
             role="img"
-            aria-label={t("Mã VietQR chuyển khoản")}
+            aria-label={t(demo ? "Mã QR mẫu" : "Mã VietQR chuyển khoản")}
             viewBox={`0 0 ${qr.size} ${qr.size}`}
             className="h-auto w-44 max-w-full rounded-lg border border-border bg-white"
             shapeRendering="crispEdges"

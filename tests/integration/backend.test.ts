@@ -76,8 +76,11 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
       displayName: "Mai",
     });
     expect(
-      (await teacher.call("/api/appearance", "PATCH", { theme: "ocean" }))
-        .status,
+      (
+        await teacher.call("/api/appearance", "PATCH", {
+          theme: "chapter-desk",
+        })
+      ).status,
     ).toBe(200);
 
     const today = vietnamToday();
@@ -127,7 +130,7 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
     expect(workspace.status).toBe(200);
     expect(await workspace.json()).toEqual({
       summary: await (await teacher.call("/api/summary")).json(),
-      theme: "ocean",
+      theme: "chapter-desk",
       displayName: "Giáo viên thử nghiệm",
       needsOnboarding: true,
       locale: "vi",
@@ -149,7 +152,8 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
     const { idToken } = await googleToken();
     await c.login(idToken);
     expect(
-      (await c.call("/api/appearance", "PATCH", { theme: "ocean" })).status,
+      (await c.call("/api/appearance", "PATCH", { theme: "chapter-desk" }))
+        .status,
     ).toBe(200);
 
     const loginWithTheme = (theme: string) =>
@@ -159,7 +163,7 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
     const savedTheme = async () =>
       (await (await c.call("/api/appearance")).json()).theme;
 
-    const login = await loginWithTheme("visual-code");
+    const login = await loginWithTheme("mono-os");
     expect(login.status).toBe(200);
     expect(login.headers.getSetCookie()).toEqual(
       expect.arrayContaining([
@@ -168,11 +172,11 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
         ),
       ]),
     );
-    expect(await savedTheme()).toBe("visual-code");
+    expect(await savedTheme()).toBe("mono-os");
 
     expect((await loginWithTheme("invalid")).status).toBe(200);
     expect((await c.login(idToken)).status).toBe(200);
-    expect(await savedTheme()).toBe("visual-code");
+    expect(await savedTheme()).toBe("mono-os");
   });
   it("hands a Google session to only the app with the matching proof and preserves its theme", async () => {
     const browser = await client();

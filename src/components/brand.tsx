@@ -2,7 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { NotebookPen } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 export function Brand({
   compact = false,
   href = "/app",

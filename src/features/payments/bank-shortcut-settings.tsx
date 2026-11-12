@@ -6,6 +6,7 @@ import { MOBILE_SCHEME } from "@/domain/mobile-sign-in";
 import { clientAuth } from "@/lib/firebase/client";
 import { authErrorMessage } from "@/lib/firebase/auth-errors";
 import { useAuthReady } from "@/lib/firebase/use-auth-ready";
+import { useDemoWorkspace } from "@/components/workspace-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,8 @@ export function BankShortcutSettings({
   const [copyMessage, setCopyMessage] = useState("");
   const key = useRef<{ accountNumber: string; secret: string } | null>(null);
   const mutation = useStatementMutation();
-  const preparation = useAuthReady(!inApp);
+  const demo = useDemoWorkspace();
+  const preparation = useAuthReady(!inApp && !demo);
   const confirming = useRef(false);
   const [busy, setBusy] = useState(false);
   const [authError, setAuthError] = useState("");
@@ -92,6 +94,10 @@ export function BankShortcutSettings({
     path: string,
     body: { secret: string; accountNumber?: string },
   ) {
+    if (demo) {
+      setAuthError(t("Đăng nhập để dùng tính năng này."));
+      return null;
+    }
     if (confirming.current || !preparation.ready) return null;
     confirming.current = true;
     setBusy(true);
@@ -357,7 +363,9 @@ export function BankShortcutSettings({
               </label>
               <Button
                 type="submit"
-                disabled={busy || mutation.busy || !preparation.ready}
+                disabled={
+                  busy || mutation.busy || (!demo && !preparation.ready)
+                }
               >
                 {t("Xác nhận với Google")}
               </Button>
@@ -386,7 +394,9 @@ export function BankShortcutSettings({
               )}
               <Button
                 type="submit"
-                disabled={busy || mutation.busy || !preparation.ready}
+                disabled={
+                  busy || mutation.busy || (!demo && !preparation.ready)
+                }
               >
                 {t(connection ? "Tạo lại khóa Phím tắt" : "Tạo khóa Phím tắt")}
               </Button>
@@ -444,7 +454,13 @@ export function BankShortcutSettings({
             "Trong Phím tắt, dùng Lấy nội dung của URL với phương thức POST và nội dung JSON. Đặt nguyên văn thông báo vào trường message.",
           )}
         </p>
-        <code className="block break-all">{url}</code>
+        {demo ? (
+          <p className="text-muted-foreground">
+            {t("Đăng nhập để dùng tính năng này.")}
+          </p>
+        ) : (
+          <code className="block break-all">{url}</code>
+        )}
         <code className="block">{'{ "message": "…" }'}</code>
       </div>
     </Card>

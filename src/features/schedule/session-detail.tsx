@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useState } from "react";
 import { formatVnd, statusLabels, type TeachingSession } from "@/domain";
 import { RecordForm } from "@/components/record-form";

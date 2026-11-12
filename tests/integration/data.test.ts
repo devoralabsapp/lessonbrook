@@ -314,7 +314,8 @@ describe("Xuất dữ liệu và xóa tài khoản: HTTP, Auth và Firestore Emu
       ).status,
     ).toBe(200);
     expect(
-      (await a.call("/api/appearance", "PATCH", { theme: "vintage" })).status,
+      (await a.call("/api/appearance", "PATCH", { theme: "chapter-desk" }))
+        .status,
     ).toBe(200);
     const p = await (
       await a.call(`/api/statements/${statementId}/public-preview`)

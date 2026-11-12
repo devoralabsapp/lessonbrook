@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link, { useWorkspaceHref } from "@/components/workspace-link";
 import { useRouter } from "next/navigation";
 import {
   type TeachingSession,
@@ -57,6 +57,7 @@ export function StatementEditor({
 }) {
   const { t, locale } = useI18n();
   const router = useRouter();
+  const workspaceHref = useWorkspaceHref();
   const today = vietnamToday();
   const issued = initial?.status === "issued";
   const [studentId, setStudentId] = useState(
@@ -157,7 +158,7 @@ export function StatementEditor({
     if (result) {
       draft.saved();
       if (onSaved) onSaved(result.id);
-      else router.push(`/app/statements/${result.id}`);
+      else router.push(workspaceHref(`/app/statements/${result.id}`));
     }
   }
 

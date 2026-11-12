@@ -4,7 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useEffect, useState } from "react";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link, { useWorkspaceHref } from "@/components/workspace-link";
 import {
   formatVnd,
   MAX_VND,
@@ -41,6 +41,7 @@ export function LessonForm({
 }) {
   const { t, locale } = useI18n();
   const router = useRouter();
+  const workspaceHref = useWorkspaceHref();
   const mutation = useStatementMutation();
   const draft = useMobileDraft(mutation.busy);
   const [mode, setMode] = useState(
@@ -119,7 +120,7 @@ export function LessonForm({
     if (result) {
       draft.saved();
       if (onSaved) onSaved();
-      else router.push(`/app/lessons/${result.id}`);
+      else router.push(workspaceHref(`/app/lessons/${result.id}`));
     }
   }
   return (
@@ -164,7 +165,12 @@ export function LessonForm({
                   { value: "", label: t("Chọn lớp") },
                   ...(classId &&
                   !classes.page?.items.some((item) => item.id === classId)
-                    ? [{ value: classId, label: classData?.displayName ?? t("Lớp đang chọn") }]
+                    ? [
+                        {
+                          value: classId,
+                          label: classData?.displayName ?? t("Lớp đang chọn"),
+                        },
+                      ]
                     : []),
                   ...(classes.page?.items.map((item) => ({
                     value: item.id,

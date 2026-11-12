@@ -1,5 +1,5 @@
 import { getI18n } from "@/lib/i18n/server";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { LessonForm } from "@/features/classes/lesson-form";
 import { dateSchema, idSchema, lessonTimeSchema } from "@/domain";
 export default async function Page({

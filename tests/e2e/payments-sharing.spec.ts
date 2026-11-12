@@ -66,7 +66,7 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
     (
       await context.request.patch("/api/appearance", {
         headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
-        data: { theme: "command-line" },
+        data: { theme: "afterhours-fm" },
       })
     ).ok(),
   ).toBe(true);

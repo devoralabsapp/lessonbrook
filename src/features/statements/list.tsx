@@ -2,7 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { formatVnd, vietnamToday } from "@/domain";
 import { type Statement, statementDisplayStatus } from "@/domain/statements";
 import { statementFilterLabels } from "@/domain/list-filters";
@@ -111,10 +111,12 @@ export function StatementsList({
             label={t("Trạng thái bảng kê")}
             value={status}
             onChange={setStatus}
-            options={Object.entries(statementFilterLabels).map(([value, label]) => ({
-              value,
-              label: t(label),
-            }))}
+            options={Object.entries(statementFilterLabels).map(
+              ([value, label]) => ({
+                value,
+                label: t(label),
+              }),
+            )}
           />
         </label>
       </Card>
@@ -151,8 +153,18 @@ export function StatementsList({
         <div className="space-y-3">
           {page.items.map((statement) => {
             const display = statementDisplayStatus(statement, vietnamToday());
+            const tone =
+              statement.status === "draft"
+                ? "blue"
+                : statement.status === "void"
+                  ? "neutral"
+                  : statement.paidVnd >= statement.totalVnd
+                    ? "mint"
+                    : display.overdue || statement.paidVnd === 0
+                      ? "pink"
+                      : "yellow";
             return (
-              <Card key={statement.id} className="p-5">
+              <Card key={statement.id} data-list-tone={tone} className="p-5">
                 <Link
                   className="block space-y-3"
                   href={`/app/statements/${statement.id}`}
@@ -162,8 +174,11 @@ export function StatementsList({
                       {statement.number ?? t("Bản nháp")} ·{" "}
                       {statement.recipientSnapshot.displayName}
                     </strong>
-                    <span className="rounded-full bg-muted px-3 py-1 text-xs">
-                      {display.label}
+                    <span
+                      data-slot="list-status"
+                      className="rounded-full bg-muted px-3 py-1 text-xs"
+                    >
+                      {t(display.label)}
                       {display.overdue ? t(" · Quá hạn") : ""}
                     </span>
                   </div>

@@ -506,7 +506,8 @@ describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
         .items,
     ).toEqual([]);
     expect(
-      (await a.call("/api/appearance", "PATCH", { theme: "art" })).status,
+      (await a.call("/api/appearance", "PATCH", { theme: "margin-notes" }))
+        .status,
     ).toBe(200);
     const exportId = await created("/api/exports", { dataset: "all" });
     const exports: Record<string, unknown> = {};
@@ -519,20 +520,18 @@ describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
     }
     const text = JSON.stringify(exports);
     expect(text).toContain(classId);
-    expect(text).toContain("art");
+    expect(text).toContain("margin-notes");
     expect(text).not.toContain("requestId");
     expect(text).not.toContain("shareToken");
   });
-  it("tám theme lưu server theo UID, retry và từ chối lựa chọn lạ", async () => {
+  it("sáu theme lưu server theo UID, retry và từ chối lựa chọn lạ", async () => {
     for (const theme of [
-      "modern",
-      "vintage",
-      "art",
-      "natura",
-      "ocean",
-      "command-line",
-      "visual-code",
       "playful-retro",
+      "mono-os",
+      "chapter-desk",
+      "afterhours-fm",
+      "margin-notes",
+      "sticker-sprint",
     ]) {
       const key = randomUUID();
       expect(
@@ -554,7 +553,7 @@ describe("Lớp học/buổi nhóm: HTTP và transaction Emulator", () => {
     expect(
       (
         await a.call("/api/appearance", "PATCH", {
-          theme: "art",
+          theme: "margin-notes",
           ownerUid: "other",
         })
       ).status,

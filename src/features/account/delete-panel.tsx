@@ -7,6 +7,7 @@ import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { DELETE_CONFIRMATION } from "@/domain/data";
 import { clientAuth } from "@/lib/firebase/client";
 import { api } from "@/lib/client-api";
+import { useDemoWorkspace } from "@/components/workspace-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,16 +22,21 @@ export function DeletePanel() {
     [error, setError] = useState("");
   const running = useRef(false),
     requestId = useRef<string | null>(null);
-  const preparation = useAuthReady();
+  const demo = useDemoWorkspace();
+  const preparation = useAuthReady(!demo);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (
       running.current ||
-      !preparation.ready ||
+      (!demo && !preparation.ready) ||
       confirmation !== confirmationPhrase ||
       !acknowledged
     )
       return;
+    if (demo) {
+      setError(t("Đăng nhập để dùng tính năng này."));
+      return;
+    }
     running.current = true;
     setBusy(true);
     setError("");
@@ -101,7 +107,7 @@ export function DeletePanel() {
             disabled={
               confirmation !== confirmationPhrase ||
               !acknowledged ||
-              !preparation.ready
+              (!demo && !preparation.ready)
             }
           >
             {busy
@@ -118,9 +124,11 @@ export function DeletePanel() {
               {t("Thử chuẩn bị lại")}
             </Button>
           )}
-          <Link href="/account/deletion" className="underline">
-            {t("Mở trang tiếp tục yêu cầu xóa")}
-          </Link>
+          {!demo && (
+            <Link href="/account/deletion" className="underline">
+              {t("Mở trang tiếp tục yêu cầu xóa")}
+            </Link>
+          )}
         </div>
       )}
     </Card>

@@ -1,6 +1,8 @@
 "use client";
 import { useI18n } from "@/lib/i18n/client";
 
+import Link from "next/link";
+import { useDemoWorkspace } from "@/components/workspace-link";
 import { useEffect, useState } from "react";
 import { formatVnd } from "@/domain";
 import { type Statement } from "@/domain/statements";
@@ -21,6 +23,7 @@ export function SharingPanel({
   nativeShare: boolean;
 }) {
   const { t, locale } = useI18n();
+  const demo = useDemoWorkspace();
   const [status, setStatus] = useState<{
     version: number;
     data: ShareStatus;
@@ -68,7 +71,7 @@ export function SharingPanel({
       if (result.token) {
         setNewLink({
           ...result,
-          url: `${window.location.origin}/s#${result.token}`,
+          url: `${window.location.origin}${demo ? "/demo/share" : "/s"}#${result.token}`,
         });
         setNotice(t("Đã tạo link mới. Link trước đó được thu hồi."));
       } else {
@@ -130,9 +133,11 @@ export function SharingPanel({
       <h2 className="serif text-2xl">{t("Chia sẻ bảng kê")}</h2>
       <p className="text-xs leading-5 text-muted-foreground">
         {t("Kiểm tra thông tin trong bảng kê phía trên trước khi chia sẻ.")}{" "}
-        {t(
-          "Ai có link đều xem được và có thể chuyển tiếp. Link chỉ đọc, hết hạn sau 30 ngày. Mỗi bảng kê có một link đang dùng; tạo link mới sẽ thu hồi link cũ.",
-        )}
+        {demo
+          ? t("Link demo mở trong phiên hiện tại.")
+          : t(
+              "Ai có link đều xem được và có thể chuyển tiếp. Link chỉ đọc, hết hạn sau 30 ngày. Mỗi bảng kê có một link đang dùng; tạo link mới sẽ thu hồi link cũ.",
+            )}
       </p>
       <p className="text-sm">
         {!currentStatus
@@ -192,14 +197,23 @@ export function SharingPanel({
             <Button variant="outline" onClick={() => copy(true)}>
               {t("Sao chép tin nhắn")}
             </Button>
-            <a
-              className="py-3 text-sm text-primary"
-              href={usableLink.url}
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              {t("Mở bảng kê công khai")}
-            </a>
+            {demo ? (
+              <Link
+                className="py-3 text-sm text-primary"
+                href={`/demo/share#${usableLink.token}`}
+              >
+                {t("Mở bảng kê công khai")}
+              </Link>
+            ) : (
+              <a
+                className="py-3 text-sm text-primary"
+                href={usableLink.url}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                {t("Mở bảng kê công khai")}
+              </a>
+            )}
           </div>
         </div>
       ) : (

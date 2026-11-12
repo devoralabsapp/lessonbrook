@@ -1,7 +1,7 @@
 "use client";
 import { useI18n } from "@/lib/i18n/client";
 
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import type { GroupLesson } from "@/domain/classes";
 import { formatVnd } from "@/domain";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export function LessonsList({ classId }: { classId?: string }) {
             <Link
               href={`/app/lessons/${item.id}`}
               key={item.id}
+              data-list-tone={item.classId ? "blue" : "mint"}
               className="flex flex-wrap items-center justify-between gap-3 p-5 hover:bg-muted"
             >
               <div className="min-w-0">

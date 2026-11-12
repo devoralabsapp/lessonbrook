@@ -2,7 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { formatVnd } from "@/domain";
 import { weekdays } from "@/domain/classes";
 import { Button } from "@/components/ui/button";

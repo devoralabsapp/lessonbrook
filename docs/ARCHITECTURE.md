@@ -25,6 +25,8 @@ All business operations go through server APIs. Derive the UID from a revocation
 
 Session cookies are HttpOnly/Lax, Secure on HTTPS, and last up to five days. Browser Auth uses memory persistence: exchange a recent-auth ID token for a server cookie, then sign out the client. Mutations check Origin/CSRF, strict payloads/body limits, and UUID idempotency keys. Do not cache session verification between requests or store tokens/tuition data in browser storage or logs.
 
+The public demo renders the same workspace pages. Its Node API builds a fictional ledger and applies a bounded history of actions from the current browser tab. The demo API works entirely with fictional data in memory. The tab discards changes on reload.
+
 ## Invariants
 
 - Money uses safe integer VND; business dates use YYYY-MM-DD in Vietnam. System Timestamps are generated on the server and documents carry schemaVersion.

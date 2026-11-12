@@ -89,28 +89,29 @@ struct WorkspacePalette {
     let background: Color
     let surface: Color
     let accent: Color
+    let foreground: Color
+    let onAccent: Color
+    let controlTint: Color
     let dark: Bool
 
     init(_ theme: String? = nil) {
-        let colors: (UInt32, UInt32, UInt32, Bool)
+        let colors: (UInt32, UInt32, UInt32, UInt32, UInt32, Bool)
         switch theme {
-        case "modern": colors = (0xedf3fb, 0xffffff, 0x2858a0, false)
-        case "vintage": colors = (0xf5eee1, 0xfffcf5, 0x805332, false)
-        case "art": colors = (0xfaf0f6, 0xfffcff, 0x854078, false)
-        case "ocean": colors = (0xedf7f8, 0xffffff, 0x176676, false)
-        case "command-line": colors = (0x000000, 0x151515, 0x74e6a1, true)
-        case "visual-code": colors = (0x1e1e1e, 0x252526, 0x75beff, true)
-        case "natura": colors = (0xf7f8f3, 0xffffff, 0x296447, false)
-        default: colors = (0xfff6e6, 0xfffdf8, 0x734626, false)
+        case "mono-os": colors = (0xd9d9d9, 0xffffff, 0x111111, 0x111111, 0xffffff, false)
+        case "chapter-desk": colors = (0xf4e9d5, 0xfff5e2, 0xa34018, 0x29271f, 0xffffff, false)
+        case "afterhours-fm": colors = (0x101010, 0x1d1d1d, 0xf7d449, 0xfaf9f3, 0x101010, true)
+        case "margin-notes": colors = (0xf0e9df, 0xfffcf5, 0x713346, 0x30262b, 0xffffff, false)
+        case "sticker-sprint": colors = (0xfff8ec, 0xfffaf1, 0xffd34e, 0x211b18, 0x211b18, false)
+        default: colors = (0xfff6e6, 0xfffdf8, 0x734626, 0x211f1b, 0xffffff, false)
         }
         background = Self.color(colors.0)
         surface = Self.color(colors.1)
         accent = Self.color(colors.2)
-        dark = colors.3
+        foreground = Self.color(colors.3)
+        onAccent = Self.color(colors.4)
+        dark = colors.5
+        controlTint = theme == "sticker-sprint" ? Self.color(0x503298) : Self.color(colors.2)
     }
-
-    var foreground: Color { dark ? .white : Self.color(0x192b23) }
-    var onAccent: Color { dark ? .black : .white }
 
     private static func color(_ rgb: UInt32) -> Color {
         Color(
@@ -168,7 +169,7 @@ struct NativeDashboard: View {
                             .frame(maxWidth: .infinity, minHeight: 38, alignment: .leading)
                     }
                     .buttonStyle(.bordered)
-                    .tint(palette.accent)
+                    .tint(palette.controlTint)
                 }
             }
             .frame(maxWidth: 640)
@@ -224,7 +225,7 @@ struct NativeDashboard: View {
                     ForEach(items, id: \.path) { lesson in
                         Button { open(lesson.path) } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: "calendar").foregroundStyle(palette.accent)
+                                Image(systemName: "calendar").foregroundStyle(palette.controlTint)
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(lesson.name ?? t("Group lesson")).font(.subheadline.weight(.semibold))
@@ -247,7 +248,7 @@ struct NativeDashboard: View {
                 .background(palette.surface, in: RoundedRectangle(cornerRadius: 16))
                 Button(t("View full schedule")) { open("/app/schedule") }
                     .font(.subheadline.weight(.semibold))
-                    .tint(palette.accent)
+                    .tint(palette.controlTint)
             }
         }
     }
@@ -275,7 +276,7 @@ struct NativeDashboard: View {
 
     private func metric(_ title: String, value: String, icon: String, detail: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon).foregroundStyle(palette.accent).accessibilityHidden(true)
+            Image(systemName: icon).foregroundStyle(palette.controlTint).accessibilityHidden(true)
             Text(t(title)).font(.footnote.weight(.medium)).fixedSize(horizontal: false, vertical: true)
             Text(value).font(.headline.monospacedDigit()).fixedSize(horizontal: false, vertical: true)
             if let detail { Text(detail).font(.caption) }

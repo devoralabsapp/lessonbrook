@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useEffect, useRef, useState } from "react";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
 import { useRouter } from "next/navigation";
+import { useWorkspaceHref } from "@/components/workspace-link";
 import { LoaderCircle, X } from "lucide-react";
 import {
   type Student,
@@ -37,6 +38,7 @@ export function RecordForm({
 }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
+  const workspaceHref = useWorkspaceHref();
   const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -347,7 +349,9 @@ export function RecordForm({
                     value="single"
                     onChange={(value) => {
                       onClose();
-                      router.push(`/app/lessons/new?mode=${value}`);
+                      router.push(
+                        workspaceHref(`/app/lessons/new?mode=${value}`),
+                      );
                     }}
                     options={[
                       { value: "single", label: t("Một học viên") },

@@ -2,10 +2,10 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { LanguageSwitcher } from "./language-switcher";
-import Link from "next/link";
+import Link, { useDemoWorkspace } from "@/components/workspace-link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LogOut, Settings, Sprout } from "lucide-react";
+import { LogIn, LogOut, Settings, Sprout } from "lucide-react";
 import { WorkspaceNavigation, workspaceTabs } from "./workspace-navigation";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
@@ -28,9 +28,17 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
-  const path = usePathname();
+  const pathname = usePathname();
+  const demo = useDemoWorkspace();
+  const path = demo
+    ? pathname === "/demo/onboarding"
+      ? "/onboarding"
+      : pathname.replace(/^\/demo/, "/app")
+    : pathname;
   const router = useRouter();
-  const appearance = useAppearancePreview(initialTheme, path);
+  const appearance = useAppearancePreview(initialTheme, pathname);
+  const [demoName, setDemoName] = useState(name);
+  const displayName = demo ? demoName : name;
   const activeLink = (href: string) =>
     href === "/app"
       ? path === href
@@ -40,7 +48,7 @@ export function AppShell({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    if (!nativeChrome) return;
+    if (!nativeChrome || demo) return;
     function navigate(event: Event) {
       const target: unknown = (event as CustomEvent).detail;
       if (!workspaceTabs.some(({ href }) => href !== "/app" && href === target))
@@ -51,13 +59,22 @@ export function AppShell({
     window.addEventListener("lessonbrook:navigate-tab", navigate);
     return () =>
       window.removeEventListener("lessonbrook:navigate-tab", navigate);
-  }, [nativeChrome, path, router]);
+  }, [demo, nativeChrome, path, router]);
   useEffect(() => {
+    if (demo) {
+      function updateName(event: Event) {
+        setDemoName((event as CustomEvent<string>).detail);
+      }
+      window.addEventListener("lessonbrook:demo-name", updateName);
+      return () =>
+        window.removeEventListener("lessonbrook:demo-name", updateName);
+    }
     void csrfToken().catch(() => {
       // A failed preload is retried when the user submits a form.
     });
-  }, []);
+  }, [demo]);
   useEffect(() => {
+    if (demo) return;
     let active = true;
     let pending = false;
     let initialize = true;
@@ -89,7 +106,7 @@ export function AppShell({
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", sync);
     };
-  }, []);
+  }, [demo]);
   async function logout() {
     setBusy(true);
     try {
@@ -122,6 +139,7 @@ export function AppShell({
               {t("CUỐN SỔ CỦA BẠN")}
             </p>
             <WorkspaceNavigation
+              label={demo ? "Điều hướng bản demo" : undefined}
               links={workspaceTabs}
               currentHref={path}
               isActive={activeLink}
@@ -141,15 +159,28 @@ export function AppShell({
                 <Settings size={18} />
                 {t("Cài đặt tài khoản")}
               </Link>
-              <Button
-                onClick={logout}
-                disabled={busy}
-                variant="ghost"
-                className="w-full justify-start px-3 text-muted-foreground"
-              >
-                <LogOut />
-                {busy ? t("Đang đăng xuất…") : t("Đăng xuất")}
-              </Button>
+              {demo ? (
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="w-full justify-start px-3 text-muted-foreground"
+                >
+                  <Link href="/login">
+                    <LogIn />
+                    {t("Đăng nhập")}
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  onClick={logout}
+                  disabled={busy}
+                  variant="ghost"
+                  className="w-full justify-start px-3 text-muted-foreground"
+                >
+                  <LogOut />
+                  {busy ? t("Đang đăng xuất…") : t("Đăng xuất")}
+                </Button>
+              )}
               {error && (
                 <p role="alert" className="text-xs text-destructive">
                   {t(error)}
@@ -198,24 +229,37 @@ export function AppShell({
               <div className="ml-auto flex items-center gap-2 sm:gap-3">
                 <LanguageSwitcher compact />
                 <AppearancePicker key={path} />
+                {demo && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="icon"
+                    className="lg:hidden"
+                  >
+                    <Link href="/login" aria-label={t("Đăng nhập")}>
+                      <LogIn />
+                    </Link>
+                  </Button>
+                )}
                 <Link
                   href="/app/settings"
                   aria-label={t("Cài đặt tài khoản")}
                   className="flex items-center gap-3"
                 >
-                  <span className="hidden text-xs sm:block">{name}</span>
+                  <span className="hidden text-xs sm:block">{displayName}</span>
                   <span className="flex size-9 items-center justify-center rounded-full border border-border bg-accent-soft text-sm font-bold text-primary">
-                    {name[0]?.toUpperCase()}
+                    {displayName[0]?.toUpperCase()}
                   </span>
                 </Link>
               </div>
             </header>
           )}
-          {process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" && (
-            <div className="bg-warning-soft px-5 py-1.5 text-center text-[11px] text-warning-foreground">
-              {t("Firebase Emulator · Chỉ dùng dữ liệu giả")}
-            </div>
-          )}
+          {process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" &&
+            !demo && (
+              <div className="bg-warning-soft px-5 py-1.5 text-center text-[11px] text-warning-foreground">
+                {t("Firebase Emulator · Chỉ dùng dữ liệu giả")}
+              </div>
+            )}
           <main
             id="main"
             tabIndex={-1}
@@ -230,7 +274,7 @@ export function AppShell({
         {!embedded && (
           <WorkspaceNavigation
             mobile
-            label="Điều hướng chính"
+            label={demo ? "Điều hướng bản demo" : "Điều hướng chính"}
             links={workspaceTabs}
             currentHref={path}
             isActive={activeLink}

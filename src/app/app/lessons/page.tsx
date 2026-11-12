@@ -1,5 +1,5 @@
 import { getI18n } from "@/lib/i18n/server";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { LessonsList } from "@/features/classes/lessons-list";
 import { Button } from "@/components/ui/button";
 export default async function Page() {

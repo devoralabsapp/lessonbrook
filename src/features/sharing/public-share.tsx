@@ -1,4 +1,5 @@
 "use client";
+import { api, ApiError } from "@/lib/client-api";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -14,7 +15,7 @@ const subscribe = (change: () => void) => {
   window.addEventListener("hashchange", change);
   return () => window.removeEventListener("hashchange", change);
 };
-export function PublicShare() {
+export function PublicShare({ demo = false }: { demo?: boolean }) {
   const { t } = useI18n();
   const hash = useSyncExternalStore(
     subscribe,
@@ -33,6 +34,23 @@ export function PublicShare() {
     const load = async () => {
       if (!shareTokenSchema.safeParse(hash).success)
         return { statement: null, failed: false };
+      if (demo) {
+        try {
+          const result = await api("/api/share/resolve", {
+            method: "POST",
+            body: { token: hash },
+          });
+          return {
+            statement: publicStatementSchema.parse(result),
+            failed: false,
+          };
+        } catch (error) {
+          return {
+            statement: null,
+            failed: !(error instanceof ApiError && error.status === 404),
+          };
+        }
+      }
       const response = await fetch("/api/share/resolve", {
         method: "POST",
         credentials: "omit",
@@ -58,7 +76,7 @@ export function PublicShare() {
     return () => {
       active = false;
     };
-  }, [hash, key, t]);
+  }, [demo, hash, key, t]);
   return (
     <main className="mx-auto max-w-2xl space-y-5 px-4 py-8 sm:py-12">
       <div className="flex justify-end">

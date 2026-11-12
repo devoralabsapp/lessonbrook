@@ -101,22 +101,22 @@ final class NativeWorkspace {
         }
     }
 
-    record Palette(int background, int surface, int accent, boolean dark) {
+    record Palette(int background, int surface, int accent, int foreground, int onAccent, boolean dark, int controlTint) {
+        Palette(int background, int surface, int accent, int foreground, int onAccent, boolean dark) {
+            this(background, surface, accent, foreground, onAccent, dark, accent);
+        }
+
         static Palette from(String theme) {
             return switch (theme) {
-                case "modern" -> new Palette(0xffedf3fb, 0xffffffff, 0xff2858a0, false);
-                case "vintage" -> new Palette(0xfff5eee1, 0xfffffcf5, 0xff805332, false);
-                case "art" -> new Palette(0xfffaf0f6, 0xfffffcff, 0xff854078, false);
-                case "ocean" -> new Palette(0xffedf7f8, 0xffffffff, 0xff176676, false);
-                case "command-line" -> new Palette(0xff000000, 0xff151515, 0xff74e6a1, true);
-                case "visual-code" -> new Palette(0xff1e1e1e, 0xff252526, 0xff75beff, true);
-                case "natura" -> new Palette(0xfff7f8f3, 0xffffffff, 0xff296447, false);
-                default -> new Palette(0xfffff6e6, 0xfffffdf8, 0xff734626, false);
+                case "mono-os" -> new Palette(0xffd9d9d9, 0xffffffff, 0xff111111, 0xff111111, 0xffffffff, false);
+                case "chapter-desk" -> new Palette(0xfff4e9d5, 0xfffff5e2, 0xffa34018, 0xff29271f, 0xffffffff, false);
+                case "afterhours-fm" -> new Palette(0xff101010, 0xff1d1d1d, 0xfff7d449, 0xfffaf9f3, 0xff101010, true);
+                case "margin-notes" -> new Palette(0xfff0e9df, 0xfffffcf5, 0xff713346, 0xff30262b, 0xffffffff, false);
+                case "sticker-sprint" -> new Palette(0xfffff8ec, 0xfffffaf1, 0xffffd34e, 0xff211b18, 0xff211b18, false, 0xff503298);
+                default -> new Palette(0xfffff6e6, 0xfffffdf8, 0xff734626, 0xff211f1b, Color.WHITE, false);
             };
         }
 
-        int foreground() { return dark ? Color.WHITE : 0xff192b23; }
-        int onAccent() { return dark ? Color.BLACK : Color.WHITE; }
     }
 
     private final Context context;
@@ -273,7 +273,7 @@ final class NativeWorkspace {
                 icon.setPadding(dp(10), dp(3), dp(10), dp(3));
             }
             item.addView(icon, new LinearLayout.LayoutParams(dp(active ? 54 : 24), dp(27)));
-            TextView title = label(text(tab.title), 11, active ? palette.accent() : palette.foreground());
+            TextView title = label(text(tab.title), 11, active ? palette.controlTint() : palette.foreground());
             title.setGravity(Gravity.CENTER);
             title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
             add(item, title, 4);
@@ -297,7 +297,7 @@ final class NativeWorkspace {
 
     private LinearLayout metric(int title, String value, int symbol) {
         LinearLayout metric = card(palette.surface(), 18, 14);
-        metric.addView(icon(symbol, palette.accent()), new LinearLayout.LayoutParams(dp(20), dp(20)));
+        metric.addView(icon(symbol, palette.controlTint()), new LinearLayout.LayoutParams(dp(20), dp(20)));
         add(metric, label(text(title), 13, palette.foreground()), 8);
         add(metric, bold(value, 19, palette.foreground()), 5);
         return metric;
@@ -317,7 +317,7 @@ final class NativeWorkspace {
         button.setText(title);
         button.setTextSize(16);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setTextColor(primary ? palette.onAccent() : palette.accent());
+        button.setTextColor(primary ? palette.onAccent() : palette.controlTint());
         button.setMinimumHeight(dp(50));
         button.setBackground(new RippleDrawable(
             ColorStateList.valueOf(0x284b916e),

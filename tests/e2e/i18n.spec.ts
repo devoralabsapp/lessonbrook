@@ -4,7 +4,7 @@ import { vietnamToday } from "../../src/domain";
 
 test.use({ locale: "vi-VN", storageState: { cookies: [], origins: [] } });
 
-test("guest demo is read-only and a signed-in visit to home opens the dashboard", async ({
+test("demo reuses the workspace and keeps sample changes in its tab", async ({
   page,
   context,
 }) => {
@@ -16,7 +16,10 @@ test("guest demo is read-only and a signed-in visit to home opens the dashboard"
   await page.goto("/");
   await page.getByRole("link", { name: "View demo", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Demo teaching ledger" }),
+    page.getByRole("heading", { name: "Have a good teaching day." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Recent lessons" }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Sign in", exact: true }),
@@ -26,30 +29,6 @@ test("guest demo is read-only and a signed-in visit to home opens the dashboard"
   ).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "Demo navigation" });
   await expect(nav).toHaveAttribute("data-position", "bottom");
-  for (const [tab, count] of [
-    ["Students", 45],
-    ["Classes", 10],
-    ["Lessons", 30],
-    ["Statements", 15],
-  ] as const) {
-    await nav.getByRole("link", { name: tab, exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText(
-      `${count} of ${count} results`,
-    );
-  }
-  await page.getByText("DEMO-001", { exact: true }).click();
-  const details = page.locator("details[open]");
-  await expect(
-    details.getByRole("heading", { name: "Payment history" }),
-  ).toBeVisible();
-  await expect(details.getByText(/· Cash$/)).toBeVisible();
-  await expect(details.getByText(/· Bank transfer$/)).toBeVisible();
-  await page
-    .getByRole("searchbox", { name: "Search the list" })
-    .fill("DEMO-004");
-  await expect(page.getByRole("status")).toHaveText("1 of 15 results");
-  await expect(page.getByText("Overdue", { exact: true })).toBeVisible();
-  expect(businessRequests).toEqual([]);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -57,15 +36,47 @@ test("guest demo is read-only and a signed-in visit to home opens the dashboard"
   ).toBe(true);
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(nav).toHaveAttribute("data-position", "sidebar");
-  await expect(nav.getByRole("link", { name: "Statements" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-  await nav.getByRole("link", { name: "Dashboard" }).click();
-  await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  for (const [tab, path, heading] of [
+    ["Students", "students", "Your students"],
+    ["Classes", "classes", "Class list"],
+    ["Lessons", "sessions", "Lesson list"],
+    ["Statements", "statements", "Tuition statements"],
+  ] as const) {
+    await nav.getByRole("link", { name: tab, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/demo/${path}$`));
+    await expect(
+      nav.getByRole("link", { name: tab, exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await expect(
+      page.getByRole("heading", { name: heading, exact: true }),
+    ).toBeVisible();
+    const coloredRow = page.locator("[data-list-tone]").first();
+    await expect(coloredRow).toBeVisible();
+    await expect(coloredRow).toHaveCSS("background-image", /linear-gradient/);
+  }
+  await nav.getByRole("link", { name: "Students", exact: true }).click();
+  await page.getByRole("button", { name: "Add student" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Student name").fill("Demo Test Student");
+  await dialog.getByLabel("Default price / lesson").fill("100000");
+  await dialog.getByRole("button", { name: "Save student" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page
+    .getByRole("searchbox", { name: "Find a student" })
+    .fill("Demo Test Student");
+  await expect(
+    page.getByRole("link", { name: "Demo Test Student" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Demo Test Student" }).click();
+  await expect(page).toHaveURL(/\/demo\/students\/[^/]+$/);
+  await expect(
+    page.getByRole("heading", { name: "Demo Test Student" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Demo Test Student" }),
+  ).toHaveCount(0);
+  expect([...new Set(businessRequests)]).toEqual(["/api/demo"]);
 
   const { token } = await (await context.request.get("/api/auth/csrf")).json();
   const { idToken } = await googleToken();
@@ -231,18 +242,18 @@ test("visitors can preview themes on the home page without saving an account pre
   await expect(theme).toHaveText("Playful Retro Neo-Brutalism");
   await theme.click();
   const themeMenu = page.getByRole("listbox", { name: "Preview theme" });
-  await expect(themeMenu.getByRole("option")).toHaveCount(8);
+  await expect(themeMenu.getByRole("option")).toHaveCount(6);
   await themeMenu
-    .getByRole("option", { name: "Command Line", exact: true })
+    .getByRole("option", { name: "Afterhours FM", exact: true })
     .click();
-  await expect(home).toHaveCSS("background-color", "rgb(0, 0, 0)");
+  await expect(home).toHaveCSS("background-color", "rgb(16, 16, 16)");
   await expect(home.locator('[data-slot="card"]')).toHaveCSS(
     "background-color",
-    "rgb(13, 13, 13)",
+    "rgb(29, 29, 29)",
   );
   await theme.click();
-  await expect(themeMenu).toHaveCSS("background-color", "rgb(13, 13, 13)");
-  await expect(themeMenu).toHaveCSS("color", "rgb(229, 229, 229)");
+  await expect(themeMenu).toHaveCSS("background-color", "rgb(29, 29, 29)");
+  await expect(themeMenu).toHaveCSS("color", "rgb(250, 249, 243)");
   await themeMenu
     .getByRole("option", { name: "Playful Retro Neo-Brutalism", exact: true })
     .click();
@@ -543,10 +554,12 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     exact: true,
   });
   await expect(saveAppearance).toBeDisabled();
-  await page.getByRole("radio", { name: "Command Line", exact: false }).check();
-  await expect(page.locator('[data-theme="command-line"]')).toHaveCSS(
+  await page
+    .getByRole("radio", { name: "Afterhours FM", exact: false })
+    .check();
+  await expect(page.locator('[data-theme="afterhours-fm"]')).toHaveCSS(
     "background-color",
-    "rgb(0, 0, 0)",
+    "rgb(16, 16, 16)",
   );
   await expect(
     page.getByRole("status").filter({ hasText: "Previewing — not saved yet." }),
@@ -559,8 +572,8 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     .click();
   await expect(page.locator('[data-theme="playful-retro"]')).toBeVisible();
   await expect(saveAppearance).toBeDisabled();
-  await page.getByRole("radio", { name: "Natura", exact: false }).check();
-  await expect(page.locator('[data-theme="natura"]')).toBeVisible();
+  await page.getByRole("radio", { name: "Margin Notes", exact: false }).check();
+  await expect(page.locator('[data-theme="margin-notes"]')).toBeVisible();
   await expect(
     page.getByText(
       "Warm cream, vivid pastels, bold outlines and retro shadows",

@@ -3,7 +3,7 @@ import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import {
   ArrowRight,
   CalendarDays,
@@ -620,9 +620,7 @@ export function Workspace({
               <ThemedSelect
                 label={t("Trạng thái buổi")}
                 value={draftRange.status}
-                onChange={(status) =>
-                  setDraftRange({ ...draftRange, status })
-                }
+                onChange={(status) => setDraftRange({ ...draftRange, status })}
                 options={[
                   { value: "all", label: t("Tất cả") },
                   { value: "planned", label: t("Dự kiến") },
@@ -655,13 +653,13 @@ export function Workspace({
                 <ThemedSelect
                   label={t("Loại buổi dạy")}
                   value={draftRange.type}
-                  onChange={(type) =>
-                    setDraftRange({ ...draftRange, type })
-                  }
-                  options={Object.entries(sessionTypeLabels).map(([value, label]) => ({
-                    value,
-                    label: t(label),
-                  }))}
+                  onChange={(type) => setDraftRange({ ...draftRange, type })}
+                  options={Object.entries(sessionTypeLabels).map(
+                    ([value, label]) => ({
+                      value,
+                      label: t(label),
+                    }),
+                  )}
                 />
               </label>
             )}
@@ -732,9 +730,12 @@ export function Workspace({
         ) : !view ? null : mode === "students" ? (
           view?.students.items.length ? (
             <div className="divide-y divide-border">
-              {view.students.items.map((s) => (
+              {view.students.items.map((s, index) => (
                 <div
                   key={s.id}
+                  data-list-tone={
+                    s.archivedAt ? "neutral" : index % 2 ? "mint" : "blue"
+                  }
                   className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
                 >
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold text-primary">
@@ -795,6 +796,13 @@ export function Workspace({
             {view.sessions.items.map((s) => (
               <div
                 key={s.id}
+                data-list-tone={
+                  s.status === "completed"
+                    ? "mint"
+                    : s.status === "planned"
+                      ? "yellow"
+                      : "pink"
+                }
                 className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
               >
                 <time

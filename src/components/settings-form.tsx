@@ -3,7 +3,7 @@ import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useRef, useState } from "react";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
-import Link from "next/link";
+import Link, { useDemoWorkspace } from "@/components/workspace-link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client-api";
 import { Button } from "./ui/button";
@@ -24,6 +24,7 @@ export function SettingsForm({
 }) {
   const { t } = useI18n();
   const router = useRouter();
+  const demo = useDemoWorkspace();
   const [profile, setProfile] = useState<{
     displayName: string;
     bankDetails: string;
@@ -195,12 +196,28 @@ export function SettingsForm({
         )}
       </div>
       <div className="mt-5 flex flex-wrap gap-3">
-        <Button variant="outline" disabled={busy} onClick={() => logout(false)}>
-          {t("Đăng xuất")}
-        </Button>
-        <Button variant="ghost" disabled={busy} onClick={() => logout(true)}>
-          {t("Đăng xuất mọi thiết bị")}
-        </Button>
+        {demo ? (
+          <Button variant="outline" asChild>
+            <Link href="/login">{t("Đăng nhập")}</Link>
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => logout(false)}
+            >
+              {t("Đăng xuất")}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => logout(true)}
+            >
+              {t("Đăng xuất mọi thiết bị")}
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

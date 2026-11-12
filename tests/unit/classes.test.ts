@@ -1,6 +1,10 @@
 import { expect, it } from "vitest";
 import { classInputSchema, lessonInputSchema } from "@/domain/classes";
-import { appearanceInputSchema, themes } from "@/domain/appearance";
+import {
+  appearanceInputSchema,
+  storedThemeSchema,
+  themes,
+} from "@/domain/appearance";
 const input = { displayName: "Piano", studentIds: ["a", "b"], rateVnd: 150000 };
 it("lớp có giá nguyên mỗi người; roster giới hạn, duy nhất, không nhận owner/path", () => {
   expect(classInputSchema.parse(input).rateVnd).toBe(150000);
@@ -41,8 +45,19 @@ it("buổi nhóm không nhận số tiền tổng/session IDs, validate ngày v�
       false,
     );
 });
-it("chỉ chấp nhận tám theme đã khai báo", () => {
-  expect(new Set(themes.map((s) => s.id)).size).toBe(8);
+it("chỉ chấp nhận sáu theme đã khai báo", () => {
+  expect(themes.map((theme) => theme.id)).toEqual([
+    "playful-retro",
+    "mono-os",
+    "chapter-desk",
+    "afterhours-fm",
+    "margin-notes",
+    "sticker-sprint",
+  ]);
+  expect(storedThemeSchema.parse("command-line")).toBe("playful-retro");
+  expect(
+    appearanceInputSchema.safeParse({ theme: "command-line" }).success,
+  ).toBe(false);
   for (const theme of themes)
     expect(appearanceInputSchema.safeParse({ theme: theme.id }).success).toBe(
       true,
@@ -51,7 +66,9 @@ it("chỉ chấp nhận tám theme đã khai báo", () => {
     false,
   );
   expect(
-    appearanceInputSchema.safeParse({ theme: "art", ownerUid: "other" })
-      .success,
+    appearanceInputSchema.safeParse({
+      theme: "margin-notes",
+      ownerUid: "other",
+    }).success,
   ).toBe(false);
 });

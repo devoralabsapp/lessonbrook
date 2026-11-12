@@ -34,6 +34,13 @@ export async function api<T>(
     returnRecord?: boolean;
   },
 ): Promise<T> {
+  if (
+    path !== "/api/locale" &&
+    /^\/demo(?:\/|$)/.test(window.location.pathname)
+  ) {
+    const { demoApi } = await import("./demo-api");
+    return demoApi<T>(path, options);
+  }
   const mutation = options?.method && options.method !== "GET";
   const response = await fetch(path, {
     method: options?.method ?? "GET",

@@ -14,7 +14,7 @@ Sổ buổi dạy và học phí cho giáo viên tự do: cá nhân, nhóm hoặ
 
 Bản xem trước giao diện tiếng Anh · Playful Retro Neo-Brutalism · Chụp local bằng Firebase Emulator, chỉ dùng dữ liệu giả.
 
-Giao diện mặc định là tiếng Anh. Dùng bộ chọn trên thanh đầu trang để chuyển sang tiếng Việt. Bạn có thể thử cả tám theme từ trang chủ. Giao diện đã chọn sẽ đi theo bạn đến trang đăng nhập và được lưu vào tài khoản sau khi đăng nhập thành công.
+Giao diện mặc định là tiếng Anh. Dùng bộ chọn trên thanh đầu trang để chuyển sang tiếng Việt. Bạn có thể thử cả sáu theme từ trang chủ. Giao diện đã chọn sẽ đi theo bạn đến trang đăng nhập và được lưu vào tài khoản sau khi đăng nhập thành công.
 
 ## Tính năng
 

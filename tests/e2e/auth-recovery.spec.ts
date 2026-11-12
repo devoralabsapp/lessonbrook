@@ -43,13 +43,13 @@ test("popup bị chặn → đóng lỗi/thử lại với browser storage bị 
   await page.goto("/");
   await chooseOption(
     page.getByRole("combobox", { name: "Xem thử giao diện" }),
-    "command-line",
+    "afterhours-fm",
   );
   await page.getByRole("link", { name: "Đăng nhập", exact: true }).click();
   await page.waitForURL("**/login");
   await expect(page.getByRole("main")).toHaveCSS(
     "background-color",
-    "rgb(0, 0, 0)",
+    "rgb(16, 16, 16)",
   );
   const button = page.getByRole("button", {
     name: "Tiếp tục với Google",
@@ -92,17 +92,17 @@ test("popup bị chặn → đóng lỗi/thử lại với browser storage bị 
     )?.httpOnly,
   ).toBe(true);
   expect((await context.request.get("/api/profile")).status()).toBe(200);
-  await expect(page.locator('[data-theme="command-line"]')).toBeVisible();
+  await expect(page.locator('[data-theme="afterhours-fm"]')).toBeVisible();
   expect(
     (await (await context.request.get("/api/appearance")).json()).theme,
-  ).toBe("command-line");
+  ).toBe("afterhours-fm");
   expect(
     (await context.cookies()).some(
       (cookie) => cookie.name === GUEST_THEME_COOKIE,
     ),
   ).toBe(false);
   await page.reload();
-  await expect(page.locator('[data-theme="command-line"]')).toBeVisible();
+  await expect(page.locator('[data-theme="afterhours-fm"]')).toBeVisible();
   expect(
     await page.evaluate(() => {
       try {

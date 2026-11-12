@@ -207,7 +207,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         tabs.selectedItem = tabs.items?[selectedTab.rawValue]
         let surface = UIColor(palette.surface)
         let ink = UIColor(palette.foreground)
-        let accent = UIColor(palette.accent)
+        let accent = UIColor(palette.controlTint)
         let tabAppearance = UITabBarAppearance()
         tabAppearance.configureWithOpaqueBackground()
         tabAppearance.backgroundColor = surface

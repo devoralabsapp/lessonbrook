@@ -2,7 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { formatVnd, vietnamToday } from "@/domain";
 import { type Statement, statementDisplayStatus } from "@/domain/statements";
 import { api } from "@/lib/client-api";

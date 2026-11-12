@@ -25,7 +25,10 @@ export async function checkMutation(request: Request) {
   if (!request.headers.get("content-type")?.startsWith("application/json"))
     throw new AppError(415, "Yêu cầu phải là JSON.");
 }
-export async function jsonBody(request: Request): Promise<unknown> {
+export async function jsonBody(
+  request: Request,
+  maxBytes = 16_384,
+): Promise<unknown> {
   // Bound the streamed body; Content-Length alone is not trusted.
   const reader = request.body?.getReader();
   if (!reader) throw new AppError(400, "Thiếu dữ liệu.");
@@ -35,7 +38,7 @@ export async function jsonBody(request: Request): Promise<unknown> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > 16_384) {
+    if (size > maxBytes) {
       await reader.cancel();
       throw new AppError(413, "Dữ liệu quá lớn.");
     }

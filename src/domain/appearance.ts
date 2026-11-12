@@ -1,16 +1,29 @@
 import { z } from "zod";
 export const themeSchema = z.enum([
-  "modern",
-  "vintage",
-  "art",
-  "natura",
-  "ocean",
-  "command-line",
-  "visual-code",
   "playful-retro",
+  "mono-os",
+  "chapter-desk",
+  "afterhours-fm",
+  "margin-notes",
+  "sticker-sprint",
 ]);
 export type Theme = z.infer<typeof themeSchema>;
 export const DEFAULT_THEME: Theme = "playful-retro";
+// Read saved choices from older releases without accepting them on writes.
+export const storedThemeSchema = z.union([
+  themeSchema,
+  z
+    .enum([
+      "modern",
+      "vintage",
+      "art",
+      "natura",
+      "ocean",
+      "command-line",
+      "visual-code",
+    ])
+    .transform(() => DEFAULT_THEME),
+]);
 export const GUEST_THEME_COOKIE = "chotcong_guest_theme";
 export const themes: {
   id: Theme;
@@ -19,52 +32,40 @@ export const themes: {
   colors: string[];
 }[] = [
   {
-    id: "modern",
-    name: "Modern",
-    description: "Gọn gàng, sắc xanh hiện đại",
-    colors: ["#edf3fb", "#ffffff", "#2858a0"],
-  },
-  {
-    id: "vintage",
-    name: "Vintage",
-    description: "Giấy kem, mực nâu ấm",
-    colors: ["#f5eee1", "#fffcf5", "#805332"],
-  },
-  {
-    id: "art",
-    name: "Art",
-    description: "Tím mận và sắc hồng sáng tạo",
-    colors: ["#faf0f6", "#fffcff", "#854078"],
-  },
-  {
-    id: "natura",
-    name: "Natura",
-    description: "Xanh lá dịu, gần thiên nhiên",
-    colors: ["#f7f8f3", "#ffffff", "#296447"],
-  },
-  {
-    id: "ocean",
-    name: "Ocean",
-    description: "Xanh biển trong, nhẹ nhàng",
-    colors: ["#edf7f8", "#ffffff", "#176676"],
-  },
-  {
-    id: "command-line",
-    name: "Command Line",
-    description: "Nền đen, điểm nhấn xanh và font monospace",
-    colors: ["#000000", "#0d0d0d", "#74e6a1"],
-  },
-  {
-    id: "visual-code",
-    name: "Visual Code",
-    description: "Trình soạn thảo tối với điểm nhấn xanh dương",
-    colors: ["#1e1e1e", "#252526", "#75beff"],
-  },
-  {
     id: "playful-retro",
     name: "Playful Retro Neo-Brutalism",
     description: "Nền kem, pastel rực rỡ, viền đen và bóng đổ retro",
     colors: ["#fff6e6", "#ffdb57", "#ffb7ce", "#aad7f5", "#baf0d1"],
+  },
+  {
+    id: "mono-os",
+    name: "Mono OS",
+    description: "Giao diện máy tính xám trắng, chữ monospace và viền mảnh",
+    colors: ["#d9d9d9", "#ffffff", "#111111"],
+  },
+  {
+    id: "chapter-desk",
+    name: "Chapter Desk",
+    description: "Bàn đọc sách màu kem và điểm nhấn cam đất",
+    colors: ["#f4e9d5", "#fff5e2", "#a34018"],
+  },
+  {
+    id: "afterhours-fm",
+    name: "Afterhours FM",
+    description: "Nền than đen, chữ sáng và điểm nhấn vàng",
+    colors: ["#101010", "#1d1d1d", "#f7d449", "#71d6c8"],
+  },
+  {
+    id: "margin-notes",
+    name: "Margin Notes",
+    description: "Giấy ấm, tiêu đề serif và mực tím mận",
+    colors: ["#f0e9df", "#fffcf5", "#713346", "#ded8eb"],
+  },
+  {
+    id: "sticker-sprint",
+    name: "Sticker Sprint",
+    description: "Nền chấm, vàng hướng dương và bóng đổ đậm",
+    colors: ["#fff8ec", "#ffd34e", "#bdebd9", "#ded2f9"],
   },
 ];
 export const appearanceInputSchema = z.object({ theme: themeSchema }).strict();
