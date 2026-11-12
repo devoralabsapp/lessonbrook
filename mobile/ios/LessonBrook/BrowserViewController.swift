@@ -414,6 +414,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         native.view.isHidden = true
 
         let configuration = WKWebViewConfiguration()
+        configuration.ignoresViewportScaleLimits = false
         configuration.applicationNameForUserAgent = NativeGoogleSignIn.isConfigured
             ? "LessonBrookApp/iOS NativeGoogleSignIn/1 NativeWorkspace/1 MobileActions/1 NativeChrome/1"
             : "LessonBrookApp/iOS NativeWorkspace/1 MobileActions/1 NativeChrome/1"
@@ -606,7 +607,6 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard webView === self.webView else { return }
-        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
         activity.stopAnimating()
         native.view.isHidden = true
         webView.isHidden = false
