@@ -1,4 +1,5 @@
 import "server-only";
+import { createTransport } from "nodemailer";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 import { idSchema, requestIdSchema } from "@/domain";
@@ -29,12 +30,26 @@ function gmailConfig(teacher: Teacher) {
     return null;
 
   const sender = z.email().safeParse(env.STATEMENT_EMAIL_FROM?.trim());
+  if (!sender.success) return null;
+  const appPassword = env.STATEMENT_EMAIL_GMAIL_APP_PASSWORD?.replace(
+    /\s/g,
+    "",
+  );
+  if (appPassword)
+    return /^[a-z0-9]{16}$/i.test(appPassword)
+      ? { method: "smtp" as const, sender: sender.data, appPassword }
+      : null;
   const clientId = env.STATEMENT_EMAIL_GOOGLE_CLIENT_ID?.trim();
   const clientSecret = env.STATEMENT_EMAIL_GOOGLE_CLIENT_SECRET?.trim();
   const refreshToken = env.STATEMENT_EMAIL_GOOGLE_REFRESH_TOKEN?.trim();
-  if (!sender.success || !clientId || !clientSecret || !refreshToken)
-    return null;
-  return { sender: sender.data, clientId, clientSecret, refreshToken };
+  if (!clientId || !clientSecret || !refreshToken) return null;
+  return {
+    method: "api" as const,
+    sender: sender.data,
+    clientId,
+    clientSecret,
+    refreshToken,
+  };
 }
 
 export async function statementEmailOptions(
@@ -71,6 +86,44 @@ async function deliver(
   subject: string,
   body: string,
 ) {
+  if (config.method === "smtp") {
+    try {
+      await createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        tls: { minVersion: "TLSv1.2" },
+        auth: { user: config.sender, pass: config.appPassword },
+        connectionTimeout: 8_000,
+        greetingTimeout: 8_000,
+        socketTimeout: 10_000,
+      }).sendMail({
+        from: { name: "LessonBrook", address: config.sender },
+        to: { name: "", address: recipient },
+        subject,
+        text: body,
+      });
+      return;
+    } catch (error) {
+      const failure = z
+        .object({
+          code: z.string().optional(),
+          responseCode: z.number().optional(),
+        })
+        .safeParse(error);
+      // Explicit rejections or failures before DATA leave no message to deliver.
+      // A disconnect during or after DATA can lose the acceptance response.
+      const detail = failure.success ? failure.data : undefined;
+      const rejected =
+        detail?.responseCode !== undefined &&
+        detail.responseCode >= 400 &&
+        detail.responseCode < 600;
+      throw new GmailDeliveryError(
+        rejected || detail?.code === "EAUTH" || detail?.code === "EENVELOPE",
+      );
+    }
+  }
+
   let accessToken: string;
   try {
     const response = await fetch("https://oauth2.googleapis.com/token", {

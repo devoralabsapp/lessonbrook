@@ -30,13 +30,10 @@ Never put credentials in NEXT_PUBLIC variables, copy old OIDC tokens, hardcode a
 
 The **Send email** button uses the recipient saved in the student profile and the active statement link. It is available to one verified LessonBrook sign-in on a hosted deployment. Demo and Emulator never send mail.
 
-Enable the Gmail API and authorize your sender mailbox with an OAuth client you control. Request the [`gmail.send` scope](https://developers.google.com/workspace/gmail/api/auth/scopes) and offline access. The Gmail API only needs permission to send. Use the refresh token from your own client and the account that matches the sender address. A Google OAuth app left in external Testing has a [seven-day refresh token lifetime](https://developers.google.com/identity/protocols/oauth2#expiration) for this scope.
+Set `STATEMENT_EMAIL_FROM` to the Gmail sender address and `STATEMENT_EMAIL_TEACHER` to the verified Google email used to sign in to LessonBrook. The addresses can differ. Set these values on the server in the production environment and redeploy.
 
-Set these server-only values in the host's production environment, then redeploy:
-
-- `STATEMENT_EMAIL_FROM` is the Gmail sender address.
-- `STATEMENT_EMAIL_TEACHER` is the verified Google email used to sign in to LessonBrook. This can differ from the sender.
-- `STATEMENT_EMAIL_GOOGLE_CLIENT_ID`, `STATEMENT_EMAIL_GOOGLE_CLIENT_SECRET`, and `STATEMENT_EMAIL_GOOGLE_REFRESH_TOKEN` come from that OAuth client and sender's authorization. Store the client secret and refresh token as sensitive values.
+- For Gmail SMTP, set `STATEMENT_EMAIL_GMAIL_APP_PASSWORD` as a secret. Use a [Google App Password](https://support.google.com/accounts/answer/185833) from the sender account. LessonBrook uses TLS on port 465. Gmail may reject sign-in from a hosted server.
+- For Gmail API OAuth, leave the app password unset and enable the Gmail API. Authorize the sender mailbox using an OAuth client you control with the [`gmail.send` scope](https://developers.google.com/workspace/gmail/api/auth/scopes) and offline access. Set `STATEMENT_EMAIL_GOOGLE_CLIENT_ID`, `STATEMENT_EMAIL_GOOGLE_CLIENT_SECRET`, and `STATEMENT_EMAIL_GOOGLE_REFRESH_TOKEN`. Store the client secret and refresh token as secrets. A Google OAuth app left in external Testing has a [seven-day refresh token lifetime](https://developers.google.com/identity/protocols/oauth2#expiration) for this scope.
 
 Open an issued statement, choose **Share**, verify the sender and recipient, then choose **Send email**. The email includes the statement number and read-only link. If a send cannot be confirmed, check Gmail's Sent folder before creating a new link. Sending an email does not extend the link expiration.
 

@@ -4,9 +4,12 @@ import { sendStatementEmail } from "@/lib/server/statement-email";
 
 const mocks = vi.hoisted(() => {
   const runTransaction = vi.fn();
+  const createTransport = vi.fn();
   const collection = () => ({ doc: (id: string) => id });
-  return { runTransaction, collection };
+  return { runTransaction, collection, createTransport };
 });
+
+vi.mock("nodemailer", () => ({ createTransport: mocks.createTransport }));
 
 vi.mock("@/lib/firebase/admin", () => ({
   admin: () => ({ db: mocks }),
@@ -87,6 +90,7 @@ beforeEach(() => {
   vi.stubEnv("FIREBASE_AUTH_EMULATOR_HOST", "");
   vi.stubEnv("FIRESTORE_EMULATOR_HOST", "");
   vi.stubEnv("STATEMENT_EMAIL_TEACHER", teacher.email);
+  vi.stubEnv("STATEMENT_EMAIL_GMAIL_APP_PASSWORD", "");
   vi.stubEnv("STATEMENT_EMAIL_FROM", "sender@example.test");
   vi.stubEnv("STATEMENT_EMAIL_GOOGLE_CLIENT_ID", "fake-client");
   vi.stubEnv("STATEMENT_EMAIL_GOOGLE_CLIENT_SECRET", "fake-secret");
@@ -96,6 +100,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   mocks.runTransaction.mockReset();
+  mocks.createTransport.mockReset();
 });
 
 it("emails the active link to the saved recipient once and rejects a changed recipient", async () => {
@@ -155,4 +160,56 @@ it("keeps the delivery claim if Gmail might have accepted the request", async ()
   ).rejects.toMatchObject({ status: 409 });
   expect(record.emailDelivery?.sentAt).toBeNull();
   expect(gmail).toHaveBeenCalledTimes(2);
+});
+
+it("uses Gmail TLS and sends the statement once with an app password", async () => {
+  const record = simulateShareToken();
+  vi.stubEnv("STATEMENT_EMAIL_GMAIL_APP_PASSWORD", "abcd efgh ijkl mnop");
+  const sendMail = vi.fn().mockResolvedValue({});
+  mocks.createTransport.mockReturnValue({ sendMail });
+  await expect(
+    sendStatementEmail(teacher, id, input, key, "en"),
+  ).resolves.toEqual({ id });
+  await expect(
+    sendStatementEmail(teacher, id, input, key, "en"),
+  ).resolves.toEqual({ id });
+  expect(mocks.createTransport).toHaveBeenCalledOnce();
+  expect(mocks.createTransport).toHaveBeenCalledWith(
+    expect.objectContaining({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: { user: "sender@example.test", pass: "abcdefghijklmnop" },
+    }),
+  );
+  expect(sendMail).toHaveBeenCalledOnce();
+  expect(sendMail).toHaveBeenCalledWith(
+    expect.objectContaining({
+      to: { name: "", address: "guardian@example.test" },
+      text: expect.stringContaining(`https://ledger.example.test/s#${token}`),
+    }),
+  );
+  expect(record.emailDelivery?.sentAt).toBeInstanceOf(Timestamp);
+});
+
+it("preserves the send claim on an ambiguous SMTP disconnect", async () => {
+  const record = simulateShareToken();
+  vi.stubEnv("STATEMENT_EMAIL_GMAIL_APP_PASSWORD", "abcdefghijklmnop");
+  const sendMail = vi
+    .fn()
+    .mockRejectedValue(
+      Object.assign(new Error("Connection closed unexpectedly"), {
+        code: "ECONNECTION",
+        command: "CONN",
+      }),
+    );
+  mocks.createTransport.mockReturnValue({ sendMail });
+  await expect(
+    sendStatementEmail(teacher, id, input, key, "en"),
+  ).rejects.toMatchObject({ status: 502 });
+  await expect(
+    sendStatementEmail(teacher, id, input, key, "en"),
+  ).rejects.toMatchObject({ status: 409 });
+  expect(sendMail).toHaveBeenCalledOnce();
+  expect(record.emailDelivery?.sentAt).toBeNull();
 });
