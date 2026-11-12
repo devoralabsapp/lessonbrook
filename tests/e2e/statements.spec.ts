@@ -55,7 +55,7 @@ test("360px: tìm học viên → chọn buổi → phát hành trực tiếp �
   await expect(search).toHaveCount(0);
   const period = page.getByRole("combobox", { name: "Kỳ học" });
   const dueDate = page.getByLabel("Ngày đến hạn", { exact: true });
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.setViewportSize({ width: 1024, height: 800 });
   await expect(period).toHaveText("Tháng này");
   const presetTop = (await studentPicker.boundingBox())!.y;
   for (const field of [period, dueDate])
