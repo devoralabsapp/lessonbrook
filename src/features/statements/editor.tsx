@@ -169,7 +169,7 @@ export function StatementEditor({
               className={cn(
                 "grid items-start gap-x-3 gap-y-4",
                 period === "custom"
-                  ? "@min-[30rem]:grid-cols-2 @min-[40rem]:grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_repeat(3,minmax(0,1fr))] @min-[40rem]:gap-x-2 @min-[40rem]:[&_.themed-select-trigger]:gap-2 @min-[40rem]:[&_.themed-select-trigger]:px-2"
+                  ? "@min-[30rem]:grid-cols-2 @min-[40rem]:grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_repeat(3,minmax(0,1fr))] @min-[40rem]:gap-x-2 @min-[40rem]:[&_.themed-select-trigger]:gap-2! @min-[40rem]:[&_.themed-select-trigger]:px-2!"
                   : "@min-[30rem]:grid-cols-[minmax(0,1.35fr)_repeat(2,minmax(0,1fr))]",
               )}
             >
