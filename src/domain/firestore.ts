@@ -1,7 +1,13 @@
 import "server-only";
 import { Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
-import { idSchema, profileSchema, sessionSchema, studentSchema } from ".";
+import {
+  idSchema,
+  profileSchema,
+  requestIdSchema,
+  sessionSchema,
+  studentSchema,
+} from ".";
 import { statementSchema } from "./statements";
 import { paymentSchema } from "./payments";
 import { classSchema, lessonSchema } from "./classes";
@@ -45,6 +51,14 @@ export const shareTokenDocumentSchema = z
     statementId: idSchema,
     expiresAt: timestamp,
     revokedAt: timestamp.nullable(),
+    emailDelivery: z
+      .object({
+        requestId: requestIdSchema,
+        attemptedAt: timestamp,
+        sentAt: timestamp.nullable(),
+      })
+      .strict()
+      .optional(),
     createdAt: timestamp,
     schemaVersion: z.literal(1),
   })

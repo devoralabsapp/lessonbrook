@@ -54,6 +54,9 @@ export type SharePreview = {
   version: number;
   previewHash: string;
 };
+export type StatementEmailOptions =
+  | { available: false }
+  | { available: true; recipient: string | null; sender: string };
 export type ShareStatus = { active: boolean; expiresAt: string | null };
 export type ShareResult = {
   id: string;

@@ -84,6 +84,7 @@ const columns: Record<Dataset, [string, string][]> = {
     ["displayName", "Tên học viên"],
     ["contactName", "Người liên hệ"],
     ["phone", "Điện thoại"],
+    ["email", "Email"],
     ["defaultRateVnd", "Đơn giá mặc định VND"],
     ["privateNote", "Ghi chú riêng"],
     ["archivedAt", "Lưu trữ UTC"],

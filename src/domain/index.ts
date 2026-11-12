@@ -38,11 +38,17 @@ export const profileSchema = z
     schemaVersion: z.literal(1),
   })
   .strict();
+export const studentEmailSchema = z
+  .string()
+  .trim()
+  .max(254)
+  .pipe(z.union([z.literal(""), z.email("Nhập địa chỉ email hợp lệ.")]));
 export const studentInputSchema = z
   .object({
     displayName: text(100).min(1, "Vui lòng nhập tên học viên"),
     contactName: text(100).default(""),
     phone: text(30).default(""),
+    email: studentEmailSchema.optional(),
     privateNote: text(1000).default(""),
     // Existing clients and student records may still supply a legacy rate.
     defaultRateVnd: moneySchema.optional(),

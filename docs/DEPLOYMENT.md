@@ -26,6 +26,20 @@ Use your Firebase Web App's configuration:
 
 Never put credentials in NEXT_PUBLIC variables, copy old OIDC tokens, hardcode access tokens, or commit service-account keys. On Node hosts outside Vercel, the adapter supports ADC through GOOGLE_APPLICATION_CREDENTIALS; keep credentials outside the checkout and use your host's secret management. Emulators are local/CI only.
 
+## Optional statement email through Gmail
+
+The **Send email** button uses the recipient saved in the student profile and the active statement link. It is available to one verified LessonBrook sign-in on a hosted deployment. Demo and Emulator never send mail.
+
+Enable the Gmail API and authorize your sender mailbox with an OAuth client you control. Request the [`gmail.send` scope](https://developers.google.com/workspace/gmail/api/auth/scopes) and offline access. The Gmail API only needs permission to send. Use the refresh token from your own client and the account that matches the sender address. A Google OAuth app left in external Testing has a [seven-day refresh token lifetime](https://developers.google.com/identity/protocols/oauth2#expiration) for this scope.
+
+Set these server-only values in the host's production environment, then redeploy:
+
+- `STATEMENT_EMAIL_FROM` is the Gmail sender address.
+- `STATEMENT_EMAIL_TEACHER` is the verified Google email used to sign in to LessonBrook. This can differ from the sender.
+- `STATEMENT_EMAIL_GOOGLE_CLIENT_ID`, `STATEMENT_EMAIL_GOOGLE_CLIENT_SECRET`, and `STATEMENT_EMAIL_GOOGLE_REFRESH_TOKEN` come from that OAuth client and sender's authorization. Store the client secret and refresh token as sensitive values.
+
+Open an issued statement, choose **Share**, verify the sender and recipient, then choose **Send email**. The email includes the statement number and read-only link. If a send cannot be confirmed, check Gmail's Sent folder before creating a new link. Sending an email does not extend the link expiration.
+
 ## Vercel OIDC / Workload Identity Federation
 
 The application currently permits OIDC only in the technical **Production** environment of the trusted Vercel project. Previews do not use its production identity. For staging, use separate Firebase and Vercel projects; do not broaden production trust to all previews.

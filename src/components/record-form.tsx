@@ -225,6 +225,7 @@ export function RecordForm({
             displayName: String(values.get("displayName")),
             contactName: String(values.get("contactName")),
             phone: String(values.get("phone")),
+            email: String(values.get("email")),
             privateNote: String(values.get("privateNote")),
           }
         : sharedLesson
@@ -356,6 +357,16 @@ export function RecordForm({
                   />
                 </label>
               </div>
+              <label className="field-label">
+                {t("Email nhận bảng kê")}
+                <Input
+                  name="email"
+                  type="email"
+                  autoComplete="off"
+                  maxLength={254}
+                  defaultValue={s?.email}
+                />
+              </label>
             </>
           ) : (
             <>

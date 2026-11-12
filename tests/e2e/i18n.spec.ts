@@ -540,6 +540,7 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     .first()
     .click();
   await page.getByLabel("Student name *", { exact: true }).fill("Đã dạy");
+  await page.getByLabel("Statement email").fill("guardian@example.test");
   await page.getByRole("button", { name: "Save student", exact: true }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "Student Đã dạy saved." }),
@@ -550,6 +551,11 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   ).toBeVisible();
   const studentUrl = page.url();
   const studentId = studentUrl.split("/").pop()!;
+  await page.getByRole("button", { name: "Edit student", exact: true }).click();
+  await expect(page.getByLabel("Statement email")).toHaveValue(
+    "guardian@example.test",
+  );
+  await page.keyboard.press("Escape");
   await page
     .getByRole("button", { name: "Record lesson", exact: true })
     .click();
@@ -582,6 +588,12 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
   const link = await page
     .getByLabel("New shared link", { exact: true })
     .inputValue();
+  await expect(
+    page.getByRole("button", { name: "Send email", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Statement email is not enabled for this account."),
+  ).toBeVisible();
   const guest = await browser.newContext({
     storageState: { cookies: [], origins: [] },
     viewport: { width: 360, height: 800 },
@@ -591,6 +603,9 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     await recipient.goto(link);
     await expect(recipient.getByTestId("public-statement")).toContainText(
       "TUITION STATEMENT",
+    );
+    await expect(recipient.getByTestId("public-statement")).not.toContainText(
+      "guardian@example.test",
     );
     await expect(recipient.getByTestId("public-statement")).toContainText(
       "Đã dạy",

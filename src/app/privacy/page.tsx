@@ -29,7 +29,7 @@ export default async function PrivacyPage() {
         </p>
         <p>
           {t(
-            "Sổ lưu học viên, lớp và danh sách tham gia, đơn giá, buổi dạy, bảng kê, khoản thu, lựa chọn giao diện và lịch sử sửa ghi nhận. Tên người liên hệ, điện thoại và ghi chú là thông tin tùy chọn do bạn nhập. Chỉ nhập thông tin cần thiết cho việc dạy và đối chiếu học phí.",
+            "Sổ lưu học viên, lớp và danh sách tham gia, đơn giá, buổi dạy, bảng kê, khoản thu, lựa chọn giao diện và lịch sử sửa ghi nhận. Tên người liên hệ, điện thoại, email nhận bảng kê và ghi chú là thông tin tùy chọn do bạn nhập. Chỉ nhập thông tin cần thiết cho việc dạy và đối chiếu học phí.",
           )}
         </p>
         <p>
@@ -53,6 +53,11 @@ export default async function PrivacyPage() {
         <p>
           {t(
             "Email, điện thoại, ghi chú nội bộ và dữ liệu của học viên khác không được đưa vào trang chia sẻ. Số tiền đã thu là theo ghi nhận của giáo viên, không phải xác nhận từ ngân hàng.",
+          )}
+        </p>
+        <p>
+          {t(
+            "Khi giáo viên bấm Gửi email, Gmail nhận địa chỉ email đã lưu, mã bảng kê và link để chuyển thư.",
           )}
         </p>
         <p>

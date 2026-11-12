@@ -112,6 +112,33 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
       ).status,
     ).toBe(200);
   });
+  it("keeps statement email addresses private and disables delivery in Emulator", async () => {
+    const existing = await (await a.call(`/api/students/${studentId}`)).json();
+    const email = "guardian@example.test";
+    expect(
+      (
+        await a.call(`/api/students/${studentId}`, "PATCH", {
+          displayName: existing.displayName,
+          email,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await (await a.call(`/api/students/${studentId}`)).json()).email,
+    ).toBe(email);
+
+    const link = await share();
+    expect(
+      JSON.stringify(await (await resolve(link.token!)).json()),
+    ).not.toContain(email);
+    const path = `/api/statements/${statementId}/share-email`;
+    expect(await (await a.call(path)).json()).toEqual({ available: false });
+    expect(
+      (await a.call(path, "POST", { token: link.token, recipient: email }))
+        .status,
+    ).toBe(403);
+  });
+
   it("8 × 200k → thu 1m và 600k → vô hiệu hóa: chi tiết/tổng quan/public cùng đúng; chỉ lưu hash token", async () => {
     async function lessonsWithPayment(status: "paid" | "unpaid") {
       const response = await a.call(

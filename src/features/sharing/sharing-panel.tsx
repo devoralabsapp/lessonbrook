@@ -3,10 +3,15 @@ import { useI18n } from "@/lib/i18n/client";
 
 import Link from "next/link";
 import { useDemoWorkspace } from "@/components/workspace-link";
+import { useResource } from "@/features/classes/shared";
 import { useEffect, useState } from "react";
 import { formatVnd } from "@/domain";
 import { type Statement } from "@/domain/statements";
-import { type ShareResult, type ShareStatus } from "@/domain/sharing";
+import type {
+  ShareResult,
+  ShareStatus,
+  StatementEmailOptions,
+} from "@/domain/sharing";
 import { api } from "@/lib/client-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,6 +40,7 @@ export function SharingPanel({
     | null
   >(null);
   const [notice, setNotice] = useState("");
+  const [emailedLink, setEmailedLink] = useState<string | null>(null);
   const [statusError, setStatusError] = useState("");
   const [revision, setRevision] = useState(0);
   const mutation = useStatementMutation();
@@ -61,6 +67,25 @@ export function SharingPanel({
     currentStatus?.active
       ? newLink
       : null;
+  const emailEndpoint = `/api/statements/${statement.id}/share-email`;
+  const emailOptions = useResource<StatementEmailOptions>(
+    usableLink && !demo ? emailEndpoint : null,
+  );
+  const emailRecipient = emailOptions.data?.available
+    ? emailOptions.data.recipient
+    : null;
+  const emailSent = !!usableLink && emailedLink === usableLink.tokenHash;
+  async function sendEmail() {
+    if (!usableLink?.token || !emailRecipient || emailSent) return;
+    const result = await mutation.run(emailEndpoint, "POST", {
+      token: usableLink.token,
+      recipient: emailRecipient,
+    });
+    if (result) {
+      setEmailedLink(usableLink.tokenHash);
+      setNotice(t("Đã gửi link bảng kê qua Gmail."));
+    }
+  }
   async function create() {
     const result = await mutation.run<ShareResult>(
       `/api/statements/${statement.id}/share`,
@@ -214,6 +239,60 @@ export function SharingPanel({
                 {t("Mở bảng kê công khai")}
               </a>
             )}
+          </div>
+          <div className="space-y-2 border-t border-border pt-3">
+            {emailOptions.data?.available ? (
+              emailRecipient ? (
+                <p className="break-words text-sm">
+                  {t("Gửi từ {0} đến {1}", {
+                    "0": emailOptions.data.sender,
+                    "1": emailRecipient,
+                  })}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t("Thêm email nhận bảng kê vào hồ sơ học viên để gửi.")}
+                </p>
+              )
+            ) : emailOptions.error ? (
+              <p role="alert" className="text-sm text-destructive">
+                {t(emailOptions.error)}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {demo
+                  ? t("Demo không gửi email thật.")
+                  : emailOptions.data
+                    ? t("Gửi email bảng kê chưa được bật cho tài khoản này.")
+                    : t("Đang kiểm tra địa chỉ nhận…")}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!emailRecipient || mutation.busy || emailSent}
+                onClick={sendEmail}
+              >
+                {emailSent ? t("Đã gửi email") : t("Gửi email")}
+              </Button>
+              {emailOptions.error && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={emailOptions.reload}
+                >
+                  {t("Thử tải lại")}
+                </Button>
+              )}
+              {emailOptions.data?.available && !emailRecipient && (
+                <Button asChild variant="ghost">
+                  <Link href={`/app/students/${statement.studentId}`}>
+                    {t("Mở hồ sơ học viên")}
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       ) : (

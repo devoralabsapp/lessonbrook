@@ -1,6 +1,10 @@
 import { getI18n } from "@/lib/i18n/server";
 import { z } from "zod";
 import { cookies } from "next/headers";
+import {
+  sendStatementEmail,
+  statementEmailOptions,
+} from "@/lib/server/statement-email";
 import { requestIdSchema } from "@/domain";
 import { AppError } from "@/lib/server/errors";
 import { assertAccountAvailable } from "@/lib/server/account-access";
@@ -115,9 +119,8 @@ async function handle(request: Request, context: Context) {
       ((request.method === "POST" && path.length === 1) ||
         (request.method === "PATCH" && path.length === 2));
     // These save transactions already read both account controls before writing.
-    const { uid, exp } = await (recordSave
-      ? verifyUserSession()
-      : requireUser());
+    const teacher = await (recordSave ? verifyUserSession() : requireUser());
+    const { uid, exp } = teacher;
     if (recordSave) savingRecordFor = uid;
     if (path.length > 3) throw new AppError(404, "Không tìm thấy chức năng.");
     if (request.method === "GET") {
@@ -160,6 +163,8 @@ async function handle(request: Request, context: Context) {
         if (action === "public-preview")
           return json(await getSharePreview(uid, id));
         if (action === "share") return json(await getShareStatus(uid, id));
+        if (action === "share-email")
+          return json(await statementEmailOptions(teacher, id));
       }
       if (resource === "statements" && path.length === 2 && id === "eligible")
         return json(await listEligibleSessions(uid, query));
@@ -270,6 +275,16 @@ async function handle(request: Request, context: Context) {
           return json(await voidPayment(uid, id, body, requestId));
         if (resource === "statements" && action === "share")
           return json(await createShare(uid, id, body, requestId));
+        if (resource === "statements" && action === "share-email")
+          return json(
+            await sendStatementEmail(
+              teacher,
+              id,
+              body,
+              requestId,
+              (await getI18n()).locale,
+            ),
+          );
         if (resource === "statements" && action === "revoke-share")
           return json(await revokeShare(uid, id, body, requestId));
       }
