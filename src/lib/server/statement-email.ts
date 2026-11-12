@@ -1,12 +1,17 @@
 import "server-only";
 import { createTransport } from "nodemailer";
+import MailComposer from "nodemailer/lib/mail-composer";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 import { idSchema, requestIdSchema } from "@/domain";
 import { shareTokenDocumentSchema } from "@/domain/firestore";
 import { shareTokenSchema, type StatementEmailOptions } from "@/domain/sharing";
 import { admin } from "@/lib/firebase/admin";
-import { translator, type Locale } from "@/lib/i18n/core";
+import type { Locale } from "@/lib/i18n/core";
+import {
+  buildStatementEmail,
+  type StatementEmailContent,
+} from "@/lib/email/statement-template";
 import { assertAccountWritable } from "./account-access";
 import { AppError } from "./errors";
 import { studentDto, userRef } from "./repository";
@@ -89,8 +94,7 @@ class GmailDeliveryError extends Error {
 async function deliver(
   config: NonNullable<ReturnType<typeof gmailConfig>>,
   recipient: string,
-  subject: string,
-  body: string,
+  content: StatementEmailContent,
 ) {
   if (config.method === "smtp") {
     try {
@@ -106,8 +110,7 @@ async function deliver(
       }).sendMail({
         from: { name: "LessonBrook", address: config.sender },
         to: { name: "", address: recipient },
-        subject,
-        text: body,
+        ...content,
       });
       return;
     } catch (error) {
@@ -154,23 +157,15 @@ async function deliver(
     throw new GmailDeliveryError(true);
   }
 
-  const text =
-    Buffer.from(body)
-      .toString("base64")
-      .match(/.{1,76}/g)
-      ?.join("\r\n") ?? "";
-  const raw = Buffer.from(
-    [
-      `From: <${config.sender}>`,
-      `To: <${recipient}>`,
-      `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`,
-      "MIME-Version: 1.0",
-      "Content-Type: text/plain; charset=UTF-8",
-      "Content-Transfer-Encoding: base64",
-      "",
-      text,
-      "",
-    ].join("\r\n"),
+  const raw = (
+    await new MailComposer({
+      from: { name: "LessonBrook", address: config.sender },
+      to: { name: "", address: recipient },
+      ...content,
+      textEncoding: "base64",
+    })
+      .compile()
+      .build()
   ).toString("base64url");
   let response: Response;
   try {
@@ -269,19 +264,18 @@ export async function sendStatementEmail(
     tx.update(tokenRef, {
       emailDelivery: { requestId, attemptedAt: Timestamp.now(), sentAt: null },
     });
-    return { sent: false, number: statement.number } as const;
+    return {
+      sent: false,
+      content: buildStatementEmail(statement, {
+        url: `${origin}/s#${token}`,
+        locale,
+        expiresAt: link.data.expiresAt.toDate().toISOString(),
+      }),
+    } as const;
   });
   if (claim.sent) return { id };
-  const t = translator(locale);
   try {
-    await deliver(
-      config,
-      recipient,
-      t("Bảng kê học phí {0}", { "0": claim.number }),
-      t("Bạn có thể xem bảng kê học phí qua link sau:\n\n{0}", {
-        "0": `${origin}/s#${token}`,
-      }),
-    );
+    await deliver(config, recipient, claim.content);
   } catch (error) {
     if (error instanceof GmailDeliveryError && error.safeToRetry) {
       await db.runTransaction(async (tx) => {

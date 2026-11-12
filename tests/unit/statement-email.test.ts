@@ -31,6 +31,18 @@ vi.mock("@/lib/server/statements-repository", () => ({
     studentId: "student-a",
     status: "issued",
     number: "CC-2026-000001",
+    teacherSnapshot: { displayName: "Demo Teacher" },
+    recipientSnapshot: { displayName: "Alex Rivera" },
+    periodStart: "2026-11-01",
+    periodEnd: "2026-11-30",
+    issueDate: "2026-11-13",
+    dueDate: "2026-11-20",
+    totalVnd: 400000,
+    paidVnd: 100000,
+    items: [
+      { sessionId: "session-1", sessionDate: "2026-11-02", amountVnd: 200000 },
+      { sessionId: "session-2", sessionDate: "2026-11-09", amountVnd: 200000 },
+    ],
   }),
 }));
 vi.mock("@/lib/server/sharing-repository", () => ({
@@ -136,11 +148,22 @@ it("emails the active link to the saved recipient once and rejects a changed rec
     JSON.parse(gmail.mock.calls[1][1].body).raw,
     "base64url",
   ).toString();
-  const [headers, body] = mime.split("\r\n\r\n");
-  expect(headers).toContain("From: <sender@example.test>");
-  expect(headers).toContain("To: <guardian@example.test>");
-  expect(Buffer.from(body, "base64").toString()).toContain(
+  expect(mime).toContain("From: LessonBrook <sender@example.test>");
+  expect(mime).toContain("To: guardian@example.test");
+  expect(mime).toContain("Content-Type: multipart/alternative;");
+  const plainPart = mime.match(
+    /Content-Type: text\/plain[\s\S]*?\r\n\r\n([\s\S]*?)\r\n--/,
+  );
+  const htmlPart = mime.match(
+    /Content-Type: text\/html[\s\S]*?\r\n\r\n([\s\S]*?)\r\n--/,
+  );
+  expect(plainPart).not.toBeNull();
+  expect(htmlPart).not.toBeNull();
+  expect(Buffer.from(plainPart![1], "base64").toString()).toContain(
     `https://ledger.example.test/s#${token}`,
+  );
+  expect(Buffer.from(htmlPart![1], "base64").toString()).toContain(
+    "Your tuition statement",
   );
   expect(JSON.stringify(record)).not.toContain(token);
   expect(JSON.stringify(record)).not.toContain(input.recipient);
@@ -188,6 +211,8 @@ it("uses Gmail TLS and sends the statement once with an app password", async () 
     expect.objectContaining({
       to: { name: "", address: "guardian@example.test" },
       text: expect.stringContaining(`https://ledger.example.test/s#${token}`),
+      html: expect.stringContaining('href="https://ledger.example.test/s#'),
+      subject: "Tuition statement CC-2026-000001 · Alex Rivera",
     }),
   );
   expect(record.emailDelivery?.sentAt).toBeInstanceOf(Timestamp);
