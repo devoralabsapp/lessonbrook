@@ -261,10 +261,29 @@ test("visitors can preview themes on the home page without saving an account pre
     "Unpaid balance on all issued statements",
   );
   await expect(caption).toHaveCSS("color", "rgb(17, 17, 17)");
-  await expect(caption).toHaveCSS("font-size", "12px");
+  await expect(caption).toHaveCSS("font-size", "13px");
   await expect(
     outstanding.getByRole("link", { name: "Outstanding" }),
-  ).toHaveCSS("font-size", "14px");
+  ).toHaveCSS("font-size", "15px");
+  const dashboardTitle = page.getByRole("heading", {
+    name: "Have a good teaching day.",
+  });
+  await expect(dashboardTitle).toHaveCSS("font-size", "31px");
+  await page.setViewportSize({ width: 320, height: 800 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(dashboardTitle).toHaveCSS("font-size", "37px");
+  const students = page
+    .locator('nav[data-position="sidebar"]')
+    .getByRole("link", {
+      name: "Students",
+    });
+  await expect(students).toHaveCSS("font-size", "15px");
+  await expect(students).toHaveCSS("font-weight", "700");
   await page.goto("/");
   await theme.click();
   await themeMenu
