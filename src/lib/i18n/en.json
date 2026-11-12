@@ -970,5 +970,8 @@
   "Thêm học viên bằng tên và thông tin liên hệ nếu có. Sổ bắt đầu từ các buổi bạn nhập, chưa bao gồm khoản nợ cũ.": "Add a student by name, with contact details if available. Your ledger starts with the lessons you enter and excludes earlier debts.",
   "Chọn “Ghi buổi dạy”, chọn học viên, ngày và trạng thái “Đã dạy”. Nhập đơn giá nếu có tính phí. Bạn có thể ghi bù.": "Select Record lesson, choose the student and date, and set the status to Completed. Enter the price for a chargeable lesson. You can record past lessons too.",
   "Đơn giá buổi này (VND)": "This lesson's price (VND)",
-  "Nhập đơn giá cho buổi có tính phí.": "Enter a price for this chargeable lesson."
+  "Nhập đơn giá cho buổi có tính phí.": "Enter a price for this chargeable lesson.",
+  "Chưa có lớp đang hoạt động.": "No active classes yet.",
+  "Học phí / người (VND)": "Price / person (VND)",
+  "Đã lưu buổi cho {0} học viên.": "Lesson saved for {0} students."
 }

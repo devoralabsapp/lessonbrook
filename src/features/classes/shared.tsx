@@ -9,7 +9,7 @@ import { useDebounced } from "@/lib/use-debounced";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Page } from "@/features/statements/shared";
-export function useResource<T>(endpoint: string) {
+export function useResource<T>(endpoint: string | null) {
   const { t } = useI18n();
   const [revision, setRevision] = useState(0);
   const reload = useCallback(() => setRevision((v) => v + 1), []);
@@ -23,6 +23,7 @@ export function useResource<T>(endpoint: string) {
     message: string;
   } | null>(null);
   useEffect(() => {
+    if (!endpoint) return;
     let active = true;
     api<T>(endpoint)
       .then((data) => {

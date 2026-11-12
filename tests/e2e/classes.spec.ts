@@ -165,18 +165,54 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await expect(requiredStudent).toBeFocused();
   await expect(recordDialog.getByRole("listbox")).toBeVisible();
   await requiredStudent.press("Escape");
-  await chooseOption(
-    recordDialog.getByRole("combobox", { name: "Dạy cho" }),
-    "group",
-  );
+  const ledgerUrl = page.url();
+  const classId = new URL(classUrl).pathname.split("/").at(-1)!;
+  const teach = recordDialog.getByRole("combobox", { name: "Dạy cho" });
+  await recordDialog.getByLabel("Ngày dạy").fill("2026-10-17");
+  await recordDialog.getByLabel("Giờ bắt đầu").fill("19:15");
+  await recordDialog.getByLabel("Thời lượng").fill("55");
+  await recordDialog.getByLabel("Ghi chú riêng").fill("Ghi chú thử nghiệm");
+  await chooseOption(teach, "group");
+  await expect(page).toHaveURL(ledgerUrl);
   await expect(
-    page.getByRole("heading", { name: "Ghi buổi nhóm/lớp", exact: true }),
+    recordDialog.getByRole("heading", { name: "Ghi buổi dạy" }),
   ).toBeVisible();
-  await page.getByRole("checkbox", { name: "An", exact: true }).check();
-  await page.getByRole("checkbox", { name: "Lan", exact: true }).check();
-  await page.getByLabel("Học phí / người").fill("120000");
+  await recordDialog.getByRole("checkbox", { name: "An", exact: true }).check();
+  await recordDialog
+    .getByRole("checkbox", { name: "Lan", exact: true })
+    .check();
+  const price = recordDialog.getByLabel("Học phí / người");
+  await price.fill("120000");
+  await chooseOption(teach, "class");
+  await chooseOption(
+    recordDialog.getByRole("combobox", { name: "Lớp học *" }),
+    classId,
+  );
+  await expect(page).toHaveURL(ledgerUrl);
+  await expect(price).toHaveValue("250000");
+  await expect(price).toHaveAttribute("readonly", "");
+  await expect(
+    recordDialog.getByRole("checkbox", { name: "Minh", exact: true }),
+  ).toBeChecked();
+  await chooseOption(teach, "group");
+  await expect(
+    recordDialog.getByRole("checkbox", { name: "An", exact: true }),
+  ).toBeChecked();
+  await expect(price).toHaveValue("120000");
+  await expect(recordDialog.getByLabel("Ngày dạy")).toHaveValue("2026-10-17");
+  await expect(recordDialog.getByLabel("Giờ bắt đầu")).toHaveValue("19:15");
+  await expect(recordDialog.getByLabel("Thời lượng")).toHaveValue("55");
+  await expect(recordDialog.getByLabel("Ghi chú riêng")).toHaveValue(
+    "Ghi chú thử nghiệm",
+  );
+  await recordDialog
+    .getByRole("button", { name: "Lưu buổi dạy", exact: true })
+    .click();
+  await expect(recordDialog).toHaveCount(0);
+  await expect(page).toHaveURL(ledgerUrl);
   await page
-    .getByRole("button", { name: "Lưu buổi nhóm/lớp", exact: true })
+    .getByRole("link", { name: "Buổi nhóm tự chọn", exact: true })
+    .first()
     .click();
   await expect(
     page.getByRole("heading", { name: "Buổi nhóm tự chọn" }),
@@ -265,6 +301,37 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await expect(studentPicker).toHaveText("Tất cả học viên");
   await expect(groupRows).toHaveCount(2);
   await expect(classRows).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
+  await chooseOption(teach, "class");
+  await chooseOption(
+    recordDialog.getByRole("combobox", { name: "Lớp học *" }),
+    classId,
+  );
+  await recordDialog
+    .getByRole("checkbox", { name: "Minh", exact: true })
+    .uncheck();
+  await recordDialog
+    .getByRole("checkbox", { name: "Lan", exact: true })
+    .uncheck();
+  await recordDialog.getByLabel("Ngày dạy").fill("2026-10-18");
+  await recordDialog
+    .getByRole("button", { name: "Lưu buổi dạy", exact: true })
+    .click();
+  await expect(recordDialog).toHaveCount(0);
+  await expect(page).toHaveURL(ledgerUrl);
+  await expect(classRows).toHaveCount(3);
+  const ledger = await (
+    await context.request.get(
+      "/api/sessions?from=2026-10-18&to=2026-10-18&classId=" + classId,
+    )
+  ).json();
+  expect(ledger.items).toHaveLength(1);
+  expect(ledger.items[0]).toMatchObject({
+    studentName: "An",
+    rateVnd: 250000,
+    classId,
+  });
 
   await page.goto("/app/classes");
   const classSearch = page.getByRole("searchbox", { name: "Tìm tên lớp" });

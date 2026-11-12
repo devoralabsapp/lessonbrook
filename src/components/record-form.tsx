@@ -4,8 +4,6 @@ import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useRef, useState } from "react";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
-import { useRouter } from "next/navigation";
-import { useWorkspaceHref } from "@/components/workspace-link";
 import { LoaderCircle, X } from "lucide-react";
 import {
   type Student,
@@ -15,11 +13,17 @@ import {
   sessionAmount,
   vietnamToday,
 } from "@/domain";
+import {
+  ClassLessonRoster,
+  useClassLessonRoster,
+} from "@/features/classes/lesson-roster";
+import { MemberPicker } from "@/features/classes/shared";
 import { useDebounced } from "@/lib/use-debounced";
 import { api } from "@/lib/client-api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ThemedSelect } from "./ui/themed-select";
+type LessonMode = "single" | "group" | "class";
 type Props = {
   kind: "student" | "session";
   record?: Student | TeachingSession;
@@ -37,11 +41,10 @@ export function RecordForm({
   onSaved,
 }: Props) {
   const { t, locale } = useI18n();
-  const router = useRouter();
-  const workspaceHref = useWorkspaceHref();
   const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [selectionError, setSelectionError] = useState("");
   const request = useRef<{
     payload: string;
     id: string;
@@ -60,11 +63,28 @@ export function RecordForm({
   const [selected, setSelected] = useState(
     lesson?.studentId ?? (student?.archivedAt ? "" : student?.id) ?? "",
   );
-  const [rate, setRate] = useState<number | "">(
+  const [mode, setMode] = useState<LessonMode>("single");
+  const [groupMembers, setGroupMembers] = useState<Student[]>([]);
+  const [singleRate, setSingleRate] = useState<number | "">(
     lesson?.rateVnd ?? student?.defaultRateVnd ?? "",
   );
+  const [groupRate, setGroupRate] = useState<number | "">(200000);
+  const sharedLesson = mode !== "single";
+  const selectingClass = mode === "class";
+  const roster = useClassLessonRoster(selectingClass);
+  const studentIds = selectingClass
+    ? roster.studentIds
+    : groupMembers.map((member) => member.id);
+  const classUnavailable =
+    selectingClass && (!roster.data || !!roster.data.archivedAt);
+  const rate = selectingClass
+    ? (roster.data?.rateVnd ?? "")
+    : sharedLesson
+      ? groupRate
+      : singleRate;
   const chargesTuition = status !== "cancelled" && billable;
-  const priceRequired = !!selected && chargesTuition;
+  const priceRequired =
+    chargesTuition && (sharedLesson ? studentIds.length > 0 : !!selected);
   const rateVnd = rate === "" ? 0 : rate;
   const [date, setDate] = useState(lesson?.sessionDate ?? vietnamToday());
   const [time, setTime] = useState(lesson?.startTime ?? "");
@@ -93,7 +113,7 @@ export function RecordForm({
     };
   }, [t]);
   useEffect(() => {
-    if (kind !== "session") return;
+    if (kind !== "session" || sharedLesson) return;
     studentGeneration.current++;
     let active = true;
     api<{
@@ -130,9 +150,9 @@ export function RecordForm({
     return () => {
       active = false;
     };
-  }, [kind, studentEndpoint, selected, student, t]);
+  }, [kind, sharedLesson, studentEndpoint, selected, student, t]);
   useEffect(() => {
-    if (kind !== "session" || !selected || !date) return;
+    if (kind !== "session" || sharedLesson || !selected || !date) return;
     let active = true;
     api<{
       items: TeachingSession[];
@@ -149,7 +169,7 @@ export function RecordForm({
     return () => {
       active = false;
     };
-  }, [kind, selected, date, time, lesson?.id, t]);
+  }, [kind, sharedLesson, selected, date, time, lesson?.id, t]);
   async function moreStudents() {
     if (studentsBusy || studentSearch !== studentTerm) return;
     const generation = studentGeneration.current;
@@ -177,10 +197,28 @@ export function RecordForm({
   }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (busy) return;
-    setBusy(true);
+    if (busy || classUnavailable) return;
     setError("");
+    if (sharedLesson && !studentIds.length) {
+      setSelectionError(t("Chọn ít nhất một học viên tham gia buổi."));
+      return;
+    }
+    setSelectionError("");
+    setBusy(true);
     const values = new FormData(e.currentTarget);
+    const lessonFields = {
+      sessionDate: date,
+      startTime: time || null,
+      durationMinutes: lesson?.lessonId
+        ? lesson.durationMinutes
+        : values.get("durationMinutes")
+          ? Number(values.get("durationMinutes"))
+          : null,
+      status,
+      billable: chargesTuition,
+      rateVnd,
+      privateNote: String(values.get("privateNote")),
+    };
     const payload =
       kind === "student"
         ? {
@@ -189,20 +227,15 @@ export function RecordForm({
             phone: String(values.get("phone")),
             privateNote: String(values.get("privateNote")),
           }
-        : {
-            studentId: selected,
-            sessionDate: date,
-            startTime: time || null,
-            durationMinutes: lesson?.lessonId
-              ? lesson.durationMinutes
-              : values.get("durationMinutes")
-                ? Number(values.get("durationMinutes"))
-                : null,
-            status,
-            billable: chargesTuition,
-            rateVnd,
-            privateNote: String(values.get("privateNote")),
-          };
+        : sharedLesson
+          ? {
+              ...lessonFields,
+              classId: selectingClass ? roster.classId : null,
+              studentIds,
+            }
+          : { ...lessonFields, studentId: selected };
+    const resource =
+      kind === "student" ? "students" : sharedLesson ? "lessons" : "sessions";
     const serialized = JSON.stringify(payload);
     if (request.current?.payload !== serialized)
       request.current = { payload: serialized, id: crypto.randomUUID() };
@@ -210,16 +243,17 @@ export function RecordForm({
       const result = await api<{
         id: string;
         record?: Student | TeachingSession;
-      }>(
-        `/api/${kind === "student" ? "students" : "sessions"}${record ? `/${record.id}` : ""}`,
-        {
-          method: record ? "PATCH" : "POST",
-          body: payload,
-          requestId: request.current!.id,
-          returnRecord: true,
-        },
-      );
+      }>(`/api/${resource}${record ? `/${record.id}` : ""}`, {
+        method: record ? "PATCH" : "POST",
+        body: payload,
+        requestId: request.current!.id,
+        returnRecord: !sharedLesson,
+      });
       draft.saved();
+      if (sharedLesson) {
+        onSaved(t("Đã lưu buổi cho {0} học viên.", { "0": studentIds.length }));
+        return;
+      }
       const savedSession =
         result.record && "sessionDate" in result.record
           ? result.record
@@ -330,12 +364,12 @@ export function RecordForm({
                   {t("Dạy cho")}
                   <ThemedSelect
                     label={t("Dạy cho")}
-                    value="single"
+                    value={mode}
                     onChange={(value) => {
-                      onClose();
-                      router.push(
-                        workspaceHref(`/app/lessons/new?mode=${value}`),
-                      );
+                      draft.changed();
+                      setMode(value);
+                      setSelectionError("");
+                      setError("");
                     }}
                     options={[
                       { value: "single", label: t("Một học viên") },
@@ -345,67 +379,100 @@ export function RecordForm({
                   />
                 </label>
               )}
-              {!lesson && (
-                <label className="field-label">
-                  {t("Tìm tên học viên")}
-                  <Input
-                    type="search"
-                    value={studentSearch}
-                    data-draft-ignore
-                    onChange={(event) => setStudentSearch(event.target.value)}
-                    maxLength={100}
-                    placeholder={t("Có dấu hoặc không dấu")}
+              {selectingClass ? (
+                <ClassLessonRoster
+                  roster={roster}
+                  onChange={() => {
+                    draft.changed();
+                    setSelectionError("");
+                    setError("");
+                  }}
+                />
+              ) : sharedLesson ? (
+                <MemberPicker
+                  value={groupMembers}
+                  onChange={(members) => {
+                    draft.changed();
+                    setGroupMembers(members);
+                    setSelectionError("");
+                    setError("");
+                  }}
+                />
+              ) : (
+                <>
+                  {!lesson && (
+                    <label className="field-label">
+                      {t("Tìm tên học viên")}
+                      <Input
+                        type="search"
+                        value={studentSearch}
+                        data-draft-ignore
+                        onChange={(event) =>
+                          setStudentSearch(event.target.value)
+                        }
+                        maxLength={100}
+                        placeholder={t("Có dấu hoặc không dấu")}
+                      />
+                    </label>
+                  )}
+                  <ThemedSelect
+                    label={t("Học viên *")}
+                    field
+                    required
+                    disabled={!!lesson}
+                    value={selected}
+                    onChange={(value) => {
+                      draft.changed();
+                      setSelected(value);
+                      const found = students.find((s) => s.id === value);
+                      setSingleRate(found?.defaultRateVnd ?? "");
+                    }}
+                    options={[
+                      { value: "", label: t("Chọn học viên") },
+                      ...(lesson &&
+                      !students.some((s) => s.id === lesson.studentId)
+                        ? [
+                            {
+                              value: lesson.studentId,
+                              label: lesson.studentName,
+                            },
+                          ]
+                        : []),
+                      ...students
+                        .filter(
+                          (s) => !s.archivedAt || s.id === lesson?.studentId,
+                        )
+                        .map((s) => ({ value: s.id, label: s.displayName })),
+                    ]}
                   />
-                </label>
-              )}
-              <ThemedSelect
-                label={t("Học viên *")}
-                field
-                required
-                disabled={!!lesson}
-                value={selected}
-                onChange={(value) => {
-                  draft.changed();
-                  setSelected(value);
-                  const found = students.find((s) => s.id === value);
-                  setRate(found?.defaultRateVnd ?? "");
-                }}
-                options={[
-                  { value: "", label: t("Chọn học viên") },
-                  ...(lesson && !students.some((s) => s.id === lesson.studentId)
-                    ? [{ value: lesson.studentId, label: lesson.studentName }]
-                    : []),
-                  ...students
-                    .filter((s) => !s.archivedAt || s.id === lesson?.studentId)
-                    .map((s) => ({ value: s.id, label: s.displayName })),
-                ]}
-              />
-              {(cursor || studentsError) && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={moreStudents}
-                  disabled={studentsBusy || studentSearch !== studentTerm}
-                >
-                  {studentsBusy
-                    ? t("Đang tải…")
-                    : t("Tải thêm / thử lại danh sách học viên")}
-                </Button>
-              )}
-              {studentsError && (
-                <p className="text-xs text-destructive">{studentsError}</p>
-              )}
-              {!students.length && !studentsError && (
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {studentTerm
-                    ? t(
-                        "Chưa tìm thấy học viên phù hợp. Thử tên khác hoặc tìm tiếp trong danh sách.",
-                      )
-                    : t(
-                        "Cần thêm học viên trước khi ghi buổi. Vào mục Học viên để tạo học viên đầu tiên.",
-                      )}
-                </p>
+                  {(cursor || studentsError) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={moreStudents}
+                      disabled={studentsBusy || studentSearch !== studentTerm}
+                    >
+                      {studentsBusy
+                        ? t("Đang tải…")
+                        : t("Tải thêm / thử lại danh sách học viên")}
+                    </Button>
+                  )}
+                  {studentsError && (
+                    <p className="text-xs text-destructive">{studentsError}</p>
+                  )}
+                  {!students.length && !studentsError && (
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      {studentTerm
+                        ? t(
+                            "Chưa tìm thấy học viên phù hợp. Thử tên khác hoặc tìm tiếp trong danh sách.",
+                          )
+                        : t(
+                            "Cần thêm học viên trước khi ghi buổi. Vào mục Học viên để tạo học viên đầu tiên.",
+                          )}
+                    </p>
+                  )}
+                </>
               )}
               <div className="grid gap-4 min-[420px]:grid-cols-2">
                 <label className="field-label">
@@ -459,7 +526,7 @@ export function RecordForm({
                   />
                 </label>
               </div>
-              {duplicate && (
+              {!sharedLesson && duplicate && (
                 <p
                   role="status"
                   className="rounded-xl bg-warning-soft p-3 text-xs leading-5 text-warning-foreground"
@@ -470,22 +537,35 @@ export function RecordForm({
                 </p>
               )}
               <label className="field-label">
-                {t("Đơn giá buổi này (VND)")}
+                {sharedLesson
+                  ? t("Học phí / người (VND)")
+                  : t("Đơn giá buổi này (VND)")}
                 {priceRequired ? " *" : ""}
                 <Input
                   type="number"
                   disabled={!!lesson?.lessonId}
                   required={priceRequired}
+                  readOnly={selectingClass}
                   inputMode="numeric"
                   min={0}
                   max={MAX_VND}
                   step={1}
                   value={rate}
-                  onChange={(e) =>
-                    setRate(e.target.value === "" ? "" : e.target.valueAsNumber)
-                  }
+                  onChange={(e) => {
+                    const price =
+                      e.target.value === "" ? "" : e.target.valueAsNumber;
+                    if (sharedLesson) setGroupRate(price);
+                    else setSingleRate(price);
+                  }}
                 />
               </label>
+              {selectingClass && (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {t(
+                    " Giá lấy từ lớp; sửa giá trong thông tin lớp trước khi ghi nếu cần.",
+                  )}
+                </p>
+              )}
               {lesson?.lessonId && (
                 <p className="text-xs leading-5 text-muted-foreground">
                   {t(
@@ -513,9 +593,10 @@ export function RecordForm({
                   {chargesTuition && rate === ""
                     ? "—"
                     : formatVnd(
-                        status === "planned" && chargesTuition
-                          ? rateVnd
-                          : sessionAmount({ status, billable, rateVnd }),
+                        (sharedLesson ? studentIds.length : 1) *
+                          (status === "planned" && chargesTuition
+                            ? rateVnd
+                            : sessionAmount({ status, billable, rateVnd })),
                         locale,
                       )}
                 </strong>
@@ -534,6 +615,11 @@ export function RecordForm({
             />
           </label>
         </fieldset>
+        {selectionError && (
+          <p role="alert" className="text-sm text-destructive">
+            {selectionError}
+          </p>
+        )}
         {error && (
           <p
             role="alert"
@@ -552,7 +638,10 @@ export function RecordForm({
           >
             {t("Để sau")}
           </Button>
-          <Button type="submit" disabled={busy}>
+          <Button
+            type="submit"
+            disabled={busy || (classUnavailable && !!roster.classId)}
+          >
             {busy && <LoaderCircle className="animate-spin" />}
             {busy
               ? t("Đang lưu…")
