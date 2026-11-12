@@ -260,20 +260,30 @@ describe("Tìm kiếm, bộ lọc và onboarding qua HTTP với dữ liệu nhi�
     let batch = db.batch(),
       writes = 0;
     const fixtureTime = Timestamp.fromMillis(Date.now() + 1000);
+    const previousDay = Timestamp.fromDate(
+      new Date(`${yesterday}T12:00:00+07:00`),
+    );
     for (let i = 0; i < 220; i++) {
       const id = `paid-fixture-${i}`,
         sessionId = `paid-session-${i}`;
       batch.create(root().collection("statements").doc(id), {
         ...statementTemplate,
+        issueDate: i === 219 ? yesterday : statementTemplate.issueDate,
         number: `CC-${vietnamToday().slice(0, 4)}-${String(1000 + i).padStart(6, "0")}`,
-        createdAt: new Timestamp(
-          fixtureTime.seconds,
-          fixtureTime.nanoseconds + i * 1000,
-        ),
-        issuedAt: new Timestamp(
-          fixtureTime.seconds,
-          fixtureTime.nanoseconds + i * 1000,
-        ),
+        createdAt:
+          i >= 218
+            ? previousDay
+            : new Timestamp(
+                fixtureTime.seconds,
+                fixtureTime.nanoseconds + i * 1000,
+              ),
+        issuedAt:
+          i === 219
+            ? previousDay
+            : new Timestamp(
+                fixtureTime.seconds,
+                fixtureTime.nanoseconds + i * 1000,
+              ),
         items: [{ ...statementTemplate.items[0], sessionId }],
       });
       batch.create(root().collection("sessions").doc(sessionId), {
@@ -344,6 +354,19 @@ describe("Tìm kiếm, bộ lọc và onboarding qua HTTP với dữ liệu nhi�
           "/api/statements?status=partial&cursor=" + first.nextCursor,
         )
       ).status,
+    ).toBe(400);
+    const previousDayUrl = `/api/statements?status=paid&studentId=${studentId}&from=${yesterday}&to=${yesterday}`;
+    expect((await all(previousDayUrl)).map(({ id }) => id)).toEqual([
+      "paid-fixture-219",
+    ]);
+    const issuedToday = await all(
+      `/api/statements?status=paid&studentId=${studentId}&from=${vietnamToday()}&limit=50`,
+    );
+    expect(issuedToday.map(({ id }) => id)).toContain("paid-fixture-218");
+    expect(issuedToday.map(({ id }) => id)).not.toContain("paid-fixture-219");
+    expect(
+      (await a.call(`/api/statements?from=${vietnamToday()}&to=${yesterday}`))
+        .status,
     ).toBe(400);
     const history = await list(
       `/api/statements?status=overdue&studentId=${studentId}`,

@@ -4,13 +4,31 @@ import { useI18n } from "@/lib/i18n/client";
 import { useEffect, useState } from "react";
 import Link from "@/components/workspace-link";
 import { formatVnd, vietnamToday } from "@/domain";
-import { type Statement, statementDisplayStatus } from "@/domain/statements";
-import { statementFilterLabels } from "@/domain/list-filters";
+import {
+  type Statement,
+  periodBounds,
+  statementDisplayStatus,
+} from "@/domain/statements";
+import {
+  statementDateRangeSchema,
+  statementFilterLabels,
+  statementListDate,
+} from "@/domain/list-filters";
 import { api } from "@/lib/client-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ThemedSelect } from "@/components/ui/themed-select";
 import { type Page, StudentPicker, formatDate } from "./shared";
+
+const dateFilters = [
+  { value: "all", label: "Mọi thời điểm" },
+  { value: "today", label: "Hôm nay" },
+  { value: "week", label: "Tuần này" },
+  { value: "month", label: "Tháng này" },
+  { value: "custom", label: "Tùy chỉnh" },
+] as const;
+
 export function StatementsList({
   initialStudentId = "",
   initialStatus = "all",
@@ -21,6 +39,9 @@ export function StatementsList({
   const { t, locale } = useI18n();
   const [status, setStatus] = useState(initialStatus);
   const [studentId, setStudentId] = useState(initialStudentId);
+  const [period, setPeriod] =
+    useState<(typeof dateFilters)[number]["value"]>("all");
+  const [custom, setCustom] = useState({ from: "", to: "" });
   const [revision, setRevision] = useState(0);
   const [data, setData] = useState<{
     key: string;
@@ -31,11 +52,31 @@ export function StatementsList({
     message: string;
   } | null>(null);
   const [moreBusy, setMoreBusy] = useState(false);
+  const today = vietnamToday();
+  const bounds =
+    period === "week" || period === "month"
+      ? periodBounds(period, today)
+      : null;
+  const from =
+    period === "custom"
+      ? custom.from
+      : period === "today"
+        ? today
+        : bounds?.start;
+  const to =
+    period === "custom" ? custom.to : period === "today" ? today : bounds?.end;
+  const range = statementDateRangeSchema.safeParse({
+    from: from || undefined,
+    to: to || undefined,
+  });
   const params = new URLSearchParams({ status });
   if (studentId) params.set("studentId", studentId);
-  const endpoint = `/api/statements?${params}`;
+  if (range.success && from) params.set("from", from);
+  if (range.success && to) params.set("to", to);
+  const endpoint = range.success ? `/api/statements?${params}` : "";
   const key = `${endpoint}:${revision}`;
   useEffect(() => {
+    if (!endpoint) return;
     let active = true;
     api<Page<Statement>>(endpoint)
       .then((page) => {
@@ -103,7 +144,7 @@ export function StatementsList({
           </Link>
         </Button>
       </div>
-      <Card className="grid items-start gap-5 p-5 sm:grid-cols-2">
+      <Card className="grid items-start gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
         <StudentPicker value={studentId} onChange={setStudentId} optional />
         <label className="field-label">
           {t("Trạng thái bảng kê")}
@@ -119,8 +160,58 @@ export function StatementsList({
             )}
           />
         </label>
+        <label className="field-label min-w-0">
+          {t("Ngày bảng kê")}
+          <ThemedSelect
+            label={t("Ngày bảng kê")}
+            value={period}
+            onChange={setPeriod}
+            options={dateFilters.map(({ value, label }) => ({
+              value,
+              label: t(label),
+            }))}
+          />
+        </label>
+        {period === "custom" && (
+          <div className="col-span-full grid min-w-0 gap-4 sm:grid-cols-2">
+            <label className="field-label min-w-0">
+              {t("Từ ngày")}
+              <Input
+                type="date"
+                min="1900-01-01"
+                max="2100-12-31"
+                value={custom.from}
+                aria-invalid={!range.success}
+                onChange={(event) =>
+                  setCustom({ ...custom, from: event.target.value })
+                }
+              />
+            </label>
+            <label className="field-label min-w-0">
+              {t("Đến ngày")}
+              <Input
+                type="date"
+                min="1900-01-01"
+                max="2100-12-31"
+                value={custom.to}
+                aria-invalid={!range.success}
+                onChange={(event) =>
+                  setCustom({ ...custom, to: event.target.value })
+                }
+              />
+            </label>
+            {!range.success && (
+              <p
+                role="alert"
+                className="col-span-full text-sm text-destructive"
+              >
+                {t("Khoảng ngày không hợp lệ.")}
+              </p>
+            )}
+          </div>
+        )}
       </Card>
-      {error?.key === key ? (
+      {!endpoint ? null : error?.key === key ? (
         <Card role="alert" className="p-6 text-sm">
           <p className="mb-3 text-destructive">{t(error.message)}</p>
           <Button
@@ -152,7 +243,7 @@ export function StatementsList({
       ) : (
         <div className="space-y-3">
           {page.items.map((statement) => {
-            const display = statementDisplayStatus(statement, vietnamToday());
+            const display = statementDisplayStatus(statement, today);
             const tone =
               statement.status === "draft"
                 ? "blue"
@@ -186,6 +277,10 @@ export function StatementsList({
                     {formatDate(statement.periodStart, locale)} –{" "}
                     {formatDate(statement.periodEnd, locale)} ·{" "}
                     {statement.items.length} {t("buổi")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t(statement.issueDate ? "Ngày phát hành:" : "Ngày tạo:")}{" "}
+                    {formatDate(statementListDate(statement), locale)}
                   </p>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="text-xs text-muted-foreground">

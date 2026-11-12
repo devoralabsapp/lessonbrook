@@ -19,6 +19,7 @@ import {
 import {
   type Student,
   type TeachingSession,
+  dateSchema,
   formatVnd,
   statusLabels,
   vietnamToday,
@@ -95,11 +96,10 @@ export function Workspace({
     billing: initialBilling,
   };
   const [range, setRange] = useState(initialRange);
-  const [draftRange, setDraftRange] = useState(initialRange);
-  const applyRange = (next: typeof range) => {
-    setDraftRange(next);
-    setRange(next);
-  };
+  const invalidRange =
+    (range.from !== "" && !dateSchema.safeParse(range.from).success) ||
+    (range.to !== "" && !dateSchema.safeParse(range.to).success) ||
+    (range.from !== "" && range.to !== "" && range.from > range.to);
   const [data, setData] = useState<{
     key: string;
     revision: number;
@@ -147,6 +147,7 @@ export function Workspace({
     return () => window.removeEventListener("class-lessons-created", refresh);
   }, [mode]);
   useEffect(() => {
+    if (invalidRange) return;
     let active = true;
     const empty = { items: [], nextCursor: null };
     Promise.all([
@@ -180,11 +181,12 @@ export function Workspace({
     return () => {
       active = false;
     };
-  }, [endpoint, key, mode, requestKey, revision, studentId, t]);
+  }, [endpoint, invalidRange, key, mode, requestKey, revision, studentId, t]);
   const view = data?.key === key ? data : null;
   const loadError = error?.key === requestKey ? error.message : "";
   const loading =
-    (mode === "students" && search !== queryText) || (!view && !loadError);
+    !invalidRange &&
+    ((mode === "students" && search !== queryText) || (!view && !loadError));
   const updating = !!view && view.revision !== revision && !loadError;
   async function more() {
     const page = mode === "students" ? view?.students : view?.sessions;
@@ -537,13 +539,7 @@ export function Workspace({
           </div>
         )}
         {mode === "sessions" && (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setRange(draftRange);
-            }}
-            className="grid grid-cols-2 items-start gap-x-3 gap-y-2.5 border-b border-border bg-surface p-3 sm:grid-cols-4 sm:px-5"
-          >
+          <div className="grid grid-cols-2 items-start gap-x-3 gap-y-2.5 border-b border-border bg-surface p-3 sm:grid-cols-4 sm:px-5">
             <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
               {t("Từ ngày")}
               <Input
@@ -552,9 +548,9 @@ export function Workspace({
                 type="date"
                 min="1900-01-01"
                 max="2100-12-31"
-                value={draftRange.from}
+                value={range.from}
                 onChange={(event) =>
-                  setDraftRange({ ...draftRange, from: event.target.value })
+                  setRange({ ...range, from: event.target.value })
                 }
               />
             </label>
@@ -566,9 +562,9 @@ export function Workspace({
                 type="date"
                 min="1900-01-01"
                 max="2100-12-31"
-                value={draftRange.to}
+                value={range.to}
                 onChange={(event) =>
-                  setDraftRange({ ...draftRange, to: event.target.value })
+                  setRange({ ...range, to: event.target.value })
                 }
               />
             </label>
@@ -581,7 +577,7 @@ export function Workspace({
                     value={searchBy}
                     onChange={(next) => {
                       setSearchBy(next);
-                      setDraftRange((current) => ({
+                      setRange((current) => ({
                         ...current,
                         studentId: "",
                         target: "",
@@ -596,19 +592,17 @@ export function Workspace({
                 </label>
                 {searchBy === "student" ? (
                   <StudentPicker
-                    value={draftRange.studentId}
+                    value={range.studentId}
                     onChange={(value) =>
-                      setDraftRange({ ...draftRange, studentId: value })
+                      setRange({ ...range, studentId: value })
                     }
                     optional
                     showSearch={false}
                   />
                 ) : (
                   <LessonTargetPicker
-                    value={draftRange.target}
-                    onChange={(value) =>
-                      setDraftRange({ ...draftRange, target: value })
-                    }
+                    value={range.target}
+                    onChange={(value) => setRange({ ...range, target: value })}
                   />
                 )}
               </div>
@@ -619,8 +613,8 @@ export function Workspace({
               {t("Trạng thái buổi")}
               <ThemedSelect
                 label={t("Trạng thái buổi")}
-                value={draftRange.status}
-                onChange={(status) => setDraftRange({ ...draftRange, status })}
+                value={range.status}
+                onChange={(status) => setRange({ ...range, status })}
                 options={[
                   { value: "all", label: t("Tất cả") },
                   { value: "planned", label: t("Dự kiến") },
@@ -635,10 +629,8 @@ export function Workspace({
               {t("Học phí")}
               <ThemedSelect
                 label={t("Học phí")}
-                value={draftRange.billing}
-                onChange={(billing) =>
-                  setDraftRange({ ...draftRange, billing })
-                }
+                value={range.billing}
+                onChange={(billing) => setRange({ ...range, billing })}
                 options={[
                   { value: "all", label: t("Tất cả") },
                   { value: "unbilled", label: t("Chưa lập bảng kê") },
@@ -652,8 +644,8 @@ export function Workspace({
                 {t("Loại buổi dạy")}
                 <ThemedSelect
                   label={t("Loại buổi dạy")}
-                  value={draftRange.type}
-                  onChange={(type) => setDraftRange({ ...draftRange, type })}
+                  value={range.type}
+                  onChange={(type) => setRange({ ...range, type })}
                   options={Object.entries(sessionTypeLabels).map(
                     ([value, label]) => ({
                       value,
@@ -663,17 +655,22 @@ export function Workspace({
                 />
               </label>
             )}
+            {invalidRange && (
+              <p
+                role="alert"
+                className="col-span-full text-sm text-destructive"
+              >
+                {t("Khoảng ngày không hợp lệ.")}
+              </p>
+            )}
             <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-4">
-              <Button variant="outline" type="submit" size="sm">
-                {t("Lọc buổi dạy")}
-              </Button>
               <Button
                 variant="ghost"
                 type="button"
                 size="sm"
                 onClick={() => {
                   const today = vietnamToday();
-                  applyRange({ ...draftRange, from: today, to: today });
+                  setRange({ ...range, from: today, to: today });
                 }}
               >
                 {t("Hôm nay")}
@@ -688,8 +685,8 @@ export function Workspace({
                   const last = new Date(Date.UTC(year, month, 0))
                     .toISOString()
                     .slice(0, 10);
-                  applyRange({
-                    ...draftRange,
+                  setRange({
+                    ...range,
                     from: today.slice(0, 8) + "01",
                     to: last,
                   });
@@ -703,13 +700,13 @@ export function Workspace({
                 size="sm"
                 onClick={() => {
                   setSearchBy("student");
-                  applyRange({ ...initialRange, billing: "all" });
+                  setRange({ ...initialRange, billing: "all" });
                 }}
               >
                 {t("Xóa bộ lọc")}
               </Button>
             </div>
-          </form>
+          </div>
         )}
         {loadError && (
           <div role="alert" className="p-8 text-center">

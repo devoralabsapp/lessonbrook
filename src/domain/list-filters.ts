@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { TeachingSession } from ".";
+import { dateSchema, vietnamToday, type TeachingSession } from ".";
 import type { Statement } from "./statements";
 
 export function normalizeSearch(value: string) {
@@ -99,6 +99,26 @@ export function storedStatementStatus(filter: string) {
     ? filter
     : "issued";
 }
+export const statementDateRangeSchema = z
+  .object({ from: dateSchema.optional(), to: dateSchema.optional() })
+  .refine(
+    ({ from, to }) => !from || !to || from <= to,
+    "Khoảng ngày không hợp lệ.",
+  );
+
+export function statementListDate(statement: Statement) {
+  return statement.issueDate ?? vietnamToday(new Date(statement.createdAt));
+}
+
+export function matchesStatementDate(
+  statement: Statement,
+  { from, to }: z.infer<typeof statementDateRangeSchema>,
+) {
+  if (!from && !to) return true;
+  const date = statementListDate(statement);
+  return (!from || date >= from) && (!to || date <= to);
+}
+
 export function matchesStatement(
   statement: Statement,
   filter: string,

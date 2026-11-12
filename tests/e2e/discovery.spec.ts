@@ -190,7 +190,6 @@ test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi
       page.getByRole("combobox", { name: "Học phí", exact: true }),
       "free",
     );
-    await page.getByRole("button", { name: "Lọc buổi dạy" }).click();
     await expect(page.getByText("Không tính phí", { exact: true })).toHaveCount(
       1,
     );
@@ -201,9 +200,20 @@ test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi
     await expect(
       page.getByRole("link", { name: "Lan gốc", exact: true }),
     ).toHaveCount(3);
+    await page.getByLabel("Đến ngày").fill("2000-01-01");
+    await expect(
+      page.getByText("Không có buổi phù hợp với bộ lọc."),
+    ).toBeVisible();
+    await page.getByLabel("Từ ngày").fill(vietnamToday());
+    await expect(
+      page.getByText("Khoảng ngày không hợp lệ.", { exact: true }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Hôm nay", exact: true }).click();
     await expect(page.getByLabel("Từ ngày")).toHaveValue(vietnamToday());
     await expect(page.getByLabel("Đến ngày")).toHaveValue(vietnamToday());
+    await expect(
+      page.getByRole("link", { name: "Lan gốc", exact: true }),
+    ).toHaveCount(3);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

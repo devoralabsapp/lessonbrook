@@ -54,6 +54,23 @@ test("demo reuses the workspace and keeps sample changes in its tab", async ({
     await expect(coloredRow).toBeVisible();
     await expect(coloredRow).toHaveCSS("background-image", /linear-gradient/);
   }
+  const statementDate = page.getByRole("combobox", { name: "Statement date" });
+  const dateMenu = page.getByRole("listbox", { name: "Statement date" });
+  await statementDate.click();
+  await expect(dateMenu.getByRole("option")).toHaveText([
+    "All time",
+    "Today",
+    "This week",
+    "This month",
+    "Custom",
+  ]);
+  await dateMenu.getByRole("option", { name: "Today", exact: true }).click();
+  await expect(page.locator("[data-list-tone]")).toHaveCount(1);
+  await expect(page.getByText(/^Created:/)).toBeVisible();
+  await statementDate.click();
+  await dateMenu.getByRole("option", { name: "Custom", exact: true }).click();
+  await page.getByLabel("To date").fill("2000-01-01");
+  await expect(page.getByText("No statements in this list yet.")).toBeVisible();
   await nav.getByRole("link", { name: "Students", exact: true }).click();
   await page.getByRole("button", { name: "Add student" }).click();
   const dialog = page.getByRole("dialog");
@@ -124,9 +141,19 @@ test("native workspace opens account tools, planned lessons and filtered stateme
     await expect(
       page.getByRole("combobox", { name: "Language" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Sign out", exact: true }),
-    ).toBeVisible();
+    const lastAction = page.getByRole("button", {
+      name: "Sign out all devices",
+      exact: true,
+    });
+    await expect(lastAction).toBeVisible();
+    await expect
+      .poll(() =>
+        lastAction.evaluate((element) => {
+          window.scrollTo(0, document.documentElement.scrollHeight);
+          return window.innerHeight - element.getBoundingClientRect().bottom;
+        }),
+      )
+      .toBeGreaterThanOrEqual(112);
     const create = async (path: string, data: unknown) => {
       const result = await context.request.post(`${origin}${path}`, {
         headers: {

@@ -12,6 +12,7 @@ import {
 import {
   addBusinessDays,
   MAX_STATEMENT_SESSIONS,
+  periodBounds,
   type Statement,
 } from "@/domain/statements";
 import { api } from "@/lib/client-api";
@@ -27,22 +28,6 @@ import {
   StudentPicker,
   useStatementMutation,
 } from "./shared";
-
-function periodBounds(period: "week" | "month", today: string) {
-  const date = new Date(`${today}T00:00:00Z`);
-  if (period === "week") {
-    const daysFromMonday = (date.getUTCDay() + 6) % 7;
-    return {
-      start: addBusinessDays(today, -daysFromMonday),
-      end: addBusinessDays(today, 6 - daysFromMonday),
-    };
-  }
-  date.setUTCMonth(date.getUTCMonth() + 1, 0);
-  return {
-    start: today.slice(0, 8) + "01",
-    end: date.toISOString().slice(0, 10),
-  };
-}
 
 export function StatementEditor({
   initial,

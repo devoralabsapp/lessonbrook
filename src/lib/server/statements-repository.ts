@@ -29,6 +29,8 @@ import {
   statementFilterSchema,
   storedStatementStatus,
   matchesStatement,
+  matchesStatementDate,
+  statementDateRangeSchema,
 } from "@/domain/list-filters";
 import {
   decode,
@@ -572,8 +574,8 @@ export async function listEligibleSessions(uid: string, raw: unknown) {
         : null,
   };
 }
-const listSchema = z
-  .object({
+const listSchema = statementDateRangeSchema
+  .safeExtend({
     status: statementFilterSchema.default("all"),
     studentId: idSchema.optional(),
     cursor: z.string().optional(),
@@ -597,14 +599,18 @@ export async function listStatements(uid: string, raw: unknown) {
     scope: listScope(uid, "statements", {
       status: input.status,
       studentId: input.studentId ?? null,
+      ...(input.from && { from: input.from }),
+      ...(input.to && { to: input.to }),
       today: input.status === "overdue" ? today : null,
     }),
     cursor: input.cursor,
     limit: input.limit,
     dto: statementDto,
     matches:
-      status !== input.status
-        ? (statement) => matchesStatement(statement, input.status, today)
+      status !== input.status || input.from || input.to
+        ? (statement) =>
+            matchesStatement(statement, input.status, today) &&
+            matchesStatementDate(statement, input)
         : undefined,
   });
 }

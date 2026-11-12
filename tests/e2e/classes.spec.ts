@@ -201,7 +201,6 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   });
   await page.goto("/app/sessions");
   const type = page.getByRole("combobox", { name: "Loại buổi dạy" });
-  const apply = page.getByRole("button", { name: "Lọc buổi dạy", exact: true });
   const groupRows = page.getByRole("link", {
     name: "Buổi nhóm tự chọn",
     exact: true,
@@ -211,11 +210,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     exact: true,
   });
   await chooseOption(type, "group");
-  await apply.click();
   await expect(groupRows).toHaveCount(2);
   await expect(classRows).toHaveCount(0);
   await chooseOption(type, "class");
-  await apply.click();
   await expect(classRows).toHaveCount(2);
   await expect(groupRows).toHaveCount(0);
   await page.getByRole("button", { name: "Xóa bộ lọc", exact: true }).click();
@@ -236,7 +233,6 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await expect(page.getByRole("searchbox")).toHaveCount(0);
   await studentPicker.click();
   await page.getByRole("option", { name: "Lan", exact: true }).click();
-  await apply.click();
   await expect(classRows).toHaveCount(1);
   await expect(groupRows).toHaveCount(1);
   await chooseOption(searchBy, "group-class");
@@ -245,11 +241,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     targetPicker,
     `class:${new URL(classUrl).pathname.split("/").at(-1)}`,
   );
-  await apply.click();
   await expect(classRows).toHaveCount(2);
   await expect(groupRows).toHaveCount(0);
   await chooseOption(targetPicker, `group:${groupId}`);
-  await apply.click();
   await expect(groupRows).toHaveCount(2);
   await expect(classRows).toHaveCount(0);
   const dateTile = page.locator('[data-slot="lesson-date"]').first();
@@ -269,7 +263,6 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await chooseOption(searchBy, "student");
   await expect(targetPicker).toHaveCount(0);
   await expect(studentPicker).toHaveText("Tất cả học viên");
-  await apply.click();
   await expect(groupRows).toHaveCount(2);
   await expect(classRows).toHaveCount(2);
 

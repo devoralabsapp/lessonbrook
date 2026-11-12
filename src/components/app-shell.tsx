@@ -264,8 +264,9 @@ export function AppShell({
             id="main"
             tabIndex={-1}
             className={cn(
-              "mx-auto max-w-[1320px] p-5 sm:p-9",
-              !embedded && "pb-28 sm:pb-28 lg:pb-9",
+              // Keep the final row above bottom navigation in the app and the mobile browser.
+              "mx-auto max-w-[1320px] px-5 pt-5 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] sm:px-9 sm:pt-9",
+              !embedded && "lg:pb-9",
             )}
           >
             {children}

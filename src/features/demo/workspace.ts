@@ -25,6 +25,8 @@ import { exportInputSchema, exportPageInputSchema } from "@/domain/data";
 import {
   matchesSession,
   matchesStatement,
+  matchesStatementDate,
+  statementDateRangeSchema,
   normalizeSearch,
 } from "@/domain/list-filters";
 import { teacherSettingsSchema } from "@/domain/onboarding";
@@ -393,20 +395,26 @@ function read(
         query,
         50,
       );
-    if (!id)
+    if (!id) {
+      const dateRange = statementDateRangeSchema.parse({
+        from: query.get("from") ?? undefined,
+        to: query.get("to") ?? undefined,
+      });
       return page(
         state.statements
           .filter(
             (s) =>
               (!query.has("studentId") ||
                 s.studentId === query.get("studentId")) &&
-              matchesStatement(s, query.get("status") ?? "all", state.today),
+              matchesStatement(s, query.get("status") ?? "all", state.today) &&
+              matchesStatementDate(s, dateRange),
           )
           .sort(
             (a, b) => compare(b.createdAt, a.createdAt) || compare(b.id, a.id),
           ),
         query,
       );
+    }
     const statement = find(state.statements, id);
     if (action === "payments")
       return page(
