@@ -4,7 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useEffect, useState } from "react";
 import { Banknote, ChevronDown, Landmark, Pencil, Trash2 } from "lucide-react";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
-import { formatVnd, vietnamToday } from "@/domain";
+import { formatVnd, TIME_ZONE, vietnamToday } from "@/domain";
 import { type Statement } from "@/domain/statements";
 import { type Payment } from "@/domain/payments";
 import { api } from "@/lib/client-api";
@@ -16,6 +16,15 @@ import {
   type Page,
   useStatementMutation,
 } from "@/features/statements/shared";
+
+const recordingTime = new Intl.DateTimeFormat("en-GB", {
+  timeZone: TIME_ZONE,
+  hourCycle: "h23",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
 function PaymentFields({ payment, max }: { payment?: Payment; max: number }) {
   const { t } = useI18n();
   return (
@@ -279,7 +288,12 @@ export function PaymentPanel({
   }
   return (
     <Card className="space-y-3 px-3 py-4 sm:px-6">
-      <h2 className="serif px-1 text-2xl">{t("Lịch sử thanh toán")}</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-1">
+        <h2 className="serif text-2xl">{t("Lịch sử thanh toán")}</h2>
+        <span className="text-xs text-muted-foreground">
+          {t("Thời gian ghi nhận theo giờ Việt Nam")}
+        </span>
+      </div>
       {notice && (
         <p role="status" className="text-sm text-primary">
           {notice}
@@ -314,27 +328,36 @@ export function PaymentPanel({
             {page.items.map((payment) => {
               const mode = openRow?.id === payment.id ? openRow.mode : null;
               const panelId = `payment-${payment.id}-details`;
-              const date = formatDate(payment.receivedDate, locale);
-              const numericDate = formatDate(payment.receivedDate);
+              const recordedAt = new Date(payment.recordedAt);
+              const recordedDate = vietnamToday(recordedAt);
+              const time = recordingTime.format(recordedAt);
+              const date = formatDate(recordedDate, locale);
+              const numericDate = formatDate(recordedDate);
+              const receiptDateDiffers = payment.receivedDate !== recordedDate;
               const cash = payment.method === "cash";
               const method = t(cash ? "Tiền mặt" : "Chuyển khoản");
               const MethodIcon = cash ? Banknote : Landmark;
               const hasDetails = Boolean(
-                payment.privateNote || payment.voidReason,
+                payment.privateNote || payment.voidReason || receiptDateDiffers,
               );
               const metadata = (
                 <>
-                  <time dateTime={payment.receivedDate} aria-label={date}>
-                    <span className="@[18rem]:hidden">
-                      {numericDate.replace(/\d{4}$/, (year) => year.slice(2))}
+                  <time
+                    dateTime={payment.recordedAt}
+                    aria-label={`${date}, ${time}`}
+                    title={`${date}, ${time}`}
+                    className="shrink-0 whitespace-nowrap tabular-nums @max-[23rem]:text-[calc(11px+var(--font-size-offset))]"
+                  >
+                    <span className="@[23rem]:hidden">
+                      {numericDate.slice(0, 5)}
                     </span>
-                    <span className="hidden @[18rem]:inline @lg:hidden">
+                    <span className="hidden @[23rem]:inline @lg:hidden">
                       {numericDate}
                     </span>
-                    <span className="hidden @lg:inline">{date}</span>
+                    <span className="hidden @lg:inline">{date}</span> {time}
                   </time>
                   <span
-                    className="inline-flex items-center gap-1.5"
+                    className="sr-only items-center gap-1.5 @[18rem]:not-sr-only @[18rem]:inline-flex"
                     title={method}
                   >
                     <MethodIcon size={15} aria-hidden="true" />
@@ -363,13 +386,13 @@ export function PaymentPanel({
                         aria-controls={mode === "details" ? panelId : undefined}
                         disabled={formOpen}
                         onClick={() => toggleRow(payment.id, "details")}
-                        className="flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-x-1 rounded-lg text-left text-xs text-muted-foreground underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring @[18rem]:no-underline @lg:gap-x-3 @lg:text-sm"
+                        className="flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-x-1 rounded-lg text-left text-xs text-muted-foreground underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring @[23rem]:no-underline @lg:gap-x-3 @lg:text-sm"
                       >
                         {metadata}
                         <ChevronDown
                           size={14}
                           aria-hidden="true"
-                          className={`hidden @[18rem]:block ${mode === "details" ? "rotate-180" : ""}`}
+                          className={`hidden @[23rem]:block ${mode === "details" ? "rotate-180" : ""}`}
                         />
                         <span className="sr-only">
                           {t("Chi tiết khoản thu")}
@@ -386,12 +409,12 @@ export function PaymentPanel({
                       </span>
                     ) : (
                       statement.status === "issued" && (
-                        <div className="flex shrink-0 items-center gap-1 @lg:gap-2">
+                        <div className="flex shrink-0 items-center @[18rem]:gap-1 @lg:gap-2">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="size-9 @lg:w-auto @lg:px-3"
+                            className="size-8 @[18rem]:size-9 @lg:w-auto @lg:px-3"
                             aria-label={t("Sửa khoản thu")}
                             title={t("Sửa khoản thu")}
                             aria-expanded={mode === "edit"}
@@ -412,7 +435,7 @@ export function PaymentPanel({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="size-9 text-destructive @lg:w-auto @lg:px-3"
+                            className="size-8 text-destructive @[18rem]:size-9 @lg:w-auto @lg:px-3"
                             aria-label={t("Xóa khoản thu")}
                             title={t("Xóa khoản thu")}
                             aria-expanded={mode === "delete"}
@@ -438,6 +461,14 @@ export function PaymentPanel({
                       id={panelId}
                       className="space-y-2 border-t border-border py-3 text-xs text-muted-foreground"
                     >
+                      {receiptDateDiffers && (
+                        <p>
+                          {t("Ngày nhận tiền")}:{" "}
+                          <time dateTime={payment.receivedDate}>
+                            {formatDate(payment.receivedDate, locale)}
+                          </time>
+                        </p>
+                      )}
                       {payment.privateNote && (
                         <p className="whitespace-pre-wrap wrap-anywhere">
                           {t("Ghi chú riêng:")} {payment.privateNote}

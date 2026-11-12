@@ -290,7 +290,9 @@ export function createDemoWorkspace(today: string) {
         receivedDate: payment.date,
         method: payment.method === "cash" ? "cash" : "transfer",
         privateNote: "",
-        recordedAt: now,
+        recordedAt: new Date(
+          `${payment.date}T${position ? "10:35:42" : "09:20:15"}+07:00`,
+        ).toISOString(),
         voidedAt: null,
         voidReason: null,
         requestId: "00000000-0000-4000-8000-000000000000",

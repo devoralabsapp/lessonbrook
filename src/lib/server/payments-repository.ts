@@ -16,7 +16,8 @@ import {
   statementVersionSchema,
 } from "@/domain/statements";
 import { AppError } from "./errors";
-import { decode, dto, encode, operation, userRef } from "./repository";
+import { dto, operation, userRef } from "./repository";
+import { listPage, listScope } from "./list-page";
 import { getStatement, statementDto } from "./statements-repository";
 import {
   assertBankShortcutActive,
@@ -330,26 +331,17 @@ export async function listPayments(
     })
     .strict()
     .parse(raw);
-  let query = userRef(uid)
+  const query = userRef(uid)
     .collection("payments")
     .where("statementId", "==", statementId)
-    .orderBy("receivedDate", "desc")
+    .orderBy("recordedAt", "desc")
     .orderBy(FieldPath.documentId(), "desc");
-  if (input.cursor) {
-    const cursor = z
-      .object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), id: idSchema })
-      .strict()
-      .parse(decode(input.cursor));
-    query = query.startAfter(cursor.date, cursor.id);
-  }
-  const docs = (await query.limit(input.limit + 1).get()).docs,
-    page = docs.slice(0, input.limit),
-    last = page.at(-1);
-  return {
-    items: page.map(paymentDto),
-    nextCursor:
-      docs.length > input.limit && last
-        ? encode({ date: last.get("receivedDate"), id: last.id })
-        : null,
-  };
+  return listPage({
+    query,
+    orderField: "recordedAt",
+    scope: listScope(uid, "payments", { statementId }),
+    cursor: input.cursor,
+    limit: input.limit,
+    dto: paymentDto,
+  });
 }

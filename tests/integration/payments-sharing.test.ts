@@ -526,13 +526,20 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
   });
   it("phân trang hơn 50 khoản cùng ngày không mất/trùng; giới hạn public/active được kiểm tra trước ghi", async () => {
     const batch = admin().db.batch();
-    const ids = Array.from({ length: 100 }, () => randomUUID());
-    for (const id of ids)
+    const now = Timestamp.now();
+    const payments = Array.from({ length: 100 }, (_, index) => ({
+      id: randomUUID(),
+      recordedAt: new Timestamp(
+        now.seconds - 25 + Math.floor(index / 4),
+        (index % 2) * 1_000,
+      ),
+    }));
+    for (const { id, recordedAt } of payments)
       batch.create(root().collection("payments").doc(id), {
         ...payBody(1),
         statementId,
         studentId,
-        recordedAt: Timestamp.now(),
+        recordedAt,
         voidedAt: null,
         voidReason: null,
         requestId: randomUUID(),
@@ -554,8 +561,16 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
       seen.push(...page.items.map((p: { id: string }) => p.id));
       cursor = page.nextCursor;
     } while (cursor);
-    expect(seen).toHaveLength(100);
-    expect(new Set(seen)).toEqual(new Set(ids));
+    expect(seen).toEqual(
+      payments
+        .sort(
+          (a, b) =>
+            b.recordedAt.seconds - a.recordedAt.seconds ||
+            b.recordedAt.nanoseconds - a.recordedAt.nanoseconds ||
+            b.id.localeCompare(a.id),
+        )
+        .map(({ id }) => id),
+    );
     expect((await pay(1)).status).toBe(409);
     expect((await get()).paidVnd).toBe(100);
     const link = await share();

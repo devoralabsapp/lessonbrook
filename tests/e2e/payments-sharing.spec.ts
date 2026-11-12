@@ -234,6 +234,14 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
     const second = page
       .getByTestId("payment-row")
       .filter({ hasText: "500.000" });
+    await expect(page.getByTestId("payment-row").first()).toContainText(
+      "500.000",
+    );
+    await expect(second.locator("time")).toHaveAttribute(
+      "datetime",
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
+    await expect(second.locator("time")).toContainText(/\d{2}:\d{2}:\d{2}/);
     for (const width of [320, 360, 1280]) {
       await page.setViewportSize({ width, height: 800 });
       const summaries = page.locator('[data-slot="payment-summary"]');
@@ -244,12 +252,10 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
             elements.every((element) => {
               const row = element.getBoundingClientRect();
               const controls = Array.from(
-                element.querySelectorAll(
-                  "strong, time, time + span, button[aria-label]",
-                ),
+                element.querySelectorAll("strong, time, button[aria-label]"),
               );
               return (
-                controls.length === 5 &&
+                controls.length === 4 &&
                 controls.every((control) => {
                   const { left, right, top, height } =
                     control.getBoundingClientRect();

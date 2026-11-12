@@ -119,7 +119,7 @@ if (
     await probe
       .collection("payments")
       .where("statementId", "==", "connection-check")
-      .orderBy("receivedDate", "desc")
+      .orderBy("recordedAt", "desc")
       .orderBy(FieldPath.documentId(), "desc")
       .limit(1)
       .get();

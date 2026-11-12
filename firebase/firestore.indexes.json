@@ -151,6 +151,24 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "recordedAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "statementId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "receivedDate",
           "order": "DESCENDING"
         },

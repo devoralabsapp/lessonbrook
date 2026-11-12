@@ -446,7 +446,7 @@ function read(
           .filter((p) => p.statementId === id)
           .sort(
             (a, b) =>
-              compare(b.receivedDate, a.receivedDate) || compare(b.id, a.id),
+              compare(b.recordedAt, a.recordedAt) || compare(b.id, a.id),
           ),
         query,
       );

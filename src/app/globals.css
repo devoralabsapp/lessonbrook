@@ -603,10 +603,10 @@ dialog::backdrop {
 [data-theme="playful-retro"] {
   color-scheme: light;
   --retro-ink: #211f1b;
-  --retro-yellow: #ffdb57;
-  --retro-pink: #ffb7ce;
-  --retro-blue: #aad7f5;
-  --retro-mint: #baf0d1;
+  --retro-yellow: #ffd02c;
+  --retro-pink: #ff86b0;
+  --retro-blue: #79c8ff;
+  --retro-mint: #83e5b0;
   --retro-outline: 2px solid var(--retro-ink);
   --retro-shadow: 4px 4px 0 var(--retro-ink);
   --dropdown-selected: var(--retro-yellow);
@@ -617,7 +617,7 @@ dialog::backdrop {
   --primary: #211f1b;
   --primary-foreground: #fffdf7;
   --muted: #f0e8d9;
-  --muted-foreground: #565047;
+  --muted-foreground: #40392f;
   --border: var(--retro-ink);
   --input: var(--retro-ink);
   --ring: var(--retro-ink);
@@ -661,7 +661,7 @@ dialog::backdrop {
 [data-theme="playful-retro"] [data-list-tone] {
   background:
     linear-gradient(to right, var(--list-accent) 5px, transparent 5px),
-    color-mix(in srgb, var(--list-accent) 22%, var(--card));
+    color-mix(in srgb, var(--list-accent) 30%, var(--card));
 }
 [data-theme="playful-retro"] [data-list-tone] [data-slot="list-status"] {
   background: var(--list-accent);

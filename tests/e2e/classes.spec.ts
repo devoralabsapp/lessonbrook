@@ -247,9 +247,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await expect(groupRows).toHaveCount(2);
   await expect(classRows).toHaveCount(0);
   const dateTile = page.locator('[data-slot="lesson-date"]').first();
-  await expect(dateTile).toHaveCSS("background-color", "rgb(170, 215, 245)");
+  await expect(dateTile).toHaveCSS("background-color", "rgb(121, 200, 255)");
   const month = dateTile.locator(".lesson-date-month");
-  await expect(month).toHaveCSS("background-color", "rgb(255, 219, 87)");
+  await expect(month).toHaveCSS("background-color", "rgb(255, 208, 44)");
   expect(
     await month.evaluate((label) => {
       const range = document.createRange();
@@ -315,7 +315,7 @@ test("dropdown gọn trên desktop/360px, sáu theme đổi màu và tồn tại
     await expect(menu).toHaveCSS("border-top-width", "2px");
     await expect(menu.getByRole("option", { selected: true })).toHaveCSS(
       "background-color",
-      "rgb(255, 219, 87)",
+      "rgb(255, 208, 44)",
     );
     const rect = (await menu.boundingBox())!;
     expect(rect.x).toBeGreaterThan(0);
@@ -661,9 +661,9 @@ test("Playful Retro: consistent panels, forms and navigation at phone/desktop wi
     );
     await expect(summary).toHaveCount(3);
     for (const [tone, color] of [
-      ["yellow", "rgb(255, 219, 87)"],
-      ["pink", "rgb(255, 183, 206)"],
-      ["blue", "rgb(170, 215, 245)"],
+      ["yellow", "rgb(255, 208, 44)"],
+      ["pink", "rgb(255, 134, 176)"],
+      ["blue", "rgb(121, 200, 255)"],
     ]) {
       const card = page.locator(`[data-slot="card"][data-tone="${tone}"]`);
       await expect(card).toHaveCSS("background-color", color);

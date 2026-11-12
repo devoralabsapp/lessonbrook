@@ -35,7 +35,7 @@ export const themes: {
     id: "playful-retro",
     name: "Playful Retro Neo-Brutalism",
     description: "Nền kem, pastel rực rỡ, viền đen và bóng đổ retro",
-    colors: ["#fff6e6", "#ffdb57", "#ffb7ce", "#aad7f5", "#baf0d1"],
+    colors: ["#fff6e6", "#ffd02c", "#ff86b0", "#79c8ff", "#83e5b0"],
   },
   {
     id: "mono-os",
