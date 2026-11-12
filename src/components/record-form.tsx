@@ -60,9 +60,12 @@ export function RecordForm({
   const [selected, setSelected] = useState(
     lesson?.studentId ?? (student?.archivedAt ? "" : student?.id) ?? "",
   );
-  const [rate, setRate] = useState(
-    lesson?.rateVnd ?? student?.defaultRateVnd ?? 200000,
+  const [rate, setRate] = useState<number | "">(
+    lesson?.rateVnd ?? student?.defaultRateVnd ?? "",
   );
+  const chargesTuition = status !== "cancelled" && billable;
+  const priceRequired = !!selected && chargesTuition;
+  const rateVnd = rate === "" ? 0 : rate;
   const [date, setDate] = useState(lesson?.sessionDate ?? vietnamToday());
   const [time, setTime] = useState(lesson?.startTime ?? "");
   const [duplicate, setDuplicate] = useState(false);
@@ -184,7 +187,6 @@ export function RecordForm({
             displayName: String(values.get("displayName")),
             contactName: String(values.get("contactName")),
             phone: String(values.get("phone")),
-            defaultRateVnd: Number(values.get("defaultRateVnd")),
             privateNote: String(values.get("privateNote")),
           }
         : {
@@ -197,8 +199,8 @@ export function RecordForm({
                 ? Number(values.get("durationMinutes"))
                 : null,
             status,
-            billable: status === "cancelled" ? false : billable,
-            rateVnd: rate,
+            billable: chargesTuition,
+            rateVnd,
             privateNote: String(values.get("privateNote")),
           };
     const serialized = JSON.stringify(payload);
@@ -235,7 +237,7 @@ export function RecordForm({
               "1": formatDate(date, locale),
               "2": formatVnd(
                 savedSession?.amountVnd ??
-                  sessionAmount({ status, billable, rateVnd: rate }),
+                  sessionAmount({ status, billable, rateVnd }),
                 locale,
               ),
             }),
@@ -301,24 +303,6 @@ export function RecordForm({
                   placeholder={t("Ví dụ: Nguyễn Lan")}
                 />
               </label>
-              <label className="field-label">
-                {t("Đơn giá mặc định / buổi (VND) *")}
-                <Input
-                  name="defaultRateVnd"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={MAX_VND}
-                  step={1}
-                  required
-                  defaultValue={s?.defaultRateVnd ?? 200000}
-                />
-              </label>
-              <p className="text-xs leading-5 text-muted-foreground">
-                {t(
-                  "Đổi đơn giá chỉ áp dụng cho buổi mới. Giá các buổi đã ghi được giữ nguyên.",
-                )}
-              </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="field-label">
                   {t("Tên người liên hệ")}
@@ -384,7 +368,7 @@ export function RecordForm({
                   draft.changed();
                   setSelected(value);
                   const found = students.find((s) => s.id === value);
-                  if (found) setRate(found.defaultRateVnd);
+                  setRate(found?.defaultRateVnd ?? "");
                 }}
                 options={[
                   { value: "", label: t("Chọn học viên") },
@@ -486,17 +470,20 @@ export function RecordForm({
                 </p>
               )}
               <label className="field-label">
-                {t("Đơn giá buổi này (VND) *")}
+                {t("Đơn giá buổi này (VND)")}
+                {priceRequired ? " *" : ""}
                 <Input
                   type="number"
                   disabled={!!lesson?.lessonId}
-                  required
+                  required={priceRequired}
                   inputMode="numeric"
                   min={0}
                   max={MAX_VND}
                   step={1}
                   value={rate}
-                  onChange={(e) => setRate(Number(e.target.value))}
+                  onChange={(e) =>
+                    setRate(e.target.value === "" ? "" : e.target.valueAsNumber)
+                  }
                 />
               </label>
               {lesson?.lessonId && (
@@ -509,7 +496,7 @@ export function RecordForm({
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  checked={status !== "cancelled" && billable}
+                  checked={chargesTuition}
                   disabled={status === "cancelled"}
                   onChange={(e) => setBillable(e.target.checked)}
                   className="size-4 accent-primary"
@@ -523,12 +510,14 @@ export function RecordForm({
                     : t("Học phí buổi dạy")}
                 </span>
                 <strong>
-                  {formatVnd(
-                    status === "planned" && billable
-                      ? rate
-                      : sessionAmount({ status, billable, rateVnd: rate }),
-                    locale,
-                  )}
+                  {chargesTuition && rate === ""
+                    ? "—"
+                    : formatVnd(
+                        status === "planned" && chargesTuition
+                          ? rateVnd
+                          : sessionAmount({ status, billable, rateVnd }),
+                        locale,
+                      )}
                 </strong>
               </div>
             </>

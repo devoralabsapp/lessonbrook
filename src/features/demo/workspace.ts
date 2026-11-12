@@ -781,7 +781,10 @@ export function executeDemoCommand(
       throw new AppError(400, "Không thể đổi học viên của buổi đã lưu.");
     if (!old && student.archivedAt)
       throw new AppError(409, "Khôi phục học viên trước khi thêm buổi mới.");
-    const rateVnd = input.rateVnd ?? old?.rateVnd ?? student.defaultRateVnd;
+    const savedRate = input.rateVnd ?? old?.rateVnd ?? student.defaultRateVnd;
+    if (input.billable && savedRate === undefined)
+      throw new AppError(400, "Nhập đơn giá cho buổi có tính phí.");
+    const rateVnd = savedRate ?? 0;
     if (
       old?.lessonId &&
       (input.sessionDate !== old.sessionDate ||

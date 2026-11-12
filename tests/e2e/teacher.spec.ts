@@ -61,7 +61,7 @@ test("Google popup Emulator → session HttpOnly → đăng xuất", async ({
   await page.waitForURL("**/login");
   expect((await context.request.get("/api/profile")).status()).toBe(401);
 });
-test("giáo viên 360px: học viên → buổi → reload → giá mới không đổi lịch sử", async ({
+test("giáo viên 360px: học viên không cần đơn giá → nhập giá khi ghi buổi → sửa liên hệ giữ lịch sử", async ({
   page,
   context,
 }) => {
@@ -90,25 +90,28 @@ test("giáo viên 360px: học viên → buổi → reload → giá mới không
     .click();
   await page.getByLabel("Tên học viên").fill("Lan E2E");
   await page.keyboard.press("Tab");
-  await expect(page.getByLabel("Đơn giá mặc định")).toBeFocused();
-  await page.getByLabel("Đơn giá mặc định").fill("200000");
+  await expect(page.getByLabel("Tên người liên hệ")).toBeFocused();
+  await expect(page.getByLabel("Đơn giá mặc định")).toHaveCount(0);
+  await page.getByLabel("Tên người liên hệ").fill("Phụ huynh Lan");
   await page.getByRole("button", { name: "Lưu học viên", exact: true }).click();
   try {
     await refreshStarted.promise;
     await expect(
       page.getByRole("status").filter({ hasText: "Đã lưu học viên Lan E2E" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Lan E2E", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /^Lan E2E\b/ })).toBeVisible();
     await expect(page.getByText(/200\.000/)).toHaveCount(0);
   } finally {
     releaseRefresh.resolve();
   }
-  await page.getByRole("link", { name: "Lan E2E", exact: true }).click();
-  await expect(page.getByText(/Đơn giá hiện tại:/)).toBeVisible();
+  await page.getByRole("link", { name: /^Lan E2E\b/ }).click();
+  await expect(page.getByText(/Đơn giá hiện tại:/)).toHaveCount(0);
   await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
   await page.getByLabel("Ngày dạy").fill("2026-10-15");
+  const lessonPrice = page.getByLabel("Đơn giá buổi này");
+  await expect(lessonPrice).toHaveValue("");
+  await expect(lessonPrice).toHaveAttribute("required", "");
+  await lessonPrice.fill("200000");
   const keys: string[] = [];
   await page.route("**/api/sessions", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
@@ -136,10 +139,16 @@ test("giáo viên 360px: học viên → buổi → reload → giá mới không
   await expect(page.locator(".status-completed")).toBeVisible();
   await expect(page.locator(".status-completed")).toHaveCount(1);
   await page.getByRole("button", { name: "Sửa học viên", exact: true }).click();
-  await page.getByLabel("Đơn giá mặc định").fill("250000");
+  await expect(page.getByLabel("Đơn giá mặc định")).toHaveCount(0);
+  await expect(page.getByLabel("Tên người liên hệ")).toHaveValue(
+    "Phụ huynh Lan",
+  );
+  await page.getByLabel("Số điện thoại").fill("0123456789");
   await page.getByRole("button", { name: "Lưu học viên", exact: true }).click();
   await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
-  await expect(page.getByLabel("Đơn giá buổi này")).toHaveValue("250000");
+  await expect(lessonPrice).toHaveValue("");
+  await page.getByLabel("Tính phí buổi này").uncheck();
+  await expect(lessonPrice).not.toHaveAttribute("required", "");
   await page.getByRole("button", { name: "Để sau", exact: true }).click();
   await expect(
     page.getByText("200.000", { exact: false }).last(),

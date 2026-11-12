@@ -44,7 +44,8 @@ export const studentInputSchema = z
     contactName: text(100).default(""),
     phone: text(30).default(""),
     privateNote: text(1000).default(""),
-    defaultRateVnd: moneySchema,
+    // Existing clients and student records may still supply a legacy rate.
+    defaultRateVnd: moneySchema.optional(),
   })
   .strict();
 export const sessionInputSchema = z

@@ -331,14 +331,9 @@ export function Workspace({
             {mode === "overview"
               ? t("Mỗi buổi được ghi lại, cuối tháng bớt một điều phải nhớ.")
               : mode === "students"
-                ? t(
-                    "Giữ thông tin và đơn giá. Lịch sử buổi dạy luôn còn trong sổ.",
-                  )
-                : student
-                  ? t("Đơn giá hiện tại: {0} / buổi{1}", {
-                      "0": formatVnd(student.defaultRateVnd, locale),
-                      "1": student.archivedAt ? t(" · Đã lưu trữ") : "",
-                    })
+                ? t("Quản lý thông tin và liên hệ của học viên.")
+                : student?.archivedAt
+                  ? t("Đã lưu trữ")
                   : t("Ghi từng buổi, theo dõi đúng học phí.")}
           </p>
         </div>
@@ -996,7 +991,7 @@ function Empty({
       </h3>
       <p className="mb-6 mt-3 max-w-sm text-xs leading-6 text-muted-foreground">
         {kind === "student"
-          ? t("Thêm tên và đơn giá mỗi buổi. Bạn có thể thay đổi đơn giá sau.")
+          ? t("Thêm tên học viên. Bạn có thể bổ sung thông tin liên hệ sau.")
           : t(
               "Thêm học viên, rồi ghi một buổi đã dạy. Học phí sẽ được lưu đúng theo buổi đó.",
             )}

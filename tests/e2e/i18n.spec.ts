@@ -75,7 +75,7 @@ test("demo reuses the workspace and keeps sample changes in its tab", async ({
   await page.getByRole("button", { name: "Add student" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Student name").fill("Demo Test Student");
-  await dialog.getByLabel("Default price / lesson").fill("100000");
+  await expect(dialog.getByLabel("Default price / lesson")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save student" }).click();
   await expect(dialog).toHaveCount(0);
   await page
@@ -540,7 +540,6 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     .first()
     .click();
   await page.getByLabel("Student name *", { exact: true }).fill("Đã dạy");
-  await page.getByLabel("Default price / lesson").fill("200000");
   await page.getByRole("button", { name: "Save student", exact: true }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "Student Đã dạy saved." }),
@@ -555,6 +554,7 @@ test("English teacher flow: entered Vietnamese names stay intact, lessons and st
     .getByRole("button", { name: "Record lesson", exact: true })
     .click();
   await page.getByLabel("Lesson date *", { exact: true }).fill(vietnamToday());
+  await page.getByLabel("This lesson's price").fill("200000");
   await page.getByRole("button", { name: "Save lesson", exact: true }).click();
   await expect(page.locator(".status-completed")).toHaveText("Completed");
   await expect(page.getByText(/200,000/).last()).toBeVisible();

@@ -19,7 +19,7 @@ English interface preview · Playful Retro Neo-Brutalism · Fictional sample dat
 ## Features
 
 - Google sign-in; HttpOnly server sessions, revocation checks, CSRF and Origin protection.
-- Students, default rates, archiving/restoring, classes of up to 50 students, and group lessons with saved price snapshots.
+- Student profiles, archiving/restoring, classes of up to 50 students, and group lessons with saved price snapshots.
 - List and monthly calendar views for classes and lessons, with weekly class timetables, status colors, date selection, and links to details.
 - Per-student statements, issue/void workflows, partial payments, and voiding incorrect payment records.
 - Expiring and revocable statement links; dashboard, search, filters, CSV/ZIP/JSON export, and account deletion.

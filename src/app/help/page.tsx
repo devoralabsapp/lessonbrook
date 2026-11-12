@@ -54,12 +54,12 @@ export default async function HelpPage() {
         <ol className="list-decimal space-y-3 pl-5">
           <li>
             {t(
-              "Thêm học viên với tên và đơn giá mỗi buổi. Sổ bắt đầu từ các buổi bạn nhập, chưa bao gồm khoản nợ cũ.",
+              "Thêm học viên bằng tên và thông tin liên hệ nếu có. Sổ bắt đầu từ các buổi bạn nhập, chưa bao gồm khoản nợ cũ.",
             )}
           </li>
           <li>
             {t(
-              "Chọn “Ghi buổi dạy”, kiểm tra học viên, ngày, đơn giá và trạng thái “Đã dạy”. Có thể ghi bù. Đổi đơn giá học viên chỉ áp dụng cho buổi mới.",
+              "Chọn “Ghi buổi dạy”, chọn học viên, ngày và trạng thái “Đã dạy”. Nhập đơn giá nếu có tính phí. Bạn có thể ghi bù.",
             )}
           </li>
           <li>

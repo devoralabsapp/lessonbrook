@@ -19,7 +19,7 @@ Giao diện mặc định là tiếng Anh. Dùng bộ chọn trên thanh đầu 
 ## Tính năng
 
 - Đăng nhập Google; phiên server HttpOnly, kiểm tra thu hồi, CSRF và Origin.
-- Học viên, đơn giá, lưu trữ/khôi phục; lớp tối đa 50 người và buổi nhóm với giá riêng được chụp tại thời điểm ghi.
+- Hồ sơ học viên, lưu trữ/khôi phục; lớp tối đa 50 người và buổi nhóm với giá riêng được chụp tại thời điểm ghi.
 - Bảng kê từng học viên, phát hành/hủy, thu từng phần và vô hiệu hóa khoản thu nhập sai.
 - Link bảng kê có thời hạn/thu hồi; tổng quan, tìm kiếm, bộ lọc, CSV/ZIP/JSON và xóa tài khoản.
 - Tám giao diện tối ưu điện thoại gồm Modern, Vintage, Art, Natura, Ocean, Command Line, Visual Code và Playful Retro Neo-Brutalism mặc định. Command Line dùng nền đen và điểm nhấn xanh. Xem thử từ nút bảng màu trên thanh đầu trang rồi bấm **Lưu giao diện** để dùng lựa chọn trên các thiết bị.

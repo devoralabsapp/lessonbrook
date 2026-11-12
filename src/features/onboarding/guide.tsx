@@ -187,7 +187,7 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
             <h2 className="serif text-2xl">{t("Thêm học viên đầu tiên")}</h2>
             <p className="text-sm leading-6 text-muted-foreground">
               {t(
-                "Chỉ cần tên và đơn giá mỗi buổi. Thông tin liên hệ có thể bổ sung sau; đổi đơn giá sẽ không đổi các buổi cũ.",
+                "Chỉ cần tên học viên. Bạn có thể bổ sung thông tin liên hệ sau.",
               )}
             </p>
             <Button disabled={loading} onClick={() => setModal("student")}>
@@ -197,14 +197,10 @@ export function OnboardingGuide({ initial }: { initial: OnboardingState }) {
         ) : step === 2 ? (
           <div className="space-y-4">
             <h2 className="serif text-2xl">{t("Ghi buổi đã dạy đầu tiên")}</h2>
-            <p className="text-sm leading-6">
-              {data.student?.displayName} ·{" "}
-              {formatVnd(data.student?.defaultRateVnd ?? 0, locale)}
-              {t(" / buổi")}
-            </p>
+            <p className="text-sm leading-6">{data.student?.displayName}</p>
             <p className="text-sm leading-6 text-muted-foreground">
               {t(
-                "Chọn ngày dạy thực tế và trạng thái “Đã dạy”. Bạn có thể ghi bù một buổi trước đó.",
+                "Chọn ngày dạy, nhập đơn giá nếu có tính phí và chọn trạng thái “Đã dạy”. Bạn có thể ghi bù một buổi trước đó.",
               )}
             </p>
             <Button

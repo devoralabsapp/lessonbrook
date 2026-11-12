@@ -389,8 +389,11 @@ export async function saveSession(
         );
       if (!id && student.archivedAt)
         throw new AppError(409, "Khôi phục học viên trước khi thêm buổi mới.");
-      const rateVnd =
+      const savedRate =
         input.rateVnd ?? current?.rateVnd ?? student.defaultRateVnd;
+      if (input.billable && savedRate === undefined)
+        throw new AppError(400, "Nhập đơn giá cho buổi có tính phí.");
+      const rateVnd = savedRate ?? 0;
       const data = {
         ...input,
         rateVnd,

@@ -56,7 +56,6 @@ test("360px: hướng dẫn lần đầu → mất response xác nhận → ti�
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
   await page.getByLabel("Tên học viên").fill("An buổi đầu");
-  await page.getByLabel("Đơn giá mặc định").fill("200000");
   await page.getByRole("button", { name: "Lưu học viên", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Ghi buổi đã dạy đầu tiên" }),
@@ -68,7 +67,7 @@ test("360px: hướng dẫn lần đầu → mất response xác nhận → ti�
   await page
     .getByRole("button", { name: "Ghi buổi đầu tiên", exact: true })
     .click();
-  await expect(page.getByLabel("Đơn giá buổi này")).toHaveValue("200000");
+  await page.getByLabel("Đơn giá buổi này").fill("200000");
   await page.getByLabel("Ngày dạy").fill(vietnamToday());
   await page.getByRole("button", { name: "Lưu buổi dạy", exact: true }).click();
   await expect(
