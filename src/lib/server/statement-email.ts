@@ -18,14 +18,20 @@ type Teacher = { uid: string; email?: string; email_verified?: boolean };
 
 function gmailConfig(teacher: Teacher) {
   const env = process.env;
-  // The sender belongs to the deployment owner, not to every signed-in teacher.
+  const teacherEmails = (
+    env.STATEMENT_EMAIL_TEACHER_WHITELIST ??
+    env.STATEMENT_EMAIL_TEACHER ??
+    ""
+  )
+    .split(/[,\r\n]/)
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => z.email().safeParse(email).success);
   if (
     env.FIREBASE_AUTH_EMULATOR_HOST ||
     env.FIRESTORE_EMULATOR_HOST ||
     !teacher.email_verified ||
     !teacher.email ||
-    teacher.email.toLowerCase() !==
-      env.STATEMENT_EMAIL_TEACHER?.trim().toLowerCase()
+    !teacherEmails.includes(teacher.email.toLowerCase())
   )
     return null;
 

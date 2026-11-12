@@ -28,9 +28,9 @@ Never put credentials in NEXT_PUBLIC variables, copy old OIDC tokens, hardcode a
 
 ## Optional statement email through Gmail
 
-The **Send email** button uses the recipient saved in the student profile and the active statement link. It is available to one verified LessonBrook sign-in on a hosted deployment. Demo and Emulator never send mail.
+The **Send email** button uses the recipient saved in the student profile and the active statement link. It is available to verified LessonBrook sign-ins in the sender whitelist on a hosted deployment. Demo and Emulator never send mail.
 
-Set `STATEMENT_EMAIL_FROM` to the Gmail sender address and `STATEMENT_EMAIL_TEACHER` to the verified Google email used to sign in to LessonBrook. The addresses can differ. Set these values on the server in the production environment and redeploy.
+Set `STATEMENT_EMAIL_FROM` to the Gmail sender address and `STATEMENT_EMAIL_TEACHER_WHITELIST` to the Google sign-in email addresses allowed to send. Separate addresses with commas or newlines. Addresses are matched exactly and ignore letter case. Each allowed teacher sends statements from their own ledger to their saved student contacts. An empty whitelist disables sending. Deployments with the legacy `STATEMENT_EMAIL_TEACHER` setting keep using that single address until a whitelist is set. Set these values on the server in the production environment and redeploy.
 
 - For Gmail SMTP, set `STATEMENT_EMAIL_GMAIL_APP_PASSWORD` as a secret. Use a [Google App Password](https://support.google.com/accounts/answer/185833) from the sender account. LessonBrook uses TLS on port 465. Gmail may reject sign-in from a hosted server.
 - For Gmail API OAuth, leave the app password unset and enable the Gmail API. Authorize the sender mailbox using an OAuth client you control with the [`gmail.send` scope](https://developers.google.com/workspace/gmail/api/auth/scopes) and offline access. Set `STATEMENT_EMAIL_GOOGLE_CLIENT_ID`, `STATEMENT_EMAIL_GOOGLE_CLIENT_SECRET`, and `STATEMENT_EMAIL_GOOGLE_REFRESH_TOKEN`. Store the client secret and refresh token as secrets. A Google OAuth app left in external Testing has a [seven-day refresh token lifetime](https://developers.google.com/identity/protocols/oauth2#expiration) for this scope.

@@ -90,6 +90,7 @@ beforeEach(() => {
   vi.stubEnv("FIREBASE_AUTH_EMULATOR_HOST", "");
   vi.stubEnv("FIRESTORE_EMULATOR_HOST", "");
   vi.stubEnv("STATEMENT_EMAIL_TEACHER", teacher.email);
+  vi.stubEnv("STATEMENT_EMAIL_TEACHER_WHITELIST", undefined);
   vi.stubEnv("STATEMENT_EMAIL_GMAIL_APP_PASSWORD", "");
   vi.stubEnv("STATEMENT_EMAIL_FROM", "sender@example.test");
   vi.stubEnv("STATEMENT_EMAIL_GOOGLE_CLIENT_ID", "fake-client");
@@ -195,14 +196,12 @@ it("uses Gmail TLS and sends the statement once with an app password", async () 
 it("preserves the send claim on an ambiguous SMTP disconnect", async () => {
   const record = simulateShareToken();
   vi.stubEnv("STATEMENT_EMAIL_GMAIL_APP_PASSWORD", "abcdefghijklmnop");
-  const sendMail = vi
-    .fn()
-    .mockRejectedValue(
-      Object.assign(new Error("Connection closed unexpectedly"), {
-        code: "ECONNECTION",
-        command: "CONN",
-      }),
-    );
+  const sendMail = vi.fn().mockRejectedValue(
+    Object.assign(new Error("Connection closed unexpectedly"), {
+      code: "ECONNECTION",
+      command: "CONN",
+    }),
+  );
   mocks.createTransport.mockReturnValue({ sendMail });
   await expect(
     sendStatementEmail(teacher, id, input, key, "en"),
@@ -212,4 +211,52 @@ it("preserves the send claim on an ambiguous SMTP disconnect", async () => {
   ).rejects.toMatchObject({ status: 409 });
   expect(sendMail).toHaveBeenCalledOnce();
   expect(record.emailDelivery?.sentAt).toBeNull();
+});
+
+it("allows verified teachers listed by exact email and overrides the legacy teacher setting", async () => {
+  simulateShareToken();
+  vi.stubEnv("STATEMENT_EMAIL_TEACHER", "old@example.test");
+  vi.stubEnv(
+    "STATEMENT_EMAIL_TEACHER_WHITELIST",
+    " other@example.test, TEACHER@example.test\nlast@example.test ",
+  );
+  vi.stubEnv("STATEMENT_EMAIL_GMAIL_APP_PASSWORD", "abcdefghijklmnop");
+  const sendMail = vi.fn().mockResolvedValue({});
+  mocks.createTransport.mockReturnValue({ sendMail });
+  await expect(
+    sendStatementEmail(teacher, id, input, key, "en"),
+  ).resolves.toEqual({ id });
+  expect(sendMail).toHaveBeenCalledOnce();
+});
+
+it.each([
+  "",
+  "other@example.test",
+  "*@example.test",
+  "prefix-teacher@example.test",
+  "teacher@example.test.evil.test",
+])(
+  "rejects a teacher outside the configured whitelist %j before any reads or delivery",
+  async (whitelist) => {
+    vi.stubEnv("STATEMENT_EMAIL_TEACHER_WHITELIST", whitelist);
+    await expect(
+      sendStatementEmail(teacher, id, input, key, "en"),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(mocks.runTransaction).not.toHaveBeenCalled();
+    expect(mocks.createTransport).not.toHaveBeenCalled();
+  },
+);
+
+it("requires verified email even when the account is whitelisted", async () => {
+  vi.stubEnv("STATEMENT_EMAIL_TEACHER_WHITELIST", teacher.email);
+  await expect(
+    sendStatementEmail(
+      { ...teacher, email_verified: false },
+      id,
+      input,
+      key,
+      "en",
+    ),
+  ).rejects.toMatchObject({ status: 403 });
+  expect(mocks.runTransaction).not.toHaveBeenCalled();
 });
