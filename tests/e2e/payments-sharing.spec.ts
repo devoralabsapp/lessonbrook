@@ -219,9 +219,52 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       .getByRole("button", { name: "Lưu khoản thu", exact: true })
       .click();
     await expect(page.getByTestId("payment-row")).toHaveCount(2);
+    const first = page
+      .getByTestId("payment-row")
+      .filter({ hasText: "1.000.000" });
+    const details = first.getByRole("button", { name: /Chi tiết khoản thu/ });
+    await expect(
+      first.getByText("PRIVATE PAYMENT NOTE", { exact: false }),
+    ).toHaveCount(0);
+    await details.click();
+    await expect(
+      first.getByText("PRIVATE PAYMENT NOTE", { exact: false }),
+    ).toBeVisible();
+    await details.click();
     const second = page
       .getByTestId("payment-row")
       .filter({ hasText: "500.000" });
+    for (const width of [320, 360, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      const summaries = page.locator('[data-slot="payment-summary"]');
+      expect(
+        await summaries.evaluateAll(
+          (elements) =>
+            elements.length === 2 &&
+            elements.every((element) => {
+              const row = element.getBoundingClientRect();
+              const controls = Array.from(
+                element.querySelectorAll(
+                  "strong, time, time + span, button[aria-label]",
+                ),
+              );
+              return (
+                controls.length === 5 &&
+                controls.every((control) => {
+                  const { left, right, top, height } =
+                    control.getBoundingClientRect();
+                  return (
+                    left >= row.left &&
+                    right <= row.right &&
+                    Math.abs(top + height / 2 - (row.top + row.height / 2)) < 1
+                  );
+                })
+              );
+            }),
+        ),
+      ).toBe(true);
+    }
+    await page.setViewportSize({ width: 360, height: 800 });
     await second
       .getByRole("button", { name: "Sửa khoản thu", exact: true })
       .click();
@@ -248,10 +291,16 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
     await expect(recipient.getByTestId("public-remaining")).toHaveText(
       /^0\s*₫$/,
     );
-    const first = page
-      .getByTestId("payment-row")
-      .filter({ hasText: "1.000.000" });
-    await first.locator("summary").click();
+    const remove = first.getByRole("button", {
+      name: "Xóa khoản thu",
+      exact: true,
+    });
+    await remove.click();
+    await first.getByRole("button", { name: "Hủy", exact: true }).click();
+    await expect(
+      first.getByLabel("Lý do xóa (tùy chọn)", { exact: true }),
+    ).toHaveCount(0);
+    await remove.click();
     await first
       .getByLabel("Lý do xóa (tùy chọn)", { exact: true })
       .fill("PRIVATE REASON");
@@ -259,6 +308,11 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       .getByRole("button", { name: "Xác nhận xóa khoản thu", exact: true })
       .click();
     await expect(first).toContainText("Đã vô hiệu hóa");
+    await expect(remove).toHaveCount(0);
+    await details.click();
+    await expect(
+      first.getByText("PRIVATE REASON", { exact: false }),
+    ).toBeVisible();
     await expect(statementCard.locator(".status-unpaid")).toBeVisible();
     await recipient
       .getByRole("button", { name: "Cập nhật số liệu", exact: true })
