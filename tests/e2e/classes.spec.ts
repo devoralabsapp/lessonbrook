@@ -353,12 +353,12 @@ test("dropdown gọn trên desktop/360px, sáu theme đổi màu và tồn tại
       appearanceWrites++;
   });
   for (const [name, id] of [
-    ["Playful Retro Neo-Brutalism", "playful-retro"],
     ["Mono OS", "mono-os"],
     ["Chapter Desk", "chapter-desk"],
     ["Afterhours FM", "afterhours-fm"],
     ["Margin Notes", "margin-notes"],
     ["Sticker Sprint", "sticker-sprint"],
+    ["Playful Retro Neo-Brutalism", "playful-retro"],
   ]) {
     const writesBeforePreview = appearanceWrites;
     await page.getByRole("radio", { name, exact: false }).check();
