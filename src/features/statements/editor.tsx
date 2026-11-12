@@ -169,7 +169,7 @@ export function StatementEditor({
               className={cn(
                 "grid items-start gap-x-3 gap-y-4",
                 period === "custom"
-                  ? "@min-[30rem]:grid-cols-2 @min-[40rem]:grid-cols-[minmax(0,1.35fr)_repeat(4,minmax(0,1fr))]"
+                  ? "@min-[30rem]:grid-cols-2 @min-[40rem]:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)_repeat(3,minmax(0,1fr))]"
                   : "@min-[30rem]:grid-cols-[minmax(0,1.35fr)_repeat(2,minmax(0,1fr))]",
               )}
             >
@@ -211,7 +211,7 @@ export function StatementEditor({
                   <label className="field-label min-w-0">
                     {t("Từ ngày")}
                     <Input
-                      className="h-[42px]"
+                      className="h-[42px] @min-[40rem]:px-2"
                       type="date"
                       required
                       min="1900-01-01"
@@ -225,7 +225,7 @@ export function StatementEditor({
                   <label className="field-label min-w-0">
                     {t("Đến ngày")}
                     <Input
-                      className="h-[42px]"
+                      className="h-[42px] @min-[40rem]:px-2"
                       type="date"
                       required
                       min={periodStart || "1900-01-01"}
@@ -241,7 +241,7 @@ export function StatementEditor({
               <label className="field-label min-w-0">
                 {t("Ngày đến hạn")}
                 <Input
-                  className="h-[42px]"
+                  className="h-[42px] @min-[40rem]:px-2"
                   type="date"
                   required
                   min="1900-01-01"
