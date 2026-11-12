@@ -43,3 +43,21 @@ it("accepts an explicitly credited VND amount with a multiline memo and typograp
     )?.reference,
   ).toBeNull();
 });
+
+it("extracts a compact VietQR memo and treats its hyphenated form as the same code", () => {
+  const reference = "CC-2026-000123-A23D458E90";
+  const compact = reference.replaceAll("-", "");
+  expect(parseBankNotification(notice("+ 30,000", compact))?.reference).toBe(
+    compact,
+  );
+  expect(
+    parseBankNotification(notice("+ 30,000", `${reference} ${compact}`))
+      ?.reference,
+  ).toBe(reference);
+  expect(
+    parseBankNotification(notice("+ 30,000", `${compact} ${memo}`))?.reference,
+  ).toBeNull();
+  expect(
+    parseBankNotification(notice("+ 30,000", `${compact}1`))?.reference,
+  ).toBeNull();
+});

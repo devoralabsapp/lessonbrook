@@ -131,13 +131,45 @@ export async function recordPayment(
     },
   );
 }
+const bankStatementNotFound = () =>
+  new AppError(404, "Không tìm thấy bảng kê khớp mã chuyển khoản.");
+
+async function resolveBankTransferReference(uid: string, reference: string) {
+  if (reference.includes("-")) return reference;
+
+  const year = reference.slice(2, 6);
+  const digits = reference.slice(6);
+  const numbers = [];
+  // A 25-character VietQR memo uses 6–10 serial digits. When the separators
+  // are removed, trailing serial digits cannot be distinguished from the hash.
+  for (let length = 6; length <= 10; length++) {
+    const serial = digits.slice(0, length);
+    if (!/^\d+$/.test(serial)) break;
+    numbers.push(`CC-${year}-${serial}`);
+  }
+  if (!numbers.length) throw bankStatementNotFound();
+  const docs = await userRef(uid)
+    .collection("statements")
+    .where("number", "in", numbers)
+    .limit(numbers.length + 1)
+    .get();
+  if (docs.size > numbers.length) throw bankStatementNotFound();
+  const matches = docs.docs.flatMap((doc) => {
+    const canonical = transferReferenceFor(statementDto(doc));
+    return canonical?.replaceAll("-", "") === reference ? [canonical] : [];
+  });
+  if (matches.length !== 1) throw bankStatementNotFound();
+  return matches[0];
+}
+
 export async function recordBankPayment(
   uid: string,
   keyHash: string,
   accountNumber: string,
-  reference: string,
+  receivedReference: string,
   amountVnd: number,
 ) {
+  const reference = await resolveBankTransferReference(uid, receivedReference);
   const payload = { reference, amountVnd };
   const digest = createHash("sha256")
     .update(JSON.stringify(payload))
@@ -160,7 +192,7 @@ export async function recordBankPayment(
       const statement =
         matches.size === 1 ? statementDto(matches.docs[0]) : null;
       if (!statement || transferReferenceFor(statement) !== reference)
-        throw new AppError(404, "Không tìm thấy bảng kê khớp mã chuyển khoản.");
+        throw bankStatementNotFound();
       if (
         statement.bankTransferSnapshot &&
         statement.bankTransferSnapshot.accountNumber !== accountNumber

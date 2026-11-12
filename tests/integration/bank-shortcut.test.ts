@@ -2,13 +2,14 @@ import { randomBytes } from "node:crypto";
 import { Timestamp } from "firebase-admin/firestore";
 import { describe, expect, it } from "vitest";
 import { admin } from "@/lib/firebase/admin";
+import { vietnamToday } from "@/domain";
 import { client, googleToken, origin } from "./helpers";
 
 const accountNumber = "12345678901234";
 const message = (memo: string, amount = "30,000", account = accountNumber) =>
   `Account ${account}\r\nAmount: + ${amount}\r\nBalance:\u00a0 30,000\r\n${memo}`;
 
-async function setup(withBankTransfer = false) {
+async function setup(withBankTransfer = false, previousNumber?: number) {
   const app = await client("en");
   const identity = await googleToken();
   await app.login(identity.idToken);
@@ -45,6 +46,16 @@ async function setup(withBankTransfer = false) {
     });
   if (withBankTransfer)
     expect((await saveBank(accountNumber)).status).toBe(200);
+  if (previousNumber !== undefined) {
+    const year = vietnamToday().slice(0, 4);
+    await admin()
+      .db.doc(`apps/chotcong/users/${identity.uid}/counters/${year}`)
+      .set({
+        lastValue: previousNumber,
+        updatedAt: Timestamp.now(),
+        schemaVersion: 1,
+      });
+  }
   await create(`${path}/issue`, { version: 1 });
   const detail = await (await app.call(path)).json();
   const connect = async (number = accountNumber) => {
@@ -97,13 +108,16 @@ describe("iPhone bank notification Shortcut", () => {
       (await send(message(reference, "30,000", newAccount), wrongKey)).status,
     ).toBe(409);
     const key = await teacher.connect();
-    expect((await send(message(reference, "20,000"), key)).status).toBe(409);
+    const compact = reference.replaceAll("-", "");
+    expect((await send(message(compact, "20,000"), key)).status).toBe(409);
+    const wrong = compact.slice(0, -1) + (compact.endsWith("A") ? "B" : "A");
+    expect((await send(message(wrong), key)).status).toBe(404);
     const reformatted = [
       `Account: ${accountNumber}`,
       "Amount: + 30.000 VND",
       "Balance: 30.000 ₫",
       "DEMO SENDER",
-      `Memo: ${reference.replaceAll("-", "–")}`,
+      `Memo: ${compact}`,
     ].join("\r");
     expect(await (await send(reformatted, key)).json()).toEqual({
       status: "recorded",
@@ -111,11 +125,35 @@ describe("iPhone bank notification Shortcut", () => {
     expect(await (await send(message(reference), key)).json()).toEqual({
       status: "duplicate",
     });
+    expect(await (await send(message(compact), key)).json()).toEqual({
+      status: "duplicate",
+    });
     expect(await preview()).toMatchObject({
       bankTransfer: bank,
       paidVnd: 30000,
       remainingVnd: 0,
     });
+  });
+
+  it("resolves a compact memo with a seven-digit serial and deduplicates simultaneous formats", async () => {
+    const teacher = await setup(true, 999_999);
+    const key = await teacher.connect();
+    const reference: string = teacher.detail.transferReference;
+    expect(reference).toMatch(/^CC-\d{4}-1000000-[A-F0-9]{9}$/);
+    const compact = reference.replaceAll("-", "");
+    const results = await Promise.all([
+      send(message(compact), key),
+      send(message(reference), key),
+    ]);
+    expect(results.map((result) => result.status)).toEqual([200, 200]);
+    expect(
+      (await Promise.all(results.map((result) => result.json())))
+        .map((result) => result.status)
+        .sort(),
+    ).toEqual(["duplicate", "recorded"]);
+    expect(
+      (await (await teacher.app.call(`${teacher.path}/payments`)).json()).items,
+    ).toHaveLength(1);
   });
 
   it("upgrades an existing key and renews an expired session during payment delivery", async () => {

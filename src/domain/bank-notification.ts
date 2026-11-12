@@ -37,13 +37,22 @@ export function parseBankNotification(message: string) {
       ...(match[3] ?? "")
         .replace(/[\u2010-\u2014\u2212]/g, "-")
         .matchAll(
-          /(?<![a-z\d-])CC-\d{4}-\d{6,10}-[a-f0-9]{6,12}(?![a-z\d-])/gi,
+          /(?<![a-z\d-])CC(?:-\d{4}-\d{6,10}-[a-f0-9]{6,12}|\d{10}[a-f0-9]{10})(?![a-z\d-])/gi,
         ),
     ].map(([reference]) => reference.toUpperCase()),
+  );
+  const compactReferences = new Set(
+    [...references].map((reference) => reference.replaceAll("-", "")),
+  );
+  const separated = [...references].filter((reference) =>
+    reference.includes("-"),
   );
   return {
     accountNumber: match[1],
     amountVnd: parsedAmount.data,
-    reference: references.size === 1 ? [...references][0] : null,
+    reference:
+      compactReferences.size === 1 && separated.length <= 1
+        ? (separated[0] ?? [...references][0])
+        : null,
   };
 }
