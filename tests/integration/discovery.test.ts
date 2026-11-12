@@ -340,7 +340,7 @@ describe("Tìm kiếm, bộ lọc và onboarding qua HTTP với dữ liệu nhi�
       (await all("/api/statements?status=unpaid"))
         .map((s: { id: string }) => s.id)
         .sort(),
-    ).toEqual([unpaid, dueToday].sort());
+    ).toEqual([unpaid, dueToday, partial].sort());
     const paidPage = await list("/api/statements?status=paid&limit=50");
     expect(paidPage.items).toHaveLength(50);
     expect(

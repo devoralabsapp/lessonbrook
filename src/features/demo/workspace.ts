@@ -28,6 +28,8 @@ import {
   matchesStatementDate,
   statementDateRangeSchema,
   normalizeSearch,
+  sessionPaymentStatus,
+  type SessionWithPayment,
 } from "@/domain/list-filters";
 import { teacherSettingsSchema } from "@/domain/onboarding";
 import {
@@ -46,6 +48,7 @@ import {
   addBusinessDays,
   statementDraftInputSchema,
   statementIssueInputSchema,
+  statementIsPaid,
   statementTotal,
   statementVoidInputSchema,
   type Statement,
@@ -280,6 +283,24 @@ function publicShare(
   };
 }
 
+function withDemoPayment(
+  state: DemoWorkspace,
+  session: TeachingSession,
+): SessionWithPayment {
+  const status = sessionPaymentStatus(session);
+  const statement =
+    status &&
+    state.statements.find(
+      (item) =>
+        item.id === session.billedStatementId &&
+        item.studentId === session.studentId,
+    );
+  return {
+    ...session,
+    paymentStatus: statement && statementIsPaid(statement) ? "paid" : status,
+  };
+}
+
 function read(
   state: DemoWorkspace,
   path: string[],
@@ -335,9 +356,10 @@ function read(
     const eq = (param: string, value?: string | null) =>
       !query.has(param) || query.get(param) === value;
     return id
-      ? find(state.sessions, id)
+      ? withDemoPayment(state, find(state.sessions, id))
       : page(
           state.sessions
+            .map((s) => withDemoPayment(state, s))
             .filter(
               (s) =>
                 eq("studentId", s.studentId) &&
@@ -361,7 +383,9 @@ function read(
       const item = find(state.lessons, id);
       return {
         ...item,
-        sessions: item.sessionIds.map((sid) => find(state.sessions, sid)),
+        sessions: item.sessionIds.map((sid) =>
+          withDemoPayment(state, find(state.sessions, sid)),
+        ),
       };
     }
     return page(

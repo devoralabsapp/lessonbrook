@@ -4,6 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useState } from "react";
 import Link from "@/components/workspace-link";
 import { formatVnd, statusLabels, type TeachingSession } from "@/domain";
+import { LessonPaymentStatus } from "@/components/lesson-payment-status";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RecordForm } from "@/components/record-form";
@@ -98,13 +99,9 @@ export function LessonDetail({ id }: { id: string }) {
               >
                 {s.studentName}
               </Link>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {s.billedStatementId
-                  ? t("Đã lập bảng kê")
-                  : s.status === "completed" && s.billable
-                    ? t("Chưa lập bảng kê")
-                    : t("Chưa tính học phí")}
-              </p>
+              <div className="mt-1 empty:hidden">
+                <LessonPaymentStatus session={s} />
+              </div>
             </div>
             <span className={`status justify-self-start status-${s.status}`}>
               {t(statusLabels[s.status])}

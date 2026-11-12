@@ -6,7 +6,9 @@ export default async function Page({
   searchParams: Promise<{ studentId?: string; status?: string }>;
 }) {
   const { studentId, status } = await searchParams;
-  const selected = statementFilterSchema.safeParse(status);
+  const selected = statementFilterSchema.safeParse(
+    status === "outstanding" || status === "partial" ? "unpaid" : status,
+  );
   return (
     <StatementsList
       initialStatus={selected.success ? selected.data : "all"}

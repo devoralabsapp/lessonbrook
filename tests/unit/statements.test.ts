@@ -50,11 +50,11 @@ it("quá hạn là nhãn bổ sung; đúng ngày đến hạn, nháp và bản h
     dueDate: "2026-10-16",
   };
   expect(statementDisplayStatus(statement, "2026-10-16")).toEqual({
-    label: "Thu một phần",
+    label: "Chưa thu",
     overdue: false,
   });
   expect(statementDisplayStatus(statement, "2026-10-17")).toEqual({
-    label: "Thu một phần",
+    label: "Chưa thu",
     overdue: true,
   });
   expect(

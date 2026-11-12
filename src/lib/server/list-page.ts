@@ -41,6 +41,7 @@ export async function listPage<T>(options: {
   cursor?: string;
   limit: number;
   dto: (doc: QueryDocumentSnapshot) => T;
+  enrich?: (items: T[]) => Promise<T[]>;
   matches?: (item: T) => boolean;
 }) {
   let query = options.query;
@@ -87,9 +88,12 @@ export async function listPage<T>(options: {
     );
     const docs = (await query.limit(size + 1).get()).docs;
     const batch = docs.slice(0, size);
+    const enriched = options.enrich
+      ? await options.enrich(batch.map(options.dto))
+      : undefined;
     for (let index = 0; index < batch.length; index++) {
       const doc = batch[index],
-        item = options.dto(doc);
+        item = enriched?.[index] ?? options.dto(doc);
       scanned++;
       if (!options.matches || options.matches(item)) items.push(item);
       if (items.length === options.limit)

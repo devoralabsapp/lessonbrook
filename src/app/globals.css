@@ -507,9 +507,14 @@ summary:focus-visible {
   font-size: calc(11px + var(--font-size-offset, 0px));
   font-weight: 600;
 }
-.status-completed {
+.status-completed,
+.status-paid {
   background: var(--completed-background);
   color: var(--completed-foreground);
+}
+.status-unpaid {
+  background: var(--danger-soft);
+  color: var(--destructive);
 }
 .status-planned {
   background: var(--planned-background);
@@ -520,6 +525,7 @@ summary:focus-visible {
   color: var(--cancelled-foreground);
 }
 dialog {
+  margin: auto;
   background: var(--card);
   padding: 0;
   border: 0;
@@ -661,9 +667,6 @@ dialog::backdrop {
   ) {
   border: var(--retro-outline);
   box-shadow: var(--retro-shadow);
-}
-[data-theme="playful-retro"] dialog {
-  margin: auto;
 }
 [data-theme="playful-retro"] [data-tone="yellow"] {
   background: var(--retro-yellow);

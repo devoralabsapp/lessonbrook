@@ -113,12 +113,22 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
     ).toBe(200);
   });
   it("8 × 200k → thu 1m và 600k → vô hiệu hóa: chi tiết/tổng quan/public cùng đúng; chỉ lưu hash token", async () => {
+    async function lessonsWithPayment(status: "paid" | "unpaid") {
+      const response = await a.call(
+        `/api/sessions?studentId=${studentId}&billing=${status}`,
+      );
+      expect(response.status).toBe(200);
+      return (await response.json()).items;
+    }
+    expect(await lessonsWithPayment("paid")).toEqual([]);
+    expect(await lessonsWithPayment("unpaid")).toHaveLength(8);
     const key = randomUUID();
     const first = await pay(1000000, key);
     expect(first.status).toBe(200);
     const paymentId = (await first.json()).id;
     expect((await pay(1000000, key)).status).toBe(200);
     expect((await get()).paidVnd).toBe(1000000);
+    expect(await lessonsWithPayment("unpaid")).toHaveLength(8);
     const summary = await (await a.call("/api/summary")).json();
     expect(summary).toMatchObject({
       outstandingVnd: 600000,
@@ -213,6 +223,16 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
       "receivedDate",
     ]);
     expect((await pay(600000)).status).toBe(200);
+    const paidLessons = await lessonsWithPayment("paid");
+    expect(paidLessons).toHaveLength(8);
+    expect(
+      paidLessons.every(
+        (lesson: { paymentStatus: string; billedStatementId: string }) =>
+          lesson.paymentStatus === "paid" &&
+          lesson.billedStatementId === statementId,
+      ),
+    ).toBe(true);
+    expect(await lessonsWithPayment("unpaid")).toEqual([]);
     expect((await (await resolve(link.token!)).json()).remainingVnd).toBe(0);
     expect((await get()).activePaymentCount).toBe(2);
     expect(
@@ -246,6 +266,8 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
     ).toBe(200);
     expect((await get()).paidVnd).toBe(600000);
     expect((await get()).activePaymentCount).toBe(1);
+    expect(await lessonsWithPayment("paid")).toEqual([]);
+    expect(await lessonsWithPayment("unpaid")).toHaveLength(8);
     expect((await (await resolve(link.token!)).json()).remainingVnd).toBe(
       1000000,
     );

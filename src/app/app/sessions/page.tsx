@@ -10,7 +10,11 @@ export default async function Page({
   return (
     <Workspace
       mode="sessions"
-      initialBilling={billing.success ? billing.data : "all"}
+      initialBilling={
+        billing.success && billing.data !== "billed" && billing.data !== "free"
+          ? billing.data
+          : "all"
+      }
     />
   );
 }

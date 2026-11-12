@@ -97,7 +97,7 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
   const statementCard = page.getByTestId("statement-preview");
   await expect(
     statementCard.getByRole("status").filter({ hasText: "Chưa thu" }),
-  ).toHaveClass(/bg-danger-soft/);
+  ).toHaveClass(/status-unpaid/);
   const cash = statementCard.getByRole("button", {
     name: "Đã trả bằng tiền mặt",
     exact: true,
@@ -114,9 +114,9 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
   await expect(
     page.getByLabel("Số tiền nhận (VND)", { exact: true }),
   ).toHaveCount(0);
-  await page.goto("/app/statements?status=partial");
+  await page.goto("/app/statements?status=unpaid");
   const status = page.getByRole("combobox", { name: "Trạng thái bảng kê" });
-  await expect(status).toHaveText("Thu một phần");
+  await expect(status).toHaveText("Chưa thu");
   await expect(
     page.getByRole("link", { name: /Lan thu học phí/ }),
   ).toBeVisible();
@@ -195,7 +195,7 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       "600.000",
     );
     await expect(
-      recipient.getByText("Thu một phần · Theo ghi nhận của giáo viên", {
+      recipient.getByText("Chưa thu", {
         exact: true,
       }),
     ).toBeVisible();
@@ -233,7 +233,15 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       .click();
     await expect(
       statementCard.getByRole("status").filter({ hasText: /^Đã thu đủ$/ }),
-    ).toHaveClass(/status-completed/);
+    ).toHaveClass(/status-paid/);
+    const lessons = await context.newPage();
+    try {
+      await lessons.goto("/app/sessions?billing=paid");
+      await expect(lessons.locator(".status-paid")).toHaveCount(8);
+      await expect(lessons.locator(".status-unpaid")).toHaveCount(0);
+    } finally {
+      await lessons.close();
+    }
     await recipient
       .getByRole("button", { name: "Cập nhật số liệu", exact: true })
       .click();
@@ -251,6 +259,7 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       .getByRole("button", { name: "Xác nhận xóa khoản thu", exact: true })
       .click();
     await expect(first).toContainText("Đã vô hiệu hóa");
+    await expect(statementCard.locator(".status-unpaid")).toBeVisible();
     await recipient
       .getByRole("button", { name: "Cập nhật số liệu", exact: true })
       .click();

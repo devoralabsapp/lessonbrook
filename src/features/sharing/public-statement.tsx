@@ -2,6 +2,7 @@
 import { useI18n } from "@/lib/i18n/client";
 
 import { formatVnd, vietnamToday } from "@/domain";
+import { paymentStatusLabels } from "@/domain/statements";
 import { type PublicStatement } from "@/domain/sharing";
 import { formatDate } from "@/features/statements/shared";
 import { BankTransferDetails } from "@/features/payments/bank-transfer-details";
@@ -11,6 +12,7 @@ export function PublicStatementView({
   statement: PublicStatement;
 }) {
   const { t, locale } = useI18n();
+  const paymentStatus = s.remainingVnd === 0 ? "paid" : "unpaid";
   const overdue = s.remainingVnd > 0 && vietnamToday() > s.dueDate;
   return (
     <article
@@ -66,11 +68,9 @@ export function PublicStatementView({
           </strong>
         </p>
         <p className="text-xs text-muted-foreground">
-          {s.remainingVnd === 0
-            ? t("Đã thu đủ")
-            : s.paidVnd > 0
-              ? t("Thu một phần")
-              : t("Chưa thu")}{" "}
+          <span className={`status status-${paymentStatus}`}>
+            {t(paymentStatusLabels[paymentStatus])}
+          </span>{" "}
           {t("· Theo ghi nhận của giáo viên")}
         </p>
       </div>

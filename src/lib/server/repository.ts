@@ -7,6 +7,8 @@ import {
   FieldPath,
   Timestamp,
   type DocumentSnapshot,
+  type DocumentReference,
+  type Firestore,
   type Query,
 } from "firebase-admin/firestore";
 import { z } from "zod";
@@ -37,7 +39,10 @@ import {
   sessionTypeFilterSchema,
   billingFilterSchema,
   matchesSession,
+  sessionPaymentStatus,
+  type SessionWithPayment,
 } from "@/domain/list-filters";
+import { statementIsPaid, statementSchema } from "@/domain/statements";
 import { assertServiceAvailable } from "./maintenance";
 import {
   accountAccessRefs,
@@ -428,10 +433,54 @@ export async function saveSession(
     ],
   );
 }
-export async function getSession(uid: string, id: string) {
-  return sessionDto(
-    await userRef(uid).collection("sessions").doc(idSchema.parse(id)).get(),
+const paymentFields = statementSchema
+  .pick({ studentId: true, status: true, totalVnd: true, paidVnd: true })
+  .strip();
+
+export async function withSessionPayments(
+  root: DocumentReference,
+  sessions: TeachingSession[],
+  reader: Pick<Firestore, "getAll"> = root.firestore,
+): Promise<SessionWithPayment[]> {
+  const ids = new Set(
+    sessions.flatMap((session) =>
+      session.billedStatementId && sessionPaymentStatus(session)
+        ? [session.billedStatementId]
+        : [],
+    ),
   );
+  const statements = new Map<string, z.infer<typeof paymentFields>>();
+  if (ids.size) {
+    const docs = await reader.getAll(
+      ...Array.from(ids, (id) => root.collection("statements").doc(id)),
+      { fieldMask: ["studentId", "status", "totalVnd", "paidVnd"] },
+    );
+    for (const doc of docs) {
+      if (doc.exists) statements.set(doc.id, paymentFields.parse(doc.data()));
+    }
+  }
+  return sessions.map((session) => {
+    const statement = statements.get(session.billedStatementId ?? "");
+    const status = sessionPaymentStatus(session);
+    return {
+      ...session,
+      paymentStatus:
+        status &&
+        statement?.studentId === session.studentId &&
+        statementIsPaid(statement)
+          ? "paid"
+          : status,
+    };
+  });
+}
+
+export async function getSession(uid: string, id: string) {
+  const root = userRef(uid);
+  const session = sessionDto(
+    await root.collection("sessions").doc(idSchema.parse(id)).get(),
+  );
+  const [item] = await withSessionPayments(root, [session]);
+  return item;
 }
 export const sessionListSchema = z
   .object({
@@ -454,14 +503,17 @@ export const sessionListSchema = z
 export async function listSessions(uid: string, raw: unknown) {
   const input = sessionListSchema.parse(raw);
   if (input.studentId) await getStudent(uid, input.studentId); // Never accept a cross-namespace relation.
-  let query: Query = userRef(uid).collection("sessions");
+  const root = userRef(uid);
+  let query: Query = root.collection("sessions");
   if (input.studentId) query = query.where("studentId", "==", input.studentId);
   if (input.from) query = query.where("sessionDate", ">=", input.from);
   if (input.to) query = query.where("sessionDate", "<=", input.to);
   query = query
     .orderBy("sessionDate", "desc")
     .orderBy(FieldPath.documentId(), "desc");
-  return listPage({
+  const filterByPayment =
+    input.billing === "paid" || input.billing === "unpaid";
+  const page = await listPage<SessionWithPayment>({
     query,
     orderField: "sessionDate",
     scope: listScope(uid, "sessions", {
@@ -477,6 +529,9 @@ export async function listSessions(uid: string, raw: unknown) {
     cursor: input.cursor,
     limit: input.limit,
     dto: sessionDto,
+    enrich: filterByPayment
+      ? (items) => withSessionPayments(root, items)
+      : undefined,
     matches:
       input.status !== "all" ||
       input.billing !== "all" ||
@@ -489,6 +544,9 @@ export async function listSessions(uid: string, raw: unknown) {
             matchesSession(session, input.status, input.billing, input.type)
         : undefined,
   });
+  return filterByPayment
+    ? page
+    : { ...page, items: await withSessionPayments(root, page.items) };
 }
 export async function getSummary(uid: string) {
   const root = userRef(uid);

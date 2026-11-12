@@ -4,7 +4,11 @@ import { useI18n } from "@/lib/i18n/client";
 import { useEffect, useState } from "react";
 import Link from "@/components/workspace-link";
 import { formatVnd, vietnamToday } from "@/domain";
-import { type Statement, statementDisplayStatus } from "@/domain/statements";
+import {
+  type Statement,
+  statementDisplayStatus,
+  statementIsPaid,
+} from "@/domain/statements";
 import { api } from "@/lib/client-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -101,11 +105,9 @@ export function StatementDetail({
   const paymentTone =
     data.status !== "issued"
       ? "bg-card text-foreground"
-      : data.paidVnd === data.totalVnd
-        ? "status-completed"
-        : data.paidVnd > 0
-          ? "bg-warning-soft text-warning-foreground"
-          : "bg-danger-soft text-destructive";
+      : statementIsPaid(data)
+        ? "status-paid"
+        : "status-unpaid";
   const refresh = () => setRevision((value) => value + 1);
   async function issue() {
     const result = await mutation.run(`/api/statements/${id}/issue`, "POST", {

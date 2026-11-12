@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { dateSchema, vietnamToday, type TeachingSession } from ".";
-import type { Statement } from "./statements";
+import {
+  paymentStatusLabels,
+  statementIsPaid,
+  type PaymentStatus,
+  type Statement,
+} from "./statements";
 
 export function normalizeSearch(value: string) {
   return value
@@ -28,6 +33,8 @@ export const billingFilterSchema = z.enum([
   "unbilled",
   "billed",
   "free",
+  "paid",
+  "unpaid",
 ]);
 export const sessionTypeFilterSchema = z.enum([
   "all",
@@ -43,8 +50,22 @@ export const sessionTypeLabels = {
   class: "Buổi của lớp",
   shared: "Buổi nhóm & lớp",
 } as const satisfies Record<z.infer<typeof sessionTypeFilterSchema>, string>;
+export type SessionWithPayment = TeachingSession & {
+  paymentStatus?: PaymentStatus | null;
+};
+
+export function sessionPaymentStatus(
+  session: SessionWithPayment,
+): PaymentStatus | null {
+  return session.status === "completed" &&
+    session.billable &&
+    session.amountVnd > 0
+    ? (session.paymentStatus ?? "unpaid")
+    : null;
+}
+
 export function matchesSession(
-  session: TeachingSession,
+  session: SessionWithPayment,
   status: string,
   billing: string,
   type = "all",
@@ -68,6 +89,8 @@ export function matchesSession(
       session.billedStatementId === null
     );
   if (billing === "billed") return session.billedStatementId !== null;
+  if (billing === "paid" || billing === "unpaid")
+    return sessionPaymentStatus(session) === billing;
   if (billing === "free")
     return session.status === "completed" && !session.billable;
   return true;
@@ -88,10 +111,7 @@ export const statementFilterLabels = {
   draft: "Nháp",
   issued: "Đã phát hành",
   void: "Đã hủy",
-  outstanding: "Còn thiếu",
-  unpaid: "Chưa thu",
-  partial: "Thu một phần",
-  paid: "Đã thu đủ",
+  ...paymentStatusLabels,
   overdue: "Quá hạn",
 } as const;
 export function storedStatementStatus(filter: string) {
@@ -128,10 +148,9 @@ export function matchesStatement(
   if (["draft", "issued", "void"].includes(filter))
     return statement.status === filter;
   if (statement.status !== "issued") return false;
-  if (filter === "unpaid") return statement.paidVnd === 0;
   if (filter === "partial")
     return statement.paidVnd > 0 && statement.paidVnd < statement.totalVnd;
-  if (filter === "paid") return statement.paidVnd === statement.totalVnd;
+  if (filter === "paid") return statementIsPaid(statement);
   return (
     statement.paidVnd < statement.totalVnd &&
     (filter !== "overdue" || today > statement.dueDate)

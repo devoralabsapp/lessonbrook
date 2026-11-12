@@ -8,6 +8,7 @@ import {
   type Statement,
   periodBounds,
   statementDisplayStatus,
+  statementIsPaid,
 } from "@/domain/statements";
 import {
   statementDateRangeSchema,
@@ -244,16 +245,15 @@ export function StatementsList({
         <div className="space-y-3">
           {page.items.map((statement) => {
             const display = statementDisplayStatus(statement, today);
+            const paid = statementIsPaid(statement);
             const tone =
               statement.status === "draft"
                 ? "blue"
                 : statement.status === "void"
                   ? "neutral"
-                  : statement.paidVnd >= statement.totalVnd
+                  : paid
                     ? "mint"
-                    : display.overdue || statement.paidVnd === 0
-                      ? "pink"
-                      : "yellow";
+                    : "pink";
             return (
               <Card key={statement.id} data-list-tone={tone} className="p-5">
                 <Link
@@ -267,7 +267,7 @@ export function StatementsList({
                     </strong>
                     <span
                       data-slot="list-status"
-                      className="rounded-full bg-muted px-3 py-1 text-xs"
+                      className={`status rounded-full px-3 ${statement.status === "issued" ? (paid ? "status-paid" : "status-unpaid") : "bg-muted"}`}
                     >
                       {t(display.label)}
                       {display.overdue ? t(" · Quá hạn") : ""}

@@ -7,6 +7,7 @@ import {
   matchesStatement,
   normalizeSearch,
   searchSchema,
+  sessionPaymentStatus,
   statementFilterSchema,
   storedStatementStatus,
 } from "@/domain/list-filters";
@@ -19,7 +20,13 @@ const session = (
   status: string,
   billable: boolean,
   billedStatementId: string | null = null,
-) => ({ status, billable, billedStatementId }) as TeachingSession;
+) =>
+  ({
+    status,
+    billable,
+    billedStatementId,
+    amountVnd: billable ? 200000 : 0,
+  }) as TeachingSession;
 describe("Tìm tên tiếng Việt và lọc trạng thái hiển thị", () => {
   it("tìm tên từng phần không phân biệt hoa thường/dấu, Đ và Unicode tổ hợp", () => {
     expect(normalizeSearch("  ĐẶNG   Hồng Ánh  ")).toBe("dang hong anh");
@@ -55,10 +62,27 @@ describe("Tìm tên tiếng Việt và lọc trạng thái hiển thị", () => 
     );
     expect(() => billingFilterSchema.parse("owner-path")).toThrow();
   });
-  it("phân biệt chưa thu/một phần/đủ và quá hạn sau ngày đến hạn, không tính nháp/hủy", () => {
+  it("lọc trạng thái thanh toán chỉ trên buổi đã dạy có học phí", () => {
+    const completed = session("completed", true, "statement");
+    expect(matchesSession(completed, "all", "unpaid")).toBe(true);
+    expect(
+      matchesSession({ ...completed, paymentStatus: "paid" }, "all", "paid"),
+    ).toBe(true);
+    expect(sessionPaymentStatus({ ...completed, amountVnd: 0 })).toBeNull();
+    for (const value of [
+      session("planned", true),
+      session("cancelled", true),
+      session("completed", false),
+    ])
+      expect(
+        sessionPaymentStatus({ ...value, paymentStatus: "paid" }),
+      ).toBeNull();
+  });
+  it("chưa thu gồm khoản thu một phần, quá hạn tính sau ngày đến hạn", () => {
     const today = "2026-10-16";
     expect(matchesStatement(statement(0), "unpaid", today)).toBe(true);
     expect(matchesStatement(statement(1000000), "partial", today)).toBe(true);
+    expect(matchesStatement(statement(1000000), "unpaid", today)).toBe(true);
     expect(matchesStatement(statement(1600000), "paid", today)).toBe(true);
     expect(matchesStatement(statement(1000000), "outstanding", today)).toBe(
       true,

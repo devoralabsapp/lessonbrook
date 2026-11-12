@@ -24,7 +24,14 @@ import {
 import { nextWeeklyLesson, vietnamLessonTime } from "@/domain/weekly-schedule";
 import { classDocumentSchema, lessonDocumentSchema } from "@/domain/firestore";
 import { normalizeSearch, searchSchema } from "@/domain/list-filters";
-import { dto, operation, sessionDto, studentDto, userRef } from "./repository";
+import {
+  dto,
+  operation,
+  sessionDto,
+  studentDto,
+  userRef,
+  withSessionPayments,
+} from "./repository";
 import { AppError } from "./errors";
 import { listPage, listScope } from "./list-page";
 import { admin } from "@/lib/firebase/admin";
@@ -203,7 +210,10 @@ export async function getLesson(uid: string, id: string) {
         )
       )
         throw new AppError(409, "Liên kết buổi học cần được kiểm tra.");
-      return { ...item, sessions };
+      return {
+        ...item,
+        sessions: await withSessionPayments(root, sessions, tx),
+      };
     },
     { readOnly: true },
   );

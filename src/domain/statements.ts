@@ -123,6 +123,21 @@ export function addBusinessDays(date: string, days: number) {
   value.setUTCDate(value.getUTCDate() + days);
   return dateSchema.parse(value.toISOString().slice(0, 10));
 }
+export const paymentStatusLabels = {
+  paid: "Đã thu đủ",
+  unpaid: "Chưa thu",
+} as const;
+
+export type PaymentStatus = keyof typeof paymentStatusLabels;
+
+export function statementIsPaid(
+  statement: Pick<Statement, "status" | "totalVnd" | "paidVnd">,
+) {
+  return (
+    statement.status === "issued" && statement.paidVnd === statement.totalVnd
+  );
+}
+
 export function statementDisplayStatus(
   statement: Pick<Statement, "status" | "totalVnd" | "paidVnd" | "dueDate">,
   today: string,
@@ -132,11 +147,7 @@ export function statementDisplayStatus(
       ? "Nháp"
       : statement.status === "void"
         ? "Đã hủy"
-        : statement.paidVnd === statement.totalVnd
-          ? "Đã thu đủ"
-          : statement.paidVnd > 0
-            ? "Thu một phần"
-            : "Chưa thu";
+        : paymentStatusLabels[statementIsPaid(statement) ? "paid" : "unpaid"];
   return {
     label,
     overdue:

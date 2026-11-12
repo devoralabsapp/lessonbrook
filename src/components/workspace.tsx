@@ -28,7 +28,10 @@ import {
   matchesSession,
   normalizeSearch,
   sessionTypeLabels,
+  type SessionWithPayment,
 } from "@/domain/list-filters";
+import { paymentStatusLabels } from "@/domain/statements";
+import { LessonPaymentStatus } from "./lesson-payment-status";
 import { api } from "@/lib/client-api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -104,7 +107,7 @@ export function Workspace({
     key: string;
     revision: number;
     students: Page<Student>;
-    sessions: Page<TeachingSession>;
+    sessions: Page<SessionWithPayment>;
     summary: Summary | null;
     onboarding: OnboardingState | null;
     student: Student | null;
@@ -151,7 +154,7 @@ export function Workspace({
     let active = true;
     const empty = { items: [], nextCursor: null };
     Promise.all([
-      api<Page<Student> | Page<TeachingSession>>(endpoint),
+      api<Page<Student> | Page<SessionWithPayment>>(endpoint),
       mode === "overview"
         ? api<Summary>("/api/summary")
         : Promise.resolve(null),
@@ -169,7 +172,7 @@ export function Workspace({
             revision,
             students: mode === "students" ? (page as Page<Student>) : empty,
             sessions:
-              mode !== "students" ? (page as Page<TeachingSession>) : empty,
+              mode !== "students" ? (page as Page<SessionWithPayment>) : empty,
             summary,
             onboarding,
             student,
@@ -193,7 +196,7 @@ export function Workspace({
     if (!page?.nextCursor || updating || moreBusy) return;
     setMoreBusy(true);
     try {
-      const next = await api<Page<Student> | Page<TeachingSession>>(
+      const next = await api<Page<Student> | Page<SessionWithPayment>>(
         `${endpoint}&cursor=${encodeURIComponent(page.nextCursor)}`,
       );
       setData((d) =>
@@ -214,7 +217,7 @@ export function Workspace({
                     sessions: {
                       items: [
                         ...d.sessions.items,
-                        ...(next.items as TeachingSession[]),
+                        ...(next.items as SessionWithPayment[]),
                       ],
                       nextCursor: next.nextCursor,
                     },
@@ -380,7 +383,7 @@ export function Workspace({
                   : undefined,
                 unit: t("Mọi bảng kê đã phát hành còn thiếu"),
                 icon: NotebookPen,
-                href: "/app/statements?status=outstanding",
+                href: "/app/statements?status=unpaid",
               },
               {
                 label: t("Đã quá hạn"),
@@ -626,16 +629,19 @@ export function Workspace({
             <label
               className={`field-label min-w-0 ${searchBy === "group-class" ? "sm:col-span-2" : ""}`}
             >
-              {t("Học phí")}
+              {t("Trạng thái thanh toán")}
               <ThemedSelect
-                label={t("Học phí")}
+                label={t("Trạng thái thanh toán")}
                 value={range.billing}
                 onChange={(billing) => setRange({ ...range, billing })}
                 options={[
                   { value: "all", label: t("Tất cả") },
-                  { value: "unbilled", label: t("Chưa lập bảng kê") },
-                  { value: "billed", label: t("Đã lập bảng kê") },
-                  { value: "free", label: t("Buổi miễn phí") },
+                  ...Object.entries(paymentStatusLabels).map(
+                    ([value, label]) => ({ value, label: t(label) }),
+                  ),
+                  ...(range.billing === "unbilled"
+                    ? [{ value: "unbilled", label: t("Buổi chưa lập bảng kê") }]
+                    : []),
                 ]}
               />
             </label>
@@ -853,15 +859,9 @@ export function Workspace({
                         ? t("Miễn phí")
                         : formatVnd(s.rateVnd, locale)}
                   </p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {s.status === "planned" && s.billable
-                      ? t("Dự kiến")
-                      : s.billedStatementId
-                        ? t("Đã lập bảng kê")
-                        : s.billable && s.status === "completed"
-                          ? t("Chưa lập bảng kê")
-                          : t("Không tính phí")}
-                  </p>
+                  <div className="mt-1 empty:hidden">
+                    <LessonPaymentStatus session={s} />
+                  </div>
                 </div>
                 <Button
                   variant="ghost"

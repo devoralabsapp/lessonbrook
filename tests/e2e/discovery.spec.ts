@@ -85,8 +85,8 @@ test("360px: hướng dẫn lần đầu → mất response xác nhận → ti�
     .getByRole("link", { name: "Buổi chưa lập bảng kê", exact: true })
     .click();
   await expect(
-    page.getByRole("combobox", { name: "Học phí", exact: true }),
-  ).toHaveText("Chưa lập bảng kê");
+    page.getByRole("combobox", { name: "Trạng thái thanh toán", exact: true }),
+  ).toHaveText("Buổi chưa lập bảng kê");
   await expect(
     page.getByRole("link", { name: "An buổi đầu", exact: true }),
   ).toBeVisible();
@@ -97,7 +97,7 @@ test("360px: hướng dẫn lần đầu → mất response xác nhận → ti�
   ).toBe(true);
 });
 
-test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi cũ và lọc buổi miễn phí", async ({
+test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi cũ và lọc buổi chưa thu học phí", async ({
   page,
   context,
 }) => {
@@ -187,12 +187,13 @@ test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi
       "completed",
     );
     await chooseOption(
-      page.getByRole("combobox", { name: "Học phí", exact: true }),
-      "free",
+      page.getByRole("combobox", {
+        name: "Trạng thái thanh toán",
+        exact: true,
+      }),
+      "unpaid",
     );
-    await expect(page.getByText("Không tính phí", { exact: true })).toHaveCount(
-      1,
-    );
+    await expect(page.locator(".status-unpaid")).toHaveText(["Chưa thu"]);
     await expect(
       page.getByRole("link", { name: "Lan gốc", exact: true }),
     ).toHaveCount(1);

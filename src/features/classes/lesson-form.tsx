@@ -1,4 +1,5 @@
 "use client";
+import type { SessionWithPayment } from "@/domain/list-filters";
 import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useState } from "react";
@@ -22,7 +23,7 @@ import { useStatementMutation } from "@/features/statements/shared";
 import type { ClassDetail } from "./class-form";
 import { LoadError, MemberPicker, usePaged } from "./shared";
 export type LessonDetailData = GroupLesson & {
-  sessions: TeachingSession[];
+  sessions: SessionWithPayment[];
 };
 export function LessonForm({
   initialClassId = "",

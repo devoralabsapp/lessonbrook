@@ -2,7 +2,9 @@
 
 import Link from "@/components/workspace-link";
 import { useState } from "react";
-import { formatVnd, statusLabels, type TeachingSession } from "@/domain";
+import { formatVnd, statusLabels } from "@/domain";
+import type { SessionWithPayment } from "@/domain/list-filters";
+import { LessonPaymentStatus } from "@/components/lesson-payment-status";
 import { RecordForm } from "@/components/record-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,7 +14,7 @@ import { useI18n } from "@/lib/i18n/client";
 
 export function SessionDetail({ id }: { id: string }) {
   const { t, locale } = useI18n();
-  const session = useResource<TeachingSession>(
+  const session = useResource<SessionWithPayment>(
     `/api/sessions/${encodeURIComponent(id)}`,
   );
   const [editing, setEditing] = useState<"edit" | "complete" | null>(null);
@@ -36,6 +38,7 @@ export function SessionDetail({ id }: { id: string }) {
         <p>
           {t(statusLabels[lesson.status])} · {formatVnd(lesson.rateVnd, locale)}
         </p>
+        <LessonPaymentStatus session={lesson} />
         <div className="flex flex-wrap gap-2">
           {lesson.status === "planned" && !lesson.billedStatementId && (
             <Button onClick={() => setEditing("complete")}>

@@ -311,6 +311,32 @@ test("visitors can preview themes on the home page without saving an account pre
     });
   await expect(students).toHaveCSS("font-size", "15px");
   await expect(students).toHaveCSS("font-weight", "700");
+  await students.click();
+  await page
+    .locator("[data-list-tone]")
+    .first()
+    .getByRole("link")
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Edit student", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  for (const width of [1280, 360]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect
+      .poll(() =>
+        dialog.evaluate((element) => {
+          const { x, y, width, height } = element.getBoundingClientRect();
+          return Math.max(
+            Math.abs(x + width / 2 - innerWidth / 2),
+            Math.abs(y + height / 2 - innerHeight / 2),
+          );
+        }),
+      )
+      .toBeLessThan(1);
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
   await page.goto("/");
   await theme.click();
   await themeMenu
