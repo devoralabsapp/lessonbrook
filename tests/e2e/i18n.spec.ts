@@ -76,6 +76,10 @@ test("guest demo is read-only and a signed-in visit to home opens the dashboard"
   expect(session.ok()).toBe(true);
   await page.goto("/");
   await expect(page).toHaveURL(/\/app$/);
+  await expect(page.locator('meta[name="viewport"]')).not.toHaveAttribute(
+    "content",
+    /user-scalable=no|maximum-scale=1/,
+  );
 });
 
 test("native workspace opens account tools, planned lessons and filtered statements", async ({
@@ -98,6 +102,10 @@ test("native workspace opens account tools, planned lessons and filtered stateme
     expect(session.ok()).toBeTruthy();
     const page = await context.newPage();
     await page.goto(`${origin}/app/settings`);
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+      "content",
+      /maximum-scale=1.*user-scalable=no/,
+    );
     await expect(
       page.getByRole("navigation", { name: "Main navigation" }),
     ).toHaveCount(0);

@@ -1,3 +1,4 @@
+import type { Viewport } from "next";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/server/session";
 import { AppError } from "@/lib/server/errors";
@@ -8,6 +9,14 @@ import { hasNativeChrome, hasNativeWorkspace } from "@/domain/mobile-sign-in";
 import { headers } from "next/headers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export async function generateViewport(): Promise<Viewport> {
+  // Installed app versions also honor the workspace viewport limits.
+  return hasNativeWorkspace((await headers()).get("user-agent"))
+    ? { maximumScale: 1, userScalable: false }
+    : {};
+}
+
 export default async function PrivateLayout({
   children,
 }: {

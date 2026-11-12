@@ -606,6 +606,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard webView === self.webView else { return }
+        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
         activity.stopAnimating()
         native.view.isHidden = true
         webView.isHidden = false
