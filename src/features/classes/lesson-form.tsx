@@ -17,6 +17,7 @@ import type { GroupLesson } from "@/domain/classes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ThemedDateField } from "@/components/ui/themed-date-field";
 import { ThemedSelect } from "@/components/ui/themed-select";
 import { useStatementMutation } from "@/features/statements/shared";
 import { ClassLessonRoster, useClassLessonRoster } from "./lesson-roster";
@@ -54,6 +55,9 @@ export function LessonForm({
   const [members, setMembers] = useState<Student[]>([]);
   const [selectionError, setSelectionError] = useState("");
   const [price, setPrice] = useState(record?.rateVnd ?? 200000);
+  const [date, setDate] = useState(
+    () => record?.sessionDate ?? scheduledSlot?.date ?? vietnamToday(),
+  );
   const rate = selectingClass ? (roster.data?.rateVnd ?? 0) : price;
   const [status, setStatus] = useState<TeachingSession["status"]>(
     scheduledSlot ? "planned" : "completed",
@@ -158,19 +162,16 @@ export function LessonForm({
             />
           ) : null}
           <div className="grid grid-cols-2 gap-4">
-            <label className="field-label">
-              {t("Ngày dạy *")}
-              <Input
-                name="sessionDate"
-                type="date"
-                required
-                min="1900-01-01"
-                max="2100-12-31"
-                defaultValue={
-                  record?.sessionDate ?? scheduledSlot?.date ?? vietnamToday()
-                }
-              />
-            </label>
+            <ThemedDateField
+              label={t("Ngày dạy *")}
+              name="sessionDate"
+              required
+              value={date}
+              onChange={(value) => {
+                draft.changed();
+                setDate(value);
+              }}
+            />
             <label className="field-label">
               {t("Giờ bắt đầu")}
               <Input

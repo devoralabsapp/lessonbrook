@@ -6,7 +6,7 @@ import {
 import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "@/components/workspace-link";
 import {
   ArrowRight,
@@ -35,8 +35,13 @@ import {
   type SessionWithPayment,
 } from "@/domain/list-filters";
 import { paymentStatusLabels } from "@/domain/statements";
+import {
+  canCompleteSession,
+  completedSessionFields,
+  MAX_SESSION_COMPLETION,
+} from "@/domain/session-completion";
 import { LessonPaymentStatus } from "./lesson-payment-status";
-import { api } from "@/lib/client-api";
+import { ApiError, api } from "@/lib/client-api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card } from "./ui/card";
@@ -44,6 +49,7 @@ import { RecordForm } from "./record-form";
 import { StudentPicker } from "@/features/statements/shared";
 import { LessonTargetPicker } from "@/features/classes/lesson-target-picker";
 import { ThemedSelect } from "@/components/ui/themed-select";
+import { ThemedDateField } from "@/components/ui/themed-date-field";
 import { useDebounced } from "@/lib/use-debounced";
 import { GettingStartedCard } from "@/features/onboarding/guide";
 import type { OnboardingState } from "@/domain/onboarding";
@@ -105,6 +111,24 @@ export function Workspace({
     billing: initialBilling,
   };
   const [range, setRange] = useState(initialRange);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set<string>());
+  const [allSelected, setAllSelected] = useState(false);
+  const [selectionBusy, setSelectionBusy] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [selectionError, setSelectionError] = useState("");
+  const completionRequest = useRef<{ ids: string; key: string } | null>(null);
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setAllSelected(false);
+    setSelectionError("");
+  }
+
+  function changeRange(next: typeof range) {
+    setRange(next);
+    clearSelection();
+  }
   const invalidRange =
     (range.from !== "" && !dateSchema.safeParse(range.from).success) ||
     (range.to !== "" && !dateSchema.safeParse(range.to).success) ||
@@ -207,6 +231,124 @@ export function Workspace({
     !invalidRange &&
     ((mode === "students" && search !== queryText) || (!view && !loadError));
   const updating = !!view && view.revision !== revision && !loadError;
+  const bulkBusy = selectionBusy || completing;
+  const selectable = !loading && !updating && !invalidRange && !loadError;
+
+  async function selectAllSessions(checked: boolean) {
+    if (!checked) {
+      clearSelection();
+      return;
+    }
+    if (!selectable || bulkBusy || !view) return;
+    setSelectionBusy(true);
+    setSelectionError("");
+    try {
+      if (!["all", "planned"].includes(range.status)) {
+        clearSelection();
+        return;
+      }
+      const query = new URLSearchParams(endpoint.split("?")[1]);
+      query.set("status", "planned");
+      query.set("limit", "50");
+      const ids = new Set<string>();
+      const cursors = new Set<string>();
+      let cursor: string | null;
+      do {
+        const next = await api<Page<SessionWithPayment>>(
+          `/api/sessions?${query}`,
+        );
+        for (const session of next.items)
+          if (canCompleteSession(session)) ids.add(session.id);
+        cursor = next.nextCursor;
+        if (cursor) {
+          if (cursors.has(cursor)) throw new Error(t("Chưa thể tải thêm."));
+          cursors.add(cursor);
+          query.set("cursor", cursor);
+        }
+      } while (cursor);
+      setSelectedIds(ids);
+      setAllSelected(ids.size > 0);
+    } catch (error) {
+      setSelectionError(
+        error instanceof Error ? error.message : t("Chưa thể tải thêm."),
+      );
+    } finally {
+      setSelectionBusy(false);
+    }
+  }
+
+  async function completeSelection() {
+    if (!selectable || bulkBusy || !selectedIds.size) return;
+    setCompleting(true);
+    setSelectionError("");
+    setNotice("");
+    const remaining = new Set(selectedIds);
+    const completed = new Set<string>();
+    try {
+      while (remaining.size) {
+        const ids = [...remaining].slice(0, MAX_SESSION_COMPLETION);
+        const serialized = JSON.stringify(ids);
+        if (completionRequest.current?.ids !== serialized)
+          completionRequest.current = {
+            ids: serialized,
+            key: crypto.randomUUID(),
+          };
+        await api("/api/sessions/complete", {
+          method: "POST",
+          body: { ids },
+          requestId: completionRequest.current.key,
+        });
+        for (const id of ids) {
+          remaining.delete(id);
+          completed.add(id);
+        }
+        completionRequest.current = null;
+      }
+    } catch (error) {
+      setSelectionError(
+        error instanceof Error ? error.message : t("Chưa thể lưu thay đổi."),
+      );
+      if (error instanceof ApiError && [404, 409].includes(error.status)) {
+        completionRequest.current = null;
+        remaining.clear();
+        setRevision((value) => value + 1);
+      }
+    } finally {
+      if (completed.size) {
+        setData((current) =>
+          current?.key === key
+            ? {
+                ...current,
+                sessions: {
+                  ...current.sessions,
+                  items: current.sessions.items
+                    .map((session) =>
+                      completed.has(session.id)
+                        ? { ...session, ...completedSessionFields(session) }
+                        : session,
+                    )
+                    .filter((session) =>
+                      matchesSession(
+                        session,
+                        range.status,
+                        range.billing,
+                        range.type,
+                      ),
+                    ),
+                },
+              }
+            : current,
+        );
+        setNotice(
+          t("Đã đánh dấu hoàn thành {0} buổi.", { "0": completed.size }),
+        );
+        setRevision((value) => value + 1);
+      }
+      setSelectedIds(remaining);
+      setAllSelected(false);
+      setCompleting(false);
+    }
+  }
   async function more() {
     const page = mode === "students" ? view?.students : view?.sessions;
     if (!page?.nextCursor || updating || moreBusy) return;
@@ -348,8 +490,9 @@ export function Workspace({
           )}
           <Button
             disabled={
-              Boolean(studentId) &&
-              (loading || !student || !!student.archivedAt)
+              bulkBusy ||
+              (Boolean(studentId) &&
+                (loading || !student || !!student.archivedAt))
             }
             onClick={() =>
               setModal({ kind: mode === "students" ? "student" : "session" })
@@ -539,7 +682,12 @@ export function Workspace({
           ) : (
             <CalendarViewSwitch
               value={calendarView}
-              onChange={setCalendarView}
+              onChange={(value) => {
+                if (bulkBusy) return;
+                setCalendarView(value);
+                setSelecting(false);
+                clearSelection();
+              }}
             />
           )}
         </div>
@@ -558,37 +706,24 @@ export function Workspace({
           </div>
         )}
         {mode === "sessions" && (
-          <div className="grid grid-cols-2 items-start gap-x-3 gap-y-2.5 border-b border-border bg-surface p-3 sm:grid-cols-4 sm:px-5">
+          <fieldset
+            disabled={bulkBusy}
+            className="grid min-w-0 grid-cols-2 items-start gap-x-3 gap-y-2.5 border-b border-border bg-surface p-3 sm:grid-cols-4 sm:px-5"
+          >
             {!showCalendar && (
               <>
-                <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
-                  {t("Từ ngày")}
-                  <Input
-                    className="h-[42px]"
-                    name="from"
-                    type="date"
-                    min="1900-01-01"
-                    max="2100-12-31"
-                    value={range.from}
-                    onChange={(event) =>
-                      setRange({ ...range, from: event.target.value })
-                    }
-                  />
-                </label>
-                <label className="field-label col-span-2 min-w-0 min-[420px]:col-span-1">
-                  {t("Đến ngày")}
-                  <Input
-                    className="h-[42px]"
-                    name="to"
-                    type="date"
-                    min="1900-01-01"
-                    max="2100-12-31"
-                    value={range.to}
-                    onChange={(event) =>
-                      setRange({ ...range, to: event.target.value })
-                    }
-                  />
-                </label>
+                <ThemedDateField
+                  className="col-span-2 min-[420px]:col-span-1"
+                  label={t("Từ ngày")}
+                  value={range.from}
+                  onChange={(from) => changeRange({ ...range, from })}
+                />
+                <ThemedDateField
+                  className="col-span-2 min-[420px]:col-span-1"
+                  label={t("Đến ngày")}
+                  value={range.to}
+                  onChange={(to) => changeRange({ ...range, to })}
+                />
               </>
             )}
             {!studentId && (
@@ -600,12 +735,12 @@ export function Workspace({
                     value={searchBy}
                     onChange={(next) => {
                       setSearchBy(next);
-                      setRange((current) => ({
-                        ...current,
+                      changeRange({
+                        ...range,
                         studentId: "",
                         target: "",
                         type: next === "group-class" ? "shared" : "all",
-                      }));
+                      });
                     }}
                     options={[
                       { value: "student", label: t("Tìm theo học viên") },
@@ -617,7 +752,7 @@ export function Workspace({
                   <StudentPicker
                     value={range.studentId}
                     onChange={(value) =>
-                      setRange({ ...range, studentId: value })
+                      changeRange({ ...range, studentId: value })
                     }
                     optional
                     showSearch={false}
@@ -625,7 +760,9 @@ export function Workspace({
                 ) : (
                   <LessonTargetPicker
                     value={range.target}
-                    onChange={(value) => setRange({ ...range, target: value })}
+                    onChange={(value) =>
+                      changeRange({ ...range, target: value })
+                    }
                   />
                 )}
               </div>
@@ -637,7 +774,7 @@ export function Workspace({
               <ThemedSelect
                 label={t("Trạng thái buổi")}
                 value={range.status}
-                onChange={(status) => setRange({ ...range, status })}
+                onChange={(status) => changeRange({ ...range, status })}
                 options={[
                   { value: "all", label: t("Tất cả") },
                   { value: "planned", label: t("Dự kiến") },
@@ -653,7 +790,7 @@ export function Workspace({
               <ThemedSelect
                 label={t("Trạng thái thanh toán")}
                 value={range.billing}
-                onChange={(billing) => setRange({ ...range, billing })}
+                onChange={(billing) => changeRange({ ...range, billing })}
                 options={[
                   { value: "all", label: t("Tất cả") },
                   ...Object.entries(paymentStatusLabels).map(
@@ -671,7 +808,7 @@ export function Workspace({
                 <ThemedSelect
                   label={t("Loại buổi dạy")}
                   value={range.type}
-                  onChange={(type) => setRange({ ...range, type })}
+                  onChange={(type) => changeRange({ ...range, type })}
                   options={Object.entries(sessionTypeLabels).map(
                     ([value, label]) => ({
                       value,
@@ -698,7 +835,7 @@ export function Workspace({
                     size="sm"
                     onClick={() => {
                       const today = vietnamToday();
-                      setRange({ ...range, from: today, to: today });
+                      changeRange({ ...range, from: today, to: today });
                     }}
                   >
                     {t("Hôm nay")}
@@ -713,7 +850,7 @@ export function Workspace({
                       const last = new Date(Date.UTC(year, month, 0))
                         .toISOString()
                         .slice(0, 10);
-                      setRange({
+                      changeRange({
                         ...range,
                         from: today.slice(0, 8) + "01",
                         to: last,
@@ -730,13 +867,81 @@ export function Workspace({
                 size="sm"
                 onClick={() => {
                   setSearchBy("student");
-                  setRange({ ...initialRange, billing: "all" });
+                  changeRange({ ...initialRange, billing: "all" });
                 }}
               >
                 {t("Xóa bộ lọc")}
               </Button>
+              {!showCalendar && (
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-pressed={selecting}
+                    onClick={() => {
+                      setSelecting(!selecting);
+                      clearSelection();
+                    }}
+                  >
+                    {selecting ? t("Bỏ chế độ chọn") : t("Chọn buổi")}
+                  </Button>
+                  {selecting && (
+                    <>
+                      <label className="inline-flex min-h-9 items-center gap-2 px-2 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-primary"
+                          checked={allSelected}
+                          ref={(checkbox) => {
+                            if (checkbox)
+                              checkbox.indeterminate =
+                                !allSelected && selectedIds.size > 0;
+                          }}
+                          disabled={
+                            !selectable ||
+                            !["all", "planned"].includes(range.status)
+                          }
+                          onChange={(event) =>
+                            void selectAllSessions(event.target.checked)
+                          }
+                        />
+                        {t("Tất cả")}
+                      </label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!selectable || !selectedIds.size}
+                        onClick={() => void completeSelection()}
+                      >
+                        {completing
+                          ? t("Đang lưu…")
+                          : t("Hoàn thành ({0})", { "0": selectedIds.size })}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+            {selecting && (
+              <p
+                className="col-span-full text-right text-xs text-muted-foreground"
+                role="status"
+              >
+                {selectionBusy
+                  ? t("Đang chọn tất cả buổi dự kiến…")
+                  : t("Chỉ chọn các buổi dự kiến khớp bộ lọc.")}
+              </p>
+            )}
+            {selectionError && (
+              <p
+                className="col-span-full text-right text-sm text-destructive"
+                role="alert"
+              >
+                {selectionError}
+              </p>
+            )}
+          </fieldset>
         )}
         {!showCalendar && loadError && (
           <div role="alert" className="p-8 text-center">
@@ -838,6 +1043,32 @@ export function Workspace({
                 }
                 className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
               >
+                {mode === "sessions" && selecting && (
+                  <label className="grid size-8 shrink-0 place-items-center">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary disabled:opacity-40"
+                      aria-label={t("Chọn buổi của {0} ngày {1}", {
+                        "0": s.studentName,
+                        "1": formatDate(s.sessionDate, locale),
+                      })}
+                      disabled={
+                        bulkBusy || !selectable || !canCompleteSession(s)
+                      }
+                      checked={selectedIds.has(s.id)}
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        setAllSelected(false);
+                        setSelectedIds((ids) => {
+                          const next = new Set(ids);
+                          if (checked) next.add(s.id);
+                          else next.delete(s.id);
+                          return next;
+                        });
+                      }}
+                    />
+                  </label>
+                )}
                 <time
                   dateTime={s.sessionDate}
                   data-slot="lesson-date"
@@ -896,7 +1127,7 @@ export function Workspace({
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={s.billedStatementId !== null}
+                  disabled={bulkBusy || s.billedStatementId !== null}
                   onClick={() => setModal({ kind: "session", record: s })}
                 >
                   {t("Sửa")}
@@ -927,7 +1158,7 @@ export function Workspace({
             <div className="border-t border-border p-4 text-center">
               <Button
                 variant="ghost"
-                disabled={moreBusy || updating}
+                disabled={moreBusy || updating || bulkBusy}
                 onClick={more}
               >
                 <ChevronDown />
@@ -953,6 +1184,7 @@ export function Workspace({
           student={student ?? undefined}
           onClose={() => setModal(null)}
           onSaved={(message, record) => {
+            clearSelection();
             setModal(null);
             setNotice(message);
             if (record) applySaved(record);

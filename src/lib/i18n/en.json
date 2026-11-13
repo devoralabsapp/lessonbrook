@@ -1013,5 +1013,15 @@
   "Học phí đã nhận": "Payment received",
   "Bảng kê học phí của bạn": "Your tuition statement",
   "Thanh toán bằng VietQR": "Pay with VietQR",
-  "Nếu bạn đã thanh toán sau khi nhận email, hãy mở bảng kê để kiểm tra số tiền còn thiếu trước khi chuyển khoản.": "If you have made a payment since receiving this email, open the statement to check the remaining balance before transferring."
+  "Nếu bạn đã thanh toán sau khi nhận email, hãy mở bảng kê để kiểm tra số tiền còn thiếu trước khi chuyển khoản.": "If you have made a payment since receiving this email, open the statement to check the remaining balance before transferring.",
+  "Mở lịch cho {0}": "Open calendar for {0}",
+  "Xóa ngày": "Clear date",
+  "Chọn buổi": "Select",
+  "Bỏ chế độ chọn": "Done selecting",
+  "Hoàn thành ({0})": "Mark completed ({0})",
+  "Đang chọn tất cả buổi dự kiến…": "Selecting all planned lessons…",
+  "Chỉ chọn các buổi dự kiến khớp bộ lọc.": "Only planned lessons matching the filters can be selected.",
+  "Chọn buổi của {0} ngày {1}": "Select lesson for {0} on {1}",
+  "Đã đánh dấu hoàn thành {0} buổi.": "Marked {0} lessons as completed.",
+  "Trạng thái buổi đã thay đổi. Tải lại danh sách rồi chọn lại.": "A lesson status changed. Reload the list and select the lessons again."
 }

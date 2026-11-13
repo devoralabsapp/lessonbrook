@@ -43,6 +43,11 @@ import {
   type SessionWithPayment,
 } from "@/domain/list-filters";
 import { statementIsPaid, statementSchema } from "@/domain/statements";
+import {
+  canCompleteSession,
+  completedSessionFields,
+  sessionCompletionSchema,
+} from "@/domain/session-completion";
 import { assertServiceAvailable } from "./maintenance";
 import {
   accountAccessRefs,
@@ -222,7 +227,8 @@ export async function updateBankTransfer(
   const bankName = bankTransfer ? vietQrBanks[bankTransfer.bankBin] : undefined;
   if (bankTransfer && !bankName)
     throw new AppError(400, "Vui lòng chọn ngân hàng hỗ trợ VietQR.");
-  const details = bankTransfer && bankName ? { ...bankTransfer, bankName } : null;
+  const details =
+    bankTransfer && bankName ? { ...bankTransfer, bankName } : null;
   return operation(
     uid,
     "bank-transfer-settings",
@@ -436,6 +442,39 @@ export async function saveSession(
     ],
   );
 }
+export async function completeSessions(
+  uid: string,
+  raw: unknown,
+  requestId: string,
+) {
+  const ids = sessionCompletionSchema.parse(raw).ids.sort();
+  return operation(
+    uid,
+    "sessions-complete",
+    requestId,
+    { ids },
+    async (tx, _root, now, documents) => {
+      const sessions = documents.map((doc) => {
+        if (!doc.exists) throw new AppError(404, "Không tìm thấy buổi dạy.");
+        const session = sessionDto(doc);
+        if (!canCompleteSession(session))
+          throw new AppError(
+            409,
+            "Trạng thái buổi đã thay đổi. Tải lại danh sách rồi chọn lại.",
+          );
+        return session;
+      });
+      for (const [index, session] of sessions.entries())
+        tx.update(documents[index].ref, {
+          ...completedSessionFields(session),
+          updatedAt: now,
+        });
+      return { id: requestId };
+    },
+    (root) => ids.map((id) => root.collection("sessions").doc(id)),
+  );
+}
+
 const paymentFields = statementSchema
   .pick({ studentId: true, status: true, totalVnd: true, paidVnd: true })
   .strip();

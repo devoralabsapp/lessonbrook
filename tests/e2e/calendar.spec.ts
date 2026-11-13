@@ -134,6 +134,46 @@ test("360px: monthly classes and lessons load all pages, filter automatically, a
     await expect(page).toHaveURL(
       new RegExp(`/app/classes/${teachingClass.id}$`),
     );
+    await page.goto("/app/sessions");
+    const fromDate = page.getByLabel("Từ ngày", { exact: true });
+    await page.getByRole("button", { name: "Mở lịch cho Từ ngày" }).click();
+    const picker = page.getByRole("dialog");
+    await expect(picker).toBeVisible();
+    await picker.getByRole("button", { name: from, exact: true }).click();
+    await expect(fromDate).toHaveValue(from);
+    await expect(picker).not.toBeVisible();
+    await chooseOption(
+      page.getByRole("combobox", { name: "Trạng thái buổi", exact: true }),
+      "planned",
+    );
+    await page.getByRole("button", { name: "Chọn buổi", exact: true }).click();
+    const selectAll = page.getByRole("checkbox", {
+      name: "Tất cả",
+      exact: true,
+    });
+    await selectAll.click();
+    const complete = page.getByRole("button", {
+      name: "Hoàn thành (55)",
+      exact: true,
+    });
+    await expect(complete).toBeEnabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await complete.click();
+    await expect(
+      page.getByText("Đã đánh dấu hoàn thành 55 buổi."),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Không có buổi phù hợp với bộ lọc."),
+    ).toBeVisible();
+    const updated = await collection.doc("calendar-0").get();
+    expect(updated.data()).toMatchObject({
+      status: "completed",
+      amountVnd: 200000,
+    });
   } finally {
     await db.terminate();
   }

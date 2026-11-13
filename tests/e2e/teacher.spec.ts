@@ -107,7 +107,9 @@ test("giáo viên 360px: học viên không cần đơn giá → nhập giá khi
   await page.getByRole("link", { name: /^Lan E2E\b/ }).click();
   await expect(page.getByText(/Đơn giá hiện tại:/)).toHaveCount(0);
   await page.getByRole("button", { name: "Ghi buổi dạy", exact: true }).click();
-  await page.getByLabel("Ngày dạy").fill("2026-10-15");
+  await page
+    .getByRole("textbox", { name: "Ngày dạy *", exact: true })
+    .fill("2026-10-15");
   const lessonPrice = page.getByLabel("Đơn giá buổi này");
   await expect(lessonPrice).toHaveValue("");
   await expect(lessonPrice).toHaveAttribute("required", "");
@@ -125,7 +127,9 @@ test("giáo viên 360px: học viên không cần đơn giá → nhập giá khi
   await expect(
     page.getByRole("alert").filter({ hasText: "Nội dung vẫn ở đây" }),
   ).toBeVisible();
-  await expect(page.getByLabel("Ngày dạy")).toHaveValue("2026-10-15");
+  await expect(
+    page.getByRole("textbox", { name: "Ngày dạy *", exact: true }),
+  ).toHaveValue("2026-10-15");
   await page.getByRole("button", { name: "Thử lưu lại", exact: true }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "Đã lưu buổi Lan E2E" }),

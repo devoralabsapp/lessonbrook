@@ -11,6 +11,11 @@ import {
 } from "@/domain";
 import { appearanceInputSchema } from "@/domain/appearance";
 import {
+  canCompleteSession,
+  completedSessionFields,
+  sessionCompletionSchema,
+} from "@/domain/session-completion";
+import {
   bankTransferInputSchema,
   MAX_TRANSFER_MEMO_LENGTH,
 } from "@/domain/bank-transfer";
@@ -772,6 +777,20 @@ export function executeDemoCommand(
     });
   }
   if (resource === "sessions") {
+    if (id === "complete" && !action && command.method === "POST") {
+      const { ids } = sessionCompletionSchema.parse(command.body);
+      const sessions = ids.map((id) => find(state.sessions, id));
+      if (!sessions.every(canCompleteSession))
+        throw new AppError(
+          409,
+          "Trạng thái buổi đã thay đổi. Tải lại danh sách rồi chọn lại.",
+        );
+      for (const session of sessions)
+        Object.assign(session, completedSessionFields(session), {
+          updatedAt: command.at,
+        });
+      return { id: command.id };
+    }
     const old = id ? find(state.sessions, id) : null;
     if (old?.billedStatementId)
       throw new AppError(409, "Buổi đã lập bảng kê không thể sửa.");

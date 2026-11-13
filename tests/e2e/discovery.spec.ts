@@ -68,7 +68,9 @@ test("360px: hướng dẫn lần đầu → mất response xác nhận → ti�
     .getByRole("button", { name: "Ghi buổi đầu tiên", exact: true })
     .click();
   await page.getByLabel("Đơn giá buổi này").fill("200000");
-  await page.getByLabel("Ngày dạy").fill(vietnamToday());
+  await page
+    .getByRole("textbox", { name: "Ngày dạy *", exact: true })
+    .fill(vietnamToday());
   await page.getByRole("button", { name: "Lưu buổi dạy", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Sổ của bạn đã sẵn sàng" }),
@@ -200,17 +202,25 @@ test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi
     await expect(
       page.getByRole("link", { name: "Lan gốc", exact: true }),
     ).toHaveCount(3);
-    await page.getByLabel("Đến ngày").fill("2000-01-01");
+    await page
+      .getByRole("textbox", { name: "Đến ngày", exact: true })
+      .fill("2000-01-01");
     await expect(
       page.getByText("Không có buổi phù hợp với bộ lọc."),
     ).toBeVisible();
-    await page.getByLabel("Từ ngày").fill(vietnamToday());
+    await page
+      .getByRole("textbox", { name: "Từ ngày", exact: true })
+      .fill(vietnamToday());
     await expect(
       page.getByText("Khoảng ngày không hợp lệ.", { exact: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Hôm nay", exact: true }).click();
-    await expect(page.getByLabel("Từ ngày")).toHaveValue(vietnamToday());
-    await expect(page.getByLabel("Đến ngày")).toHaveValue(vietnamToday());
+    await expect(
+      page.getByRole("textbox", { name: "Từ ngày", exact: true }),
+    ).toHaveValue(vietnamToday());
+    await expect(
+      page.getByRole("textbox", { name: "Đến ngày", exact: true }),
+    ).toHaveValue(vietnamToday());
     await expect(
       page.getByRole("link", { name: "Lan gốc", exact: true }),
     ).toHaveCount(3);

@@ -401,6 +401,70 @@ describe("Next HTTP + Auth/Firestore Emulator", () => {
       (await a.call(`/api/sessions/${free.id}`, "PATCH", body)).status,
     ).toBe(409);
   });
+  it("completes selected planned rows atomically and preserves their saved tuition", async () => {
+    const teacher = await client();
+    await teacher.login((await googleToken()).idToken);
+    const createdStudent = await teacher.call("/api/students", "POST", student);
+    expect(createdStudent.status).toBe(200);
+    const { id: learnerId } = await createdStudent.json();
+    const create = async (billable: boolean, status = "planned") => {
+      const response = await teacher.call("/api/sessions", "POST", {
+        studentId: learnerId,
+        sessionDate: vietnamToday(),
+        status,
+        billable,
+        rateVnd: 180000,
+        privateNote: "Keep this note",
+      });
+      expect(response.status).toBe(200);
+      return (await response.json()).id as string;
+    };
+    const [chargeable, free, cancelled] = await Promise.all([
+      create(true),
+      create(false),
+      create(false, "cancelled"),
+    ]);
+    const path = "/api/sessions/complete";
+    expect((await b.call(path, "POST", { ids: [chargeable] })).status).toBe(
+      404,
+    );
+    expect(
+      (await teacher.call(path, "POST", { ids: [chargeable, cancelled] }))
+        .status,
+    ).toBe(409);
+    const read = async (id: string) =>
+      (await teacher.call(`/api/sessions/${id}`)).json();
+    expect(await read(chargeable)).toMatchObject({
+      status: "planned",
+      amountVnd: 0,
+    });
+    const key = randomUUID();
+    const result = await teacher.call(
+      path,
+      "POST",
+      { ids: [chargeable, free] },
+      key,
+    );
+    expect(result.status).toBe(200);
+    expect(
+      await (
+        await teacher.call(path, "POST", { ids: [free, chargeable] }, key)
+      ).json(),
+    ).toEqual(await result.json());
+    expect(await read(chargeable)).toMatchObject({
+      status: "completed",
+      billable: true,
+      rateVnd: 180000,
+      amountVnd: 180000,
+      privateNote: "Keep this note",
+    });
+    expect(await read(free)).toMatchObject({
+      status: "completed",
+      billable: false,
+      amountVnd: 0,
+    });
+    expect(await read(cancelled)).toMatchObject({ status: "cancelled" });
+  });
   it("phân trang có tie-breaker, ngày đầu/cuối được tính, tổng quan không cộng một trang", async () => {
     const first = await (
       await a.call(

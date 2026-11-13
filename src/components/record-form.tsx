@@ -22,6 +22,7 @@ import { useDebounced } from "@/lib/use-debounced";
 import { api } from "@/lib/client-api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { ThemedDateField } from "./ui/themed-date-field";
 import { ThemedSelect } from "./ui/themed-select";
 type LessonMode = "single" | "group" | "class";
 type Props = {
@@ -486,18 +487,16 @@ export function RecordForm({
                 </>
               )}
               <div className="grid gap-4 min-[420px]:grid-cols-2">
-                <label className="field-label">
-                  {t("Ngày dạy *")}
-                  <Input
-                    required
-                    disabled={!!lesson?.lessonId}
-                    type="date"
-                    min="1900-01-01"
-                    max="2100-12-31"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                  />
-                </label>
+                <ThemedDateField
+                  label={t("Ngày dạy *")}
+                  required
+                  disabled={!!lesson?.lessonId}
+                  value={date}
+                  onChange={(value) => {
+                    draft.changed();
+                    setDate(value);
+                  }}
+                />
                 <label className="field-label">
                   {t("Trạng thái")}
                   <ThemedSelect

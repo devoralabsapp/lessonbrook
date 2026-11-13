@@ -67,9 +67,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     .first();
   const scheduledUrl = new URL((await scheduled.getAttribute("href"))!, origin);
   await scheduled.click();
-  await expect(page.getByLabel("Ngày dạy")).toHaveValue(
-    scheduledUrl.searchParams.get("date")!,
-  );
+  await expect(
+    page.getByRole("textbox", { name: "Ngày dạy *", exact: true }),
+  ).toHaveValue(scheduledUrl.searchParams.get("date")!);
   await expect(page.getByLabel("Giờ bắt đầu")).toHaveValue("20:00");
   await page.goto(classUrl);
   await page
@@ -168,7 +168,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   const ledgerUrl = page.url();
   const classId = new URL(classUrl).pathname.split("/").at(-1)!;
   const teach = recordDialog.getByRole("combobox", { name: "Dạy cho" });
-  await recordDialog.getByLabel("Ngày dạy").fill("2026-10-17");
+  await recordDialog
+    .getByRole("textbox", { name: "Ngày dạy *", exact: true })
+    .fill("2026-10-17");
   await recordDialog.getByLabel("Giờ bắt đầu").fill("19:15");
   await recordDialog.getByLabel("Thời lượng").fill("55");
   await recordDialog.getByLabel("Ghi chú riêng").fill("Ghi chú thử nghiệm");
@@ -199,7 +201,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     recordDialog.getByRole("checkbox", { name: "An", exact: true }),
   ).toBeChecked();
   await expect(price).toHaveValue("120000");
-  await expect(recordDialog.getByLabel("Ngày dạy")).toHaveValue("2026-10-17");
+  await expect(
+    recordDialog.getByRole("textbox", { name: "Ngày dạy *", exact: true }),
+  ).toHaveValue("2026-10-17");
   await expect(recordDialog.getByLabel("Giờ bắt đầu")).toHaveValue("19:15");
   await expect(recordDialog.getByLabel("Thời lượng")).toHaveValue("55");
   await expect(recordDialog.getByLabel("Ghi chú riêng")).toHaveValue(
@@ -314,7 +318,9 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
   await recordDialog
     .getByRole("checkbox", { name: "Lan", exact: true })
     .uncheck();
-  await recordDialog.getByLabel("Ngày dạy").fill("2026-10-18");
+  await recordDialog
+    .getByRole("textbox", { name: "Ngày dạy *", exact: true })
+    .fill("2026-10-18");
   await recordDialog
     .getByRole("button", { name: "Lưu buổi dạy", exact: true })
     .click();

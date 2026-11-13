@@ -52,6 +52,7 @@ import {
   listSessions,
   listStudents,
   saveSession,
+  completeSessions,
   saveStudent,
   updateBankTransfer,
   updateProfile,
@@ -209,6 +210,13 @@ async function handle(request: Request, context: Context) {
         request.headers.get("idempotency-key"),
       );
       const body = await jsonBody(request);
+      if (
+        resource === "sessions" &&
+        id === "complete" &&
+        path.length === 2 &&
+        request.method === "POST"
+      )
+        return json(await completeSessions(uid, body, requestId));
       if (
         resource === "profile" &&
         id === "bank-transfer" &&
