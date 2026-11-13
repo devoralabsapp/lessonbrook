@@ -57,7 +57,7 @@ export default async function PrivacyPage() {
         </p>
         <p>
           {t(
-            "Khi giáo viên bấm Gửi email, Gmail nhận địa chỉ email đã lưu, tên học viên và giáo viên, kỳ học, các ngày học và học phí, hạn thanh toán, số tiền đã nhận và còn thiếu, mã bảng kê và link để chuyển thư.",
+            "Khi giáo viên bấm Gửi email, Gmail nhận địa chỉ email đã lưu, tên học viên và giáo viên, kỳ học, các ngày học và học phí, hạn thanh toán, số tiền đã nhận và còn thiếu, mã bảng kê và link để chuyển thư. Nếu bảng kê còn tiền phải thu và có thông tin ngân hàng, email kèm mã VietQR chứa mã ngân hàng, số tài khoản, số tiền và nội dung chuyển khoản.",
           )}
         </p>
         <p>

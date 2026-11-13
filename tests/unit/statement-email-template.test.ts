@@ -23,6 +23,10 @@ const options = {
   url: "https://ledger.example.test/s#" + "a".repeat(43),
   expiresAt: "2026-12-13T16:59:00Z",
   locale: "en" as const,
+  payment: {
+    reference: "CC-2026-000001-A1B2C3D4E5",
+    cid: "example@lessonbrook",
+  },
 };
 
 it("includes the tuition summary, lesson dates, due date and live link in both alternatives", () => {
@@ -52,6 +56,7 @@ it("includes the tuition summary, lesson dates, due date and live link in both a
   expect(message.html).toContain("13 Dec 2026");
   expect(message.html).toContain("23:59");
   expect(message.text).toContain("latest payments");
+  expect(message.attachments).toBeUndefined();
 });
 
 it("escapes names and treats paid statements as receipts while supporting Vietnamese", () => {
@@ -61,6 +66,12 @@ it("escapes names and treats paid statements as receipts while supporting Vietna
       ...statement,
       teacherSnapshot: { displayName: malicious },
       paidVnd: statement.totalVnd,
+      bankTransferSnapshot: {
+        bankBin: "970436",
+        bankName: "Example Bank",
+        accountNumber: "1234567890",
+        accountName: "Demo Teacher",
+      },
     },
     { ...options, locale: "vi" },
   );
@@ -72,6 +83,8 @@ it("escapes names and treats paid statements as receipts while supporting Vietna
   expect(message.text).toContain(malicious);
   expect(message.subject).toContain("Bảng kê học phí");
   expect(message.html).toContain('lang="vi"');
+  expect(message.attachments).toBeUndefined();
+  expect(message.html).not.toContain("cid:");
 });
 
 it("renders the maximum 100 lessons without changing the source order", () => {

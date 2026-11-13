@@ -1,6 +1,8 @@
 import { formatVnd, TIME_ZONE } from "@/domain";
+import { vietQrPayload } from "@/domain/bank-transfer";
 import { statementIsPaid, type Statement } from "@/domain/statements";
 import { translator, type Locale } from "@/lib/i18n/core";
+import { qrPng } from "./qr-png";
 
 type EmailStatement = Pick<
   Statement,
@@ -16,12 +18,19 @@ type EmailStatement = Pick<
   | "items"
   | "totalVnd"
   | "paidVnd"
+  | "bankTransferSnapshot"
 >;
 
 export type StatementEmailContent = {
   subject: string;
   text: string;
   html: string;
+  attachments?: {
+    filename: string;
+    content: Buffer;
+    contentType: string;
+    cid: string;
+  }[];
 };
 
 function escapeHtml(value: string) {
@@ -43,7 +52,13 @@ export function buildStatementEmail(
     url,
     locale,
     expiresAt,
-  }: { url: string; locale: Locale; expiresAt: string },
+    payment,
+  }: {
+    url: string;
+    locale: Locale;
+    expiresAt: string;
+    payment?: { reference: string; cid: string };
+  },
 ): StatementEmailContent {
   const t = translator(locale);
   const dateFormatter = new Intl.DateTimeFormat(
@@ -60,6 +75,15 @@ export function buildStatementEmail(
   const money = (value: number) => formatVnd(value, locale);
   const remaining = statement.totalVnd - statement.paidVnd;
   const paid = statementIsPaid(statement);
+  const bank = statement.bankTransferSnapshot;
+  const qr =
+    statement.status === "issued" && remaining > 0 && bank && payment
+      ? {
+          ...payment,
+          content: qrPng(vietQrPayload(bank, remaining, payment.reference)),
+          recipient: `${bank.bankName} · ${bank.accountName}`,
+        }
+      : null;
   const number = statement.number ?? statement.id;
   const period = `${date(statement.periodStart)} – ${date(statement.periodEnd)}`;
   const introduction = t("{0} gửi bảng kê học phí của {1} cho kỳ {2}.", {
@@ -90,9 +114,13 @@ export function buildStatementEmail(
   );
   const paymentMessage = paid
     ? t("Giáo viên đã ghi nhận đủ học phí cho bảng kê này. Cảm ơn bạn!")
-    : t(
-        "Mở bảng kê để xem thông tin chuyển khoản và mã QR nếu giáo viên đã thiết lập.",
-      );
+    : qr
+      ? t(
+          "Nếu bạn đã thanh toán sau khi nhận email, hãy mở bảng kê để kiểm tra số tiền còn thiếu trước khi chuyển khoản.",
+        )
+      : t(
+          "Mở bảng kê để xem thông tin chuyển khoản và mã QR nếu giáo viên đã thiết lập.",
+        );
   const snapshotNote = t(
     "Số tiền trong email theo ghi nhận tại thời điểm gửi. Mở bảng kê để xem các khoản thanh toán mới nhất.",
   );
@@ -183,6 +211,27 @@ export function buildStatementEmail(
             <tr><td style="padding:8px 0;font-size:14px;color:#5a5248;">${escapeHtml(t("Học phí đã nhận"))}</td><td style="padding:8px 0;font-size:15px;font-weight:700;text-align:right;color:#236341;">${escapeHtml(money(statement.paidVnd))}</td></tr>
           </table>
         </td></tr>
+        <tr><td style="padding:0 24px 28px;">
+          ${
+            qr
+              ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;background:#f6efdf;border:1px solid #211f1b;border-radius:14px;table-layout:fixed;">
+            <tr><td align="center" style="padding:18px 12px;">
+              <h2 style="margin:0 0 6px;font-size:18px;line-height:26px;">${escapeHtml(t("Thanh toán bằng VietQR"))}</h2>
+              <p style="margin:0 0 12px;font-size:14px;line-height:21px;">${escapeHtml(t("Quét VietQR để chuyển {0}.", { "0": money(remaining) }))}</p>
+              <img src="cid:${escapeHtml(qr.cid)}" width="208" height="208" alt="${escapeHtml(t("Mã VietQR chuyển khoản"))}" style="display:block;width:208px;max-width:100%;height:auto;background:#fff;border:1px solid #211f1b;border-radius:8px;">
+              <p style="margin:12px 0 4px;font-size:14px;line-height:21px;word-break:break-word;">${escapeHtml(qr.recipient)}</p>
+              <p style="margin:0;font-size:13px;line-height:20px;word-break:break-word;">${escapeHtml(t("Nội dung chuyển khoản:"))} <strong>${escapeHtml(qr.reference)}</strong></p>
+            </td></tr>
+          </table>`
+              : ""
+          }
+          <p style="margin:0 0 18px;font-size:14px;line-height:23px;">${escapeHtml(paymentMessage)}</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="background:#ffd02c;border:2px solid #211f1b;border-radius:28px;">
+            <a href="${escapeHtml(url)}" style="display:block;padding:15px 18px;color:#211f1b;text-decoration:none;font-size:15px;font-weight:800;line-height:22px;">${escapeHtml(t("Xem bảng kê học phí"))} &rarr;</a>
+          </td></tr></table>
+          <p style="margin:18px 0 8px;font-size:12px;line-height:20px;color:#5a5248;">${escapeHtml(t("Bạn cũng có thể mở link sau:"))}</p>
+          <p style="margin:0;font-size:12px;line-height:20px;word-break:break-all;"><a href="${escapeHtml(url)}" style="color:#211f1b;text-decoration:underline;">${escapeHtml(url)}</a></p>
+        </td></tr>
         <tr><td style="padding:0 24px 22px;">
           <h2 style="margin:0 0 10px;font-size:18px;line-height:26px;">${escapeHtml(t("Thông tin bảng kê"))}</h2>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;">${detailRows}</table>
@@ -197,14 +246,6 @@ export function buildStatementEmail(
             <tbody>${lessonRows}</tbody>
           </table>
         </td></tr>
-        <tr><td style="padding:0 24px 28px;">
-          <p style="margin:0 0 18px;font-size:14px;line-height:23px;">${escapeHtml(paymentMessage)}</p>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="background:#ffd02c;border:2px solid #211f1b;border-radius:28px;">
-            <a href="${escapeHtml(url)}" style="display:block;padding:15px 18px;color:#211f1b;text-decoration:none;font-size:15px;font-weight:800;line-height:22px;">${escapeHtml(t("Xem bảng kê học phí"))} &rarr;</a>
-          </td></tr></table>
-          <p style="margin:18px 0 8px;font-size:12px;line-height:20px;color:#5a5248;">${escapeHtml(t("Bạn cũng có thể mở link sau:"))}</p>
-          <p style="margin:0;font-size:12px;line-height:20px;word-break:break-all;"><a href="${escapeHtml(url)}" style="color:#211f1b;text-decoration:underline;">${escapeHtml(url)}</a></p>
-        </td></tr>
         <tr><td style="padding:20px 24px;background:#f6efdf;border-top:1px solid #ded5c2;border-radius:0 0 18px 18px;">
           <p style="margin:0 0 8px;font-size:12px;line-height:20px;color:#5a5248;">${escapeHtml(snapshotNote)}</p>
           <p style="margin:0 0 8px;font-size:12px;line-height:20px;color:#5a5248;">${escapeHtml(expiryNote)}</p>
@@ -216,5 +257,19 @@ export function buildStatementEmail(
   </table>
 </body>
 </html>`;
-  return { subject, text, html };
+  return {
+    subject,
+    text,
+    html,
+    ...(qr && {
+      attachments: [
+        {
+          filename: "vietqr.png",
+          content: qr.content,
+          contentType: "image/png",
+          cid: qr.cid,
+        },
+      ],
+    }),
+  };
 }

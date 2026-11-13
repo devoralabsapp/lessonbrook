@@ -993,7 +993,7 @@
   "Gmail chưa nhận email. Kiểm tra kết nối Gmail rồi thử lại.": "Gmail did not accept the email. Check the Gmail connection and try again.",
   "Chưa xác nhận được email đã gửi. Kiểm tra thư đã gửi trong Gmail.": "Email delivery could not be confirmed. Check Sent in Gmail.",
   "Link này đã được gửi qua email. Tạo link mới nếu cần gửi lại.": "This link has already been emailed. Create a new link if you need to send it again.",
-  "Khi giáo viên bấm Gửi email, Gmail nhận địa chỉ email đã lưu, tên học viên và giáo viên, kỳ học, các ngày học và học phí, hạn thanh toán, số tiền đã nhận và còn thiếu, mã bảng kê và link để chuyển thư.": "When the teacher chooses Send email, Gmail receives the saved email address, student and teacher names, statement period, lesson dates and fees, due date, amounts received and outstanding, statement number and link to deliver the message.",
+  "Khi giáo viên bấm Gửi email, Gmail nhận địa chỉ email đã lưu, tên học viên và giáo viên, kỳ học, các ngày học và học phí, hạn thanh toán, số tiền đã nhận và còn thiếu, mã bảng kê và link để chuyển thư. Nếu bảng kê còn tiền phải thu và có thông tin ngân hàng, email kèm mã VietQR chứa mã ngân hàng, số tài khoản, số tiền và nội dung chuyển khoản.": "When the teacher chooses Send email, Gmail receives the saved email address, student and teacher names, statement period, lesson dates and fees, due date, amounts received and outstanding, statement number and link to deliver the message. If a balance is due and the statement has bank details, the email includes a VietQR code with the bank identifier, account number, amount and transfer reference.",
   "{0} gửi bảng kê học phí của {1} cho kỳ {2}.": "{0} is sharing {1}'s tuition statement for {2}.",
   "Hạn thanh toán": "Payment due",
   "Số buổi học": "Number of lessons",
@@ -1011,5 +1011,7 @@
   "Bạn cũng có thể mở link sau:": "You can also open this link:",
   "Nếu có thông tin cần điều chỉnh, vui lòng liên hệ giáo viên.": "Please contact your teacher if any details need correcting.",
   "Học phí đã nhận": "Payment received",
-  "Bảng kê học phí của bạn": "Your tuition statement"
+  "Bảng kê học phí của bạn": "Your tuition statement",
+  "Thanh toán bằng VietQR": "Pay with VietQR",
+  "Nếu bạn đã thanh toán sau khi nhận email, hãy mở bảng kê để kiểm tra số tiền còn thiếu trước khi chuyển khoản.": "If you have made a payment since receiving this email, open the statement to check the remaining balance before transferring."
 }

@@ -39,6 +39,12 @@ vi.mock("@/lib/server/statements-repository", () => ({
     dueDate: "2026-11-20",
     totalVnd: 400000,
     paidVnd: 100000,
+    bankTransferSnapshot: {
+      bankBin: "970436",
+      bankName: "Example Bank",
+      accountNumber: "1234567890",
+      accountName: "Demo Teacher",
+    },
     items: [
       { sessionId: "session-1", sessionDate: "2026-11-02", amountVnd: 200000 },
       { sessionId: "session-2", sessionDate: "2026-11-09", amountVnd: 200000 },
@@ -151,6 +157,7 @@ it("emails the active link to the saved recipient once and rejects a changed rec
   expect(mime).toContain("From: LessonBrook <sender@example.test>");
   expect(mime).toContain("To: guardian@example.test");
   expect(mime).toContain("Content-Type: multipart/alternative;");
+  expect(mime).toContain("Content-Type: multipart/related;");
   const plainPart = mime.match(
     /Content-Type: text\/plain[\s\S]*?\r\n\r\n([\s\S]*?)\r\n--/,
   );
@@ -164,6 +171,12 @@ it("emails the active link to the saved recipient once and rejects a changed rec
   );
   expect(Buffer.from(htmlPart![1], "base64").toString()).toContain(
     "Your tuition statement",
+  );
+  const cid = mime.match(/Content-ID: <([^>]+)>/)?.[1];
+  expect(cid).toBeTruthy();
+  expect(mime).toContain("Content-Type: image/png;");
+  expect(Buffer.from(htmlPart![1], "base64").toString()).toContain(
+    `src="cid:${cid}"`,
   );
   expect(JSON.stringify(record)).not.toContain(token);
   expect(JSON.stringify(record)).not.toContain(input.recipient);
@@ -213,6 +226,7 @@ it("uses Gmail TLS and sends the statement once with an app password", async () 
       text: expect.stringContaining(`https://ledger.example.test/s#${token}`),
       html: expect.stringContaining('href="https://ledger.example.test/s#'),
       subject: "Tuition statement CC-2026-000001 · Alex Rivera",
+      attachments: [expect.objectContaining({ contentType: "image/png" })],
     }),
   );
   expect(record.emailDelivery?.sentAt).toBeInstanceOf(Timestamp);

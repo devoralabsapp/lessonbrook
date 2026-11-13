@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { createTransport } from "nodemailer";
 import MailComposer from "nodemailer/lib/mail-composer";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
@@ -13,6 +14,7 @@ import {
   type StatementEmailContent,
 } from "@/lib/email/statement-template";
 import { assertAccountWritable } from "./account-access";
+import { transferReferenceFor } from "./bank-shortcut";
 import { AppError } from "./errors";
 import { studentDto, userRef } from "./repository";
 import { appOrigin } from "./session";
@@ -220,6 +222,7 @@ export async function sendStatementEmail(
   const root = userRef(teacher.uid);
   const tokenRef = db.collection("apps/chotcong/shareTokens").doc(hash);
   const statementRef = root.collection("statements").doc(id);
+  const qrContentId = `payment-${randomUUID()}@lessonbrook`;
   const claim = await db.runTransaction(async (tx) => {
     await assertAccountWritable(tx, teacher.uid);
     const [statementDoc, tokenDoc] = await tx.getAll(statementRef, tokenRef);
@@ -264,12 +267,16 @@ export async function sendStatementEmail(
     tx.update(tokenRef, {
       emailDelivery: { requestId, attemptedAt: Timestamp.now(), sentAt: null },
     });
+    const reference = statement.bankTransferSnapshot
+      ? transferReferenceFor(statement)
+      : null;
     return {
       sent: false,
       content: buildStatementEmail(statement, {
         url: `${origin}/s#${token}`,
         locale,
         expiresAt: link.data.expiresAt.toDate().toISOString(),
+        payment: reference ? { reference, cid: qrContentId } : undefined,
       }),
     } as const;
   });
