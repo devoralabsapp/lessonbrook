@@ -1101,37 +1101,38 @@ export function Workspace({
                         : t("Buổi nhóm tự chọn")}
                     </Link>
                   )}
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {formatDate(s.sessionDate, locale)}
-                    {s.startTime ? ` · ${s.startTime}` : ""}
+                  <p className="mt-1 break-words text-[11px] text-muted-foreground">
+                    <span className="inline-block">
+                      {formatDate(s.sessionDate, locale)}
+                      {s.startTime ? ` · ${s.startTime}` : ""}
+                    </span>{" "}
+                    <span className="inline-block font-semibold tabular-nums text-foreground">
+                      {"· "}
+                      {s.status === "completed" && s.billable
+                        ? formatVnd(s.amountVnd, locale)
+                        : !s.billable
+                          ? t("Miễn phí")
+                          : formatVnd(s.rateVnd, locale)}
+                    </span>
                     {s.durationMinutes
                       ? t(" · {0} phút", { "0": s.durationMinutes })
                       : ""}
                   </p>
                 </div>
-                <span className={`status status-${s.status}`}>
-                  {t(statusLabels[s.status])}
-                </span>
-                <div className="ml-auto min-w-24 text-right">
-                  <p className="text-sm font-semibold">
-                    {s.status === "completed" && s.billable
-                      ? formatVnd(s.amountVnd, locale)
-                      : !s.billable
-                        ? t("Miễn phí")
-                        : formatVnd(s.rateVnd, locale)}
-                  </p>
-                  <div className="mt-1 empty:hidden">
-                    <LessonPaymentStatus session={s} />
-                  </div>
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                  <span className={`status status-${s.status}`}>
+                    {t(statusLabels[s.status])}
+                  </span>
+                  <LessonPaymentStatus session={s} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={bulkBusy || s.billedStatementId !== null}
+                    onClick={() => setModal({ kind: "session", record: s })}
+                  >
+                    {t("Sửa")}
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={bulkBusy || s.billedStatementId !== null}
-                  onClick={() => setModal({ kind: "session", record: s })}
-                >
-                  {t("Sửa")}
-                </Button>
               </div>
             ))}
           </div>
