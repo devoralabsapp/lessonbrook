@@ -353,12 +353,44 @@ summary:focus-visible {
 }
 
 .record-note-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16.5rem), 1fr));
-  gap: 1.25rem;
+  columns: 16.5rem;
+  column-gap: 1.75rem;
+}
+
+.record-note-grid > .record-note {
+  width: 100%;
+  margin-block: 0.75rem 1.75rem;
+  break-inside: avoid;
+}
+
+.record-note-grid > .record-note:nth-child(6n + 2) {
+  --note-tilt: 1.4deg;
+  --note-lift: 0.5rem;
+  --note-delay: -3s;
+}
+.record-note-grid > .record-note:nth-child(6n + 3) {
+  --note-tilt: -0.7deg;
+  --note-lift: 0.25rem;
+  --note-delay: -5s;
+}
+.record-note-grid > .record-note:nth-child(6n + 4) {
+  --note-tilt: 1.8deg;
+  --note-delay: -1s;
+}
+.record-note-grid > .record-note:nth-child(6n + 5) {
+  --note-tilt: -1.6deg;
+  --note-lift: 0.4rem;
+  --note-delay: -7s;
+}
+.record-note-grid > .record-note:nth-child(6n) {
+  --note-tilt: 0.6deg;
+  --note-delay: -4s;
 }
 
 .record-note {
+  --note-tilt: -1.1deg;
+  --note-lift: 0rem;
+  --note-delay: 0s;
   position: relative;
   min-width: 0;
   min-height: 11rem;
@@ -368,6 +400,30 @@ summary:focus-visible {
   background: color-mix(in srgb, var(--note-color) 70%, var(--card));
   box-shadow: var(--theme-card-edge, 0 3px 7px #24201d1c);
   color: var(--foreground);
+  transform: translateY(var(--note-lift)) rotate(var(--note-tilt));
+  transform-origin: 50% 1rem;
+}
+
+@keyframes note-sway {
+  0%,
+  35%,
+  100% {
+    transform: translateY(var(--note-lift)) rotate(var(--note-tilt));
+  }
+  50%,
+  85% {
+    transform: translateY(calc(var(--note-lift) - 3px))
+      rotate(calc(var(--note-tilt) + 0.55deg));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .record-note {
+    animation: note-sway 9s ease-in-out var(--note-delay) infinite;
+  }
+  .record-note:is(:hover, :focus-within) {
+    animation-play-state: paused;
+  }
 }
 
 .record-note[data-note-color="lemon"] {
@@ -403,13 +459,14 @@ summary:focus-visible {
 
 .record-note-pin {
   position: absolute;
-  top: 0.6rem;
-  left: calc(50% - 0.6rem);
-  width: 1.2rem;
-  height: 1.2rem;
+  top: 0.4rem;
+  left: calc(50% - 0.8rem);
+  width: 1.6rem;
+  height: 1.6rem;
   transform: rotate(24deg);
-  color: var(--foreground);
-  fill: var(--card);
+  color: #9f1426;
+  fill: #ef334f;
+  filter: drop-shadow(1px 2px 0 #211f1b33);
   pointer-events: none;
 }
 

@@ -93,7 +93,7 @@ export function Workspace({
   initialBilling?: string;
 }) {
   const { t, locale } = useI18n();
-  const [recordView, setRecordView] = useState<RecordView>("list");
+  const [recordView, setRecordView] = useState<RecordView>("notes");
   const showCalendar = mode === "sessions" && recordView === "month";
   const showNotes = mode !== "overview" && recordView === "notes";
   const [revision, setRevision] = useState(0);

@@ -50,6 +50,10 @@ test("demo reuses the workspace and keeps sample changes in its tab", async ({
     await expect(
       page.getByRole("heading", { name: heading, exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Notes", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "List", exact: true }).click();
     const coloredRow = page.locator("[data-list-tone]").first();
     await expect(coloredRow).toBeVisible();
     await expect(coloredRow).toHaveCSS("background-image", /linear-gradient/);
@@ -312,6 +316,7 @@ test("visitors can preview themes on the home page without saving an account pre
   await expect(students).toHaveCSS("font-size", "15px");
   await expect(students).toHaveCSS("font-weight", "700");
   await students.click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
   await page
     .locator("[data-list-tone]")
     .first()

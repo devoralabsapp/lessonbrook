@@ -43,7 +43,7 @@ export function StatementsList({
   initialStatus?: string;
 }) {
   const { t, locale } = useI18n();
-  const [recordView, setRecordView] = useState<RecordView>("list");
+  const [recordView, setRecordView] = useState<RecordView>("notes");
   const showNotes = recordView === "notes";
   const [status, setStatus] = useState(initialStatus);
   const [studentId, setStudentId] = useState(initialStudentId);

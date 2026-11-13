@@ -26,7 +26,7 @@ export function ClassesList() {
   const { t } = useI18n();
   const router = useRouter();
   const workspaceHref = useWorkspaceHref();
-  const [recordView, setRecordView] = useState<RecordView>("list");
+  const [recordView, setRecordView] = useState<RecordView>("notes");
   const showCalendar = recordView === "month";
   const showNotes = recordView === "notes";
   const [calendarRevision, setCalendarRevision] = useState(0);

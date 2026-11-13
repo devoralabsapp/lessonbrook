@@ -10,7 +10,6 @@ test("notes share filters, actions and selection with the four workspace lists",
   for (const tab of ["students", "classes", "sessions", "statements"]) {
     await page.goto(`/demo/${tab}`);
     const notes = page.getByRole("button", { name: "Notes", exact: true });
-    await notes.click();
     await expect(notes).toHaveAttribute("aria-pressed", "true");
     const papers = page.locator("article[data-note-color]");
     await expect(papers.first()).toBeVisible();
@@ -24,6 +23,19 @@ test("notes share filters, actions and selection with the four workspace lists",
       ).size,
     ).toBeGreaterThan(1);
     await expect(page.locator(".record-note-pin")).toHaveCount(count);
+    await expect(papers.first().locator(".record-note-pin")).toHaveCSS(
+      "fill",
+      "rgb(239, 51, 79)",
+    );
+    expect(
+      await papers
+        .first()
+        .locator(".record-note-pin")
+        .evaluate((pin) => parseFloat(getComputedStyle(pin).width)),
+    ).toBeGreaterThan(24);
+    await expect(papers.first()).toHaveCSS("animation-name", "note-sway");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(papers.first()).toHaveCSS("animation-name", "none");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -58,5 +70,6 @@ test("notes share filters, actions and selection with the four workspace lists",
       await papers.first().getByRole("link").click();
       await expect(page).toHaveURL(/\/demo\/statements\/[^/]+$/);
     }
+    await page.emulateMedia({ reducedMotion: "no-preference" });
   }
 });
