@@ -3,6 +3,11 @@ import { useI18n } from "@/lib/i18n/client";
 
 import { useEffect, useState } from "react";
 import Link from "@/components/workspace-link";
+import {
+  RecordViewSwitch,
+  type RecordView,
+} from "@/components/record-view-switch";
+import { RecordNote } from "@/components/record-note";
 import { formatVnd, vietnamToday } from "@/domain";
 import {
   type Statement,
@@ -38,6 +43,8 @@ export function StatementsList({
   initialStatus?: string;
 }) {
   const { t, locale } = useI18n();
+  const [recordView, setRecordView] = useState<RecordView>("list");
+  const showNotes = recordView === "notes";
   const [status, setStatus] = useState(initialStatus);
   const [studentId, setStudentId] = useState(initialStudentId);
   const [period, setPeriod] =
@@ -212,6 +219,9 @@ export function StatementsList({
           </div>
         )}
       </Card>
+      <div className="flex justify-end">
+        <RecordViewSwitch value={recordView} onChange={setRecordView} />
+      </div>
       {!endpoint ? null : error?.key === key ? (
         <Card role="alert" className="p-6 text-sm">
           <p className="mb-3 text-destructive">{t(error.message)}</p>
@@ -242,7 +252,7 @@ export function StatementsList({
           </p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className={showNotes ? "record-note-grid px-1" : "space-y-3"}>
           {page.items.map((statement) => {
             const display = statementDisplayStatus(statement, today);
             const paid = statementIsPaid(statement);
@@ -255,7 +265,14 @@ export function StatementsList({
                     ? "mint"
                     : "pink";
             return (
-              <Card key={statement.id} data-list-tone={tone} className="p-5">
+              <RecordNote
+                key={statement.id}
+                recordId={statement.id}
+                tone={tone}
+                note={showNotes}
+                card
+                className={showNotes ? undefined : "p-5"}
+              >
                 <Link
                   className="block space-y-3"
                   href={`/app/statements/${statement.id}`}
@@ -301,7 +318,7 @@ export function StatementsList({
                     </p>
                   )}
                 </Link>
-              </Card>
+              </RecordNote>
             );
           })}
         </div>

@@ -1,8 +1,7 @@
 "use client";
-import {
-  CalendarViewSwitch,
-  WorkspaceMonthCalendar,
-} from "@/features/calendar/month-view";
+import { WorkspaceMonthCalendar } from "@/features/calendar/month-view";
+import { RecordViewSwitch, type RecordView } from "./record-view-switch";
+import { RecordNote } from "./record-note";
 import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -94,8 +93,9 @@ export function Workspace({
   initialBilling?: string;
 }) {
   const { t, locale } = useI18n();
-  const [calendarView, setCalendarView] = useState<"list" | "month">("list");
-  const showCalendar = mode === "sessions" && calendarView === "month";
+  const [recordView, setRecordView] = useState<RecordView>("list");
+  const showCalendar = mode === "sessions" && recordView === "month";
+  const showNotes = mode !== "overview" && recordView === "notes";
   const [revision, setRevision] = useState(0);
   const [archived, setArchived] = useState(false);
   const [search, setSearch] = useState("");
@@ -661,16 +661,19 @@ export function Workspace({
             </p>
           </div>
           {mode === "students" ? (
-            <ThemedSelect
-              label={t("Trạng thái học viên")}
-              toolbar
-              value={String(archived)}
-              onChange={(value) => setArchived(value === "true")}
-              options={[
-                { value: "false", label: t("Đang học") },
-                { value: "true", label: t("Đã lưu trữ") },
-              ]}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <RecordViewSwitch value={recordView} onChange={setRecordView} />
+              <ThemedSelect
+                label={t("Trạng thái học viên")}
+                toolbar
+                value={String(archived)}
+                onChange={(value) => setArchived(value === "true")}
+                options={[
+                  { value: "false", label: t("Đang học") },
+                  { value: "true", label: t("Đã lưu trữ") },
+                ]}
+              />
+            </div>
           ) : mode === "overview" ? (
             <Link
               href="/app/sessions"
@@ -680,13 +683,16 @@ export function Workspace({
               <ArrowRight size={14} />
             </Link>
           ) : (
-            <CalendarViewSwitch
-              value={calendarView}
+            <RecordViewSwitch
+              calendar
+              disabled={bulkBusy}
+              value={recordView}
               onChange={(value) => {
-                if (bulkBusy) return;
-                setCalendarView(value);
-                setSelecting(false);
-                clearSelection();
+                setRecordView(value);
+                if (value === "month") {
+                  setSelecting(false);
+                  clearSelection();
+                }
               }}
             />
           )}
@@ -967,14 +973,22 @@ export function Workspace({
           </div>
         ) : !view ? null : mode === "students" ? (
           view?.students.items.length ? (
-            <div className="divide-y divide-border">
+            <div
+              className={
+                showNotes ? "record-note-grid p-5" : "divide-y divide-border"
+              }
+            >
               {view.students.items.map((s, index) => (
-                <div
+                <RecordNote
                   key={s.id}
-                  data-list-tone={
-                    s.archivedAt ? "neutral" : index % 2 ? "mint" : "blue"
+                  recordId={s.id}
+                  note={showNotes}
+                  tone={s.archivedAt ? "neutral" : index % 2 ? "mint" : "blue"}
+                  className={
+                    showNotes
+                      ? "flex flex-col gap-3"
+                      : "flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
                   }
-                  className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
                 >
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold text-primary">
                     {s.displayName[0]}
@@ -992,26 +1006,34 @@ export function Workspace({
                       </span>
                     )}
                   </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setModal({ kind: "student", record: s })}
+                  <div
+                    className={
+                      showNotes
+                        ? "mt-auto flex flex-wrap gap-2 border-t border-border pt-3"
+                        : "contents"
+                    }
                   >
-                    {t("Sửa")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!!actionBusy}
-                    onClick={() => archive(s)}
-                  >
-                    {actionBusy === s.id
-                      ? t("Đang lưu…")
-                      : s.archivedAt
-                        ? t("Khôi phục")
-                        : t("Lưu trữ")}
-                  </Button>
-                </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setModal({ kind: "student", record: s })}
+                    >
+                      {t("Sửa")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!!actionBusy}
+                      onClick={() => archive(s)}
+                    >
+                      {actionBusy === s.id
+                        ? t("Đang lưu…")
+                        : s.archivedAt
+                          ? t("Khôi phục")
+                          : t("Lưu trữ")}
+                    </Button>
+                  </div>
+                </RecordNote>
               ))}
             </div>
           ) : search.trim() ? (
@@ -1030,21 +1052,37 @@ export function Workspace({
             />
           )
         ) : view?.sessions.items.length ? (
-          <div className="divide-y divide-border">
+          <div
+            className={
+              showNotes ? "record-note-grid p-5" : "divide-y divide-border"
+            }
+          >
             {view.sessions.items.map((s) => (
-              <div
+              <RecordNote
                 key={s.id}
-                data-list-tone={
+                recordId={s.id}
+                note={showNotes}
+                tone={
                   s.status === "completed"
                     ? "mint"
                     : s.status === "planned"
                       ? "yellow"
                       : "pink"
                 }
-                className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
+                className={
+                  showNotes
+                    ? "flex flex-wrap content-start items-start gap-3"
+                    : "flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
+                }
               >
                 {mode === "sessions" && selecting && (
-                  <label className="grid size-8 shrink-0 place-items-center">
+                  <label
+                    className={
+                      showNotes
+                        ? "absolute top-2 left-2 grid size-8 place-items-center"
+                        : "grid size-8 shrink-0 place-items-center"
+                    }
+                  >
                     <input
                       type="checkbox"
                       className="size-4 accent-primary disabled:opacity-40"
@@ -1084,7 +1122,13 @@ export function Workspace({
                     {s.sessionDate.slice(8)}
                   </span>
                 </time>
-                <div className="min-w-0 basis-[calc(100%_-_5.75rem)] flex-1 sm:basis-40">
+                <div
+                  className={
+                    showNotes
+                      ? "min-w-0 flex-1"
+                      : "min-w-0 basis-[calc(100%_-_5.75rem)] flex-1 sm:basis-40"
+                  }
+                >
                   <Link
                     href={`/app/students/${s.studentId}`}
                     className="break-words text-sm font-semibold"
@@ -1119,7 +1163,13 @@ export function Workspace({
                       : ""}
                   </p>
                 </div>
-                <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                <div
+                  className={
+                    showNotes
+                      ? "mt-auto flex w-full flex-wrap items-center justify-end gap-2 border-t border-border pt-3"
+                      : "ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3"
+                  }
+                >
                   <span className={`status status-${s.status}`}>
                     {t(statusLabels[s.status])}
                   </span>
@@ -1133,7 +1183,7 @@ export function Workspace({
                     {t("Sửa")}
                   </Button>
                 </div>
-              </div>
+              </RecordNote>
             ))}
           </div>
         ) : range.from ||

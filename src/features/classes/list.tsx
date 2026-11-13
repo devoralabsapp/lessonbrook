@@ -1,9 +1,11 @@
 "use client";
 
+import { WorkspaceMonthCalendar } from "@/features/calendar/month-view";
 import {
-  CalendarViewSwitch,
-  WorkspaceMonthCalendar,
-} from "@/features/calendar/month-view";
+  RecordViewSwitch,
+  type RecordView,
+} from "@/components/record-view-switch";
+import { RecordNote } from "@/components/record-note";
 import { useState } from "react";
 import Link, { useWorkspaceHref } from "@/components/workspace-link";
 import { useRouter } from "next/navigation";
@@ -24,7 +26,9 @@ export function ClassesList() {
   const { t } = useI18n();
   const router = useRouter();
   const workspaceHref = useWorkspaceHref();
-  const [calendarView, setCalendarView] = useState<"list" | "month">("list");
+  const [recordView, setRecordView] = useState<RecordView>("list");
+  const showCalendar = recordView === "month";
+  const showNotes = recordView === "notes";
   const [calendarRevision, setCalendarRevision] = useState(0);
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
@@ -108,9 +112,10 @@ export function ClassesList() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <CalendarViewSwitch
-              value={calendarView}
-              onChange={setCalendarView}
+            <RecordViewSwitch
+              calendar
+              value={recordView}
+              onChange={setRecordView}
             />
             <ThemedSelect
               label={t("Trạng thái lớp học")}
@@ -141,7 +146,7 @@ export function ClassesList() {
             />
           </label>
         </div>
-        {calendarView === "list" && list.error && (
+        {!showCalendar && list.error && (
           <div className="px-5">
             <LoadError message={list.error} retry={list.reload} />
           </div>
@@ -154,7 +159,7 @@ export function ClassesList() {
             {t(editError || mutation.error)}
           </p>
         )}
-        {calendarView === "list" && !list.page && !list.error && (
+        {!showCalendar && !list.page && !list.error && (
           <p
             role="status"
             className="flex justify-center gap-2 p-14 text-sm text-muted-foreground"
@@ -163,24 +168,34 @@ export function ClassesList() {
             {t("Đang tải lớp học…")}
           </p>
         )}
-        {calendarView === "month" && (
+        {showCalendar && (
           <WorkspaceMonthCalendar
             kind="classes"
             endpoint={`/api/classes?${new URLSearchParams({ q: term, archived: String(archived) })}`}
             revision={calendarRevision}
           />
         )}
-        {calendarView === "list" &&
+        {!showCalendar &&
           list.page &&
           (list.page.items.length ? (
-            <div className="divide-y divide-border">
+            <div
+              className={
+                showNotes ? "record-note-grid p-5" : "divide-y divide-border"
+              }
+            >
               {list.page.items.map((item, index) => (
-                <div
+                <RecordNote
                   key={item.id}
-                  data-list-tone={
+                  recordId={item.id}
+                  note={showNotes}
+                  tone={
                     item.archivedAt ? "neutral" : index % 2 ? "blue" : "yellow"
                   }
-                  className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
+                  className={
+                    showNotes
+                      ? "flex flex-col gap-3"
+                      : "flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
+                  }
                 >
                   <span
                     aria-hidden="true"
@@ -199,23 +214,31 @@ export function ClassesList() {
                       {t("{0} học viên", { "0": item.studentIds.length })}
                     </span>
                   </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!!opening || mutation.busy}
-                    onClick={() => void edit(item.id)}
+                  <div
+                    className={
+                      showNotes
+                        ? "mt-auto flex flex-wrap gap-2 border-t border-border pt-3"
+                        : "contents"
+                    }
                   >
-                    {opening === item.id ? t("Đang tải…") : t("Sửa")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!!opening || mutation.busy}
-                    onClick={() => void archive(item)}
-                  >
-                    {item.archivedAt ? t("Khôi phục") : t("Lưu trữ")}
-                  </Button>
-                </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!!opening || mutation.busy}
+                      onClick={() => void edit(item.id)}
+                    >
+                      {opening === item.id ? t("Đang tải…") : t("Sửa")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!!opening || mutation.busy}
+                      onClick={() => void archive(item)}
+                    >
+                      {item.archivedAt ? t("Khôi phục") : t("Lưu trữ")}
+                    </Button>
+                  </div>
+                </RecordNote>
               ))}
             </div>
           ) : (
@@ -225,7 +248,7 @@ export function ClassesList() {
                 : t("Chưa có lớp trong danh sách này.")}
             </div>
           ))}
-        {calendarView === "list" && list.page?.nextCursor && (
+        {!showCalendar && list.page?.nextCursor && (
           <div className="border-t border-border p-4 text-center">
             <Button
               variant="outline"

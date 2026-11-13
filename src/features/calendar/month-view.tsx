@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  List,
-  LoaderCircle,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 import Link from "@/components/workspace-link";
 import { Button } from "@/components/ui/button";
 import { statusLabels, vietnamToday } from "@/domain";
@@ -23,32 +17,6 @@ import {
 } from "@/domain/month-calendar";
 import { api } from "@/lib/client-api";
 import { useI18n } from "@/lib/i18n/client";
-
-export function CalendarViewSwitch({
-  value,
-  onChange,
-}: {
-  value: "list" | "month";
-  onChange: (value: "list" | "month") => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <div role="group" aria-label={t("Cách xem")} className="flex gap-2">
-      {(["list", "month"] as const).map((view) => (
-        <Button
-          key={view}
-          size="sm"
-          variant={value === view ? "default" : "outline"}
-          aria-pressed={value === view}
-          onClick={() => onChange(view)}
-        >
-          {view === "list" ? <List /> : <CalendarDays />}
-          {view === "list" ? t("Danh sách") : t("Lịch tháng")}
-        </Button>
-      ))}
-    </div>
-  );
-}
 
 type RecordPage<T> = { items: T[]; nextCursor: string | null };
 function useCalendarRecords<T extends { id: string }>(
