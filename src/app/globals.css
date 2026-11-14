@@ -385,8 +385,8 @@ summary:focus-visible {
 .record-identity {
   background: color-mix(
     in srgb,
-    var(--card) 82%,
-    var(--note-color, var(--accent-soft))
+    var(--note-color, var(--accent-soft)) var(--identity-tint, 70%),
+    var(--card)
   );
 }
 
@@ -601,6 +601,15 @@ summary:focus-visible {
 [data-theme="afterhours-fm"] .record-note {
   background: color-mix(in srgb, var(--note-color) 25%, var(--card));
   border-color: color-mix(in srgb, var(--note-color) 65%, var(--border));
+}
+
+.record-note:has(> .record-identity) {
+  background: color-mix(in srgb, var(--note-color) 18%, var(--card));
+}
+
+[data-theme="afterhours-fm"] .record-note:has(> .record-identity) {
+  --identity-tint: 25%;
+  background: color-mix(in srgb, var(--note-color) 8%, var(--card));
 }
 
 .field-label {
