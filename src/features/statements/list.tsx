@@ -156,209 +156,275 @@ export function StatementsList({
           </Link>
         </Button>
       </div>
-      <Card
-        data-layout="statement-filters"
-        className="grid items-start gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        <StudentPicker value={studentId} onChange={setStudentId} optional />
-        <label className="field-label">
-          {t("Trạng thái bảng kê")}
-          <ThemedSelect
-            label={t("Trạng thái bảng kê")}
-            value={status}
-            onChange={setStatus}
-            options={Object.entries(statementFilterLabels).map(
-              ([value, label]) => ({
+      <Card className="overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
+          <h2 className="text-sm font-semibold">{t("Danh sách bảng kê")}</h2>
+          <RecordViewSwitch value={recordView} onChange={setRecordView} />
+        </div>
+        <div
+          data-layout="statement-filters"
+          className="grid items-start gap-4 border-b border-border bg-surface p-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3"
+        >
+          <StudentPicker value={studentId} onChange={setStudentId} optional />
+          <label className="field-label">
+            {t("Trạng thái bảng kê")}
+            <ThemedSelect
+              label={t("Trạng thái bảng kê")}
+              value={status}
+              onChange={setStatus}
+              options={Object.entries(statementFilterLabels).map(
+                ([value, label]) => ({
+                  value,
+                  label: t(label),
+                }),
+              )}
+            />
+          </label>
+          <label className="field-label min-w-0">
+            {t("Ngày bảng kê")}
+            <ThemedSelect
+              label={t("Ngày bảng kê")}
+              value={period}
+              onChange={setPeriod}
+              options={dateFilters.map(({ value, label }) => ({
                 value,
                 label: t(label),
-              }),
-            )}
-          />
-        </label>
-        <label className="field-label min-w-0">
-          {t("Ngày bảng kê")}
-          <ThemedSelect
-            label={t("Ngày bảng kê")}
-            value={period}
-            onChange={setPeriod}
-            options={dateFilters.map(({ value, label }) => ({
-              value,
-              label: t(label),
-            }))}
-          />
-        </label>
-        {period === "custom" && (
-          <div className="col-span-full grid min-w-0 gap-4 sm:grid-cols-2">
-            <label className="field-label min-w-0">
-              {t("Từ ngày")}
-              <Input
-                type="date"
-                min="1900-01-01"
-                max="2100-12-31"
-                value={custom.from}
-                aria-invalid={!range.success}
-                onChange={(event) =>
-                  setCustom({ ...custom, from: event.target.value })
-                }
-              />
-            </label>
-            <label className="field-label min-w-0">
-              {t("Đến ngày")}
-              <Input
-                type="date"
-                min="1900-01-01"
-                max="2100-12-31"
-                value={custom.to}
-                aria-invalid={!range.success}
-                onChange={(event) =>
-                  setCustom({ ...custom, to: event.target.value })
-                }
-              />
-            </label>
-            {!range.success && (
-              <p
-                role="alert"
-                className="col-span-full text-sm text-destructive"
-              >
-                {t("Khoảng ngày không hợp lệ.")}
-              </p>
-            )}
+              }))}
+            />
+          </label>
+          {period === "custom" && (
+            <div className="col-span-full grid min-w-0 gap-4 sm:grid-cols-2">
+              <label className="field-label min-w-0">
+                {t("Từ ngày")}
+                <Input
+                  type="date"
+                  min="1900-01-01"
+                  max="2100-12-31"
+                  value={custom.from}
+                  aria-invalid={!range.success}
+                  onChange={(event) =>
+                    setCustom({ ...custom, from: event.target.value })
+                  }
+                />
+              </label>
+              <label className="field-label min-w-0">
+                {t("Đến ngày")}
+                <Input
+                  type="date"
+                  min="1900-01-01"
+                  max="2100-12-31"
+                  value={custom.to}
+                  aria-invalid={!range.success}
+                  onChange={(event) =>
+                    setCustom({ ...custom, to: event.target.value })
+                  }
+                />
+              </label>
+              {!range.success && (
+                <p
+                  role="alert"
+                  className="col-span-full text-sm text-destructive"
+                >
+                  {t("Khoảng ngày không hợp lệ.")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        {!endpoint ? null : error?.key === key ? (
+          <div role="alert" className="p-6 text-sm">
+            <p className="mb-3 text-destructive">{t(error.message)}</p>
+            <Button
+              variant="outline"
+              onClick={() => setRevision((value) => value + 1)}
+            >
+              {t("Thử lại")}
+            </Button>
+          </div>
+        ) : !page ? (
+          <div role="status" className="p-8 text-sm">
+            {t("Đang tải bảng kê…")}
+          </div>
+        ) : !page.items.length ? (
+          <div className="p-8 text-center">
+            <h2 className="serif text-2xl">
+              {page.nextCursor
+                ? t("Chưa thấy bảng kê phù hợp.")
+                : t("Chưa có bảng kê trong danh sách này.")}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              {page.nextCursor
+                ? t("Bạn có thể tải tiếp danh sách để tìm thêm kết quả.")
+                : t(
+                    "Lập nháp từ các buổi hoàn thành có tính phí. Bản nháp chưa được tính vào khoản phải thu.",
+                  )}
+            </p>
+          </div>
+        ) : (
+          <div
+            className={
+              showNotes
+                ? "record-note-grid record-note-statements p-5"
+                : "divide-y divide-border"
+            }
+          >
+            {page.items.map((statement) => {
+              const display = statementDisplayStatus(statement, today);
+              const paid = statementIsPaid(statement);
+              const tone =
+                statement.status === "draft"
+                  ? "blue"
+                  : statement.status === "void"
+                    ? "neutral"
+                    : paid
+                      ? "mint"
+                      : "pink";
+              if (!showNotes)
+                return (
+                  <RecordNote
+                    key={statement.id}
+                    recordId={statement.id}
+                    tone={tone}
+                    note={false}
+                    className="px-5 py-4 sm:px-6"
+                  >
+                    <Link
+                      href={`/app/statements/${statement.id}`}
+                      className="flex flex-wrap items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 basis-48 flex-1 space-y-1">
+                        <strong className="block break-words text-sm">
+                          {statement.number ?? t("Bản nháp")} ·{" "}
+                          {statement.recipientSnapshot.displayName}
+                        </strong>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(statement.periodStart, locale)} –{" "}
+                          {formatDate(statement.periodEnd, locale)} ·{" "}
+                          {statement.items.length} {t("buổi")}
+                        </p>
+                        <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>
+                            {t(
+                              statement.issueDate
+                                ? "Ngày phát hành:"
+                                : "Ngày tạo:",
+                            )}{" "}
+                            {formatDate(statementListDate(statement), locale)}
+                          </span>
+                          <span>
+                            {t("Đến hạn ")}
+                            {formatDate(statement.dueDate, locale)}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="ml-auto flex flex-col items-end gap-1.5">
+                        <strong className="whitespace-nowrap text-base">
+                          {formatVnd(statement.totalVnd, locale)}
+                        </strong>
+                        <span
+                          data-slot="list-status"
+                          className={`status whitespace-nowrap rounded-full px-2.5 ${statement.status === "issued" ? (paid ? "status-paid" : "status-unpaid") : "bg-muted"}`}
+                        >
+                          {t(display.label)}
+                          {display.overdue ? t(" · Quá hạn") : ""}
+                        </span>
+                        {statement.status === "issued" && (
+                          <p className="text-xs text-muted-foreground">
+                            {t("Còn phải thu:")}{" "}
+                            {formatVnd(
+                              statement.totalVnd - statement.paidVnd,
+                              locale,
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  </RecordNote>
+                );
+              return (
+                <RecordNote
+                  key={statement.id}
+                  recordId={statement.id}
+                  tone={tone}
+                  note={showNotes}
+                  className={showNotes ? undefined : "px-5 py-4 sm:px-6"}
+                >
+                  <Link
+                    className={
+                      showNotes ? "grid gap-y-2 leading-5" : "block space-y-3"
+                    }
+                    href={`/app/statements/${statement.id}`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                      <strong className="min-w-0 break-words text-sm">
+                        {statement.number ?? t("Bản nháp")} ·{" "}
+                        {statement.recipientSnapshot.displayName}
+                      </strong>
+                      {statement.status !== "issued" && (
+                        <span
+                          data-slot="list-status"
+                          className="status whitespace-nowrap rounded-full bg-muted px-3"
+                        >
+                          {t(display.label)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(statement.periodStart, locale)} –{" "}
+                      {formatDate(statement.periodEnd, locale)} ·{" "}
+                      {statement.items.length} {t("buổi")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t(statement.issueDate ? "Ngày phát hành:" : "Ngày tạo:")}{" "}
+                      {formatDate(statementListDate(statement), locale)}
+                    </p>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                      <span className="text-xs text-muted-foreground">
+                        {t("Đến hạn ")}
+                        {formatDate(statement.dueDate, locale)}
+                      </span>
+                      <strong className="ml-auto whitespace-nowrap text-base">
+                        {formatVnd(statement.totalVnd, locale)}
+                      </strong>
+                    </div>
+                    {statement.status === "issued" && (
+                      <div
+                        className={
+                          showNotes
+                            ? "record-statement-payment"
+                            : "flex flex-wrap items-center justify-between gap-2"
+                        }
+                      >
+                        <p className="wrap-anywhere text-xs">
+                          {t("Còn phải thu:")}{" "}
+                          {formatVnd(
+                            statement.totalVnd - statement.paidVnd,
+                            locale,
+                          )}
+                        </p>
+                        <span
+                          data-slot="list-status"
+                          className={`status ml-auto whitespace-nowrap rounded-full px-2.5 ${paid ? "status-paid" : "status-unpaid"}`}
+                        >
+                          {t(display.label)}
+                          {display.overdue ? t(" · Quá hạn") : ""}
+                        </span>
+                      </div>
+                    )}
+                  </Link>
+                </RecordNote>
+              );
+            })}
+          </div>
+        )}
+        {page?.nextCursor && (
+          <div className="border-t border-border p-4 text-center">
+            <Button variant="outline" disabled={moreBusy} onClick={more}>
+              {moreBusy ? t("Đang tải…") : t("Tải thêm bảng kê")}
+            </Button>
           </div>
         )}
       </Card>
-      <div className="flex justify-end">
-        <RecordViewSwitch value={recordView} onChange={setRecordView} />
-      </div>
-      {!endpoint ? null : error?.key === key ? (
-        <Card role="alert" className="p-6 text-sm">
-          <p className="mb-3 text-destructive">{t(error.message)}</p>
-          <Button
-            variant="outline"
-            onClick={() => setRevision((value) => value + 1)}
-          >
-            {t("Thử lại")}
-          </Button>
-        </Card>
-      ) : !page ? (
-        <Card role="status" className="p-8 text-sm">
-          {t("Đang tải bảng kê…")}
-        </Card>
-      ) : !page.items.length ? (
-        <Card className="p-8 text-center">
-          <h2 className="serif text-2xl">
-            {page.nextCursor
-              ? t("Chưa thấy bảng kê phù hợp.")
-              : t("Chưa có bảng kê trong danh sách này.")}
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            {page.nextCursor
-              ? t("Bạn có thể tải tiếp danh sách để tìm thêm kết quả.")
-              : t(
-                  "Lập nháp từ các buổi hoàn thành có tính phí. Bản nháp chưa được tính vào khoản phải thu.",
-                )}
-          </p>
-        </Card>
-      ) : (
-        <div
-          className={
-            showNotes
-              ? "record-note-grid record-note-statements px-1"
-              : "space-y-3"
-          }
-        >
-          {page.items.map((statement) => {
-            const display = statementDisplayStatus(statement, today);
-            const paid = statementIsPaid(statement);
-            const tone =
-              statement.status === "draft"
-                ? "blue"
-                : statement.status === "void"
-                  ? "neutral"
-                  : paid
-                    ? "mint"
-                    : "pink";
-            return (
-              <RecordNote
-                key={statement.id}
-                recordId={statement.id}
-                tone={tone}
-                note={showNotes}
-                card
-                className={showNotes ? undefined : "p-5"}
-              >
-                <Link
-                  className={
-                    showNotes ? "grid gap-y-2 leading-5" : "block space-y-3"
-                  }
-                  href={`/app/statements/${statement.id}`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                    <strong className="min-w-0 break-words text-sm">
-                      {statement.number ?? t("Bản nháp")} ·{" "}
-                      {statement.recipientSnapshot.displayName}
-                    </strong>
-                    {statement.status !== "issued" && (
-                      <span
-                        data-slot="list-status"
-                        className="status whitespace-nowrap rounded-full bg-muted px-3"
-                      >
-                        {t(display.label)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(statement.periodStart, locale)} –{" "}
-                    {formatDate(statement.periodEnd, locale)} ·{" "}
-                    {statement.items.length} {t("buổi")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t(statement.issueDate ? "Ngày phát hành:" : "Ngày tạo:")}{" "}
-                    {formatDate(statementListDate(statement), locale)}
-                  </p>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-                    <span className="text-xs text-muted-foreground">
-                      {t("Đến hạn ")}
-                      {formatDate(statement.dueDate, locale)}
-                    </span>
-                    <strong className="ml-auto whitespace-nowrap text-base">
-                      {formatVnd(statement.totalVnd, locale)}
-                    </strong>
-                  </div>
-                  {statement.status === "issued" && (
-                    <div
-                      className={
-                        showNotes
-                          ? "record-statement-payment"
-                          : "flex flex-wrap items-center justify-between gap-2"
-                      }
-                    >
-                      <p className="wrap-anywhere text-xs">
-                        {t("Còn phải thu:")}{" "}
-                        {formatVnd(
-                          statement.totalVnd - statement.paidVnd,
-                          locale,
-                        )}
-                      </p>
-                      <span
-                        data-slot="list-status"
-                        className={`status ml-auto whitespace-nowrap rounded-full px-2.5 ${paid ? "status-paid" : "status-unpaid"}`}
-                      >
-                        {t(display.label)}
-                        {display.overdue ? t(" · Quá hạn") : ""}
-                      </span>
-                    </div>
-                  )}
-                </Link>
-              </RecordNote>
-            );
-          })}
-        </div>
-      )}
-      {page?.nextCursor && (
-        <Button variant="outline" disabled={moreBusy} onClick={more}>
-          {moreBusy ? t("Đang tải…") : t("Tải thêm bảng kê")}
-        </Button>
-      )}
     </div>
   );
 }
