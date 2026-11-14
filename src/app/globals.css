@@ -364,7 +364,21 @@ summary:focus-visible {
 }
 
 .record-note-grid.record-note-lessons {
-  --note-width: 17.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.record-note-grid.record-note-lessons > .record-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5rem;
+  width: max-content;
+  max-width: min(100%, 20rem);
+}
+
+.record-note-lessons .record-lesson-actions {
+  grid-column: 1 / -1;
 }
 
 .record-note-grid.record-note-statements {

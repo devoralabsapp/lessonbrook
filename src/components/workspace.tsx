@@ -1071,7 +1071,7 @@ export function Workspace({
                 }
                 className={
                   showNotes
-                    ? "flex flex-wrap content-start items-start gap-2"
+                    ? undefined
                     : "flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
                 }
               >
@@ -1125,7 +1125,7 @@ export function Workspace({
                 <div
                   className={
                     showNotes
-                      ? "min-w-0 flex-1"
+                      ? "min-w-0"
                       : "min-w-0 basis-[calc(100%_-_5.75rem)] flex-1 sm:basis-40"
                   }
                 >
