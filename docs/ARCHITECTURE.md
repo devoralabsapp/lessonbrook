@@ -68,7 +68,7 @@ English is the default locale. The translation helpers in `src/lib/i18n/` resolv
 
 Statements use the same directory card structure: the list title and view switch sit in its header, filters follow, and results stay inside the card. List mode uses compact rows with separators and a right-aligned amount and status; Notes keep their pinned paper layout. Loading, empty, error and pagination states also stay inside the directory card.
 
-One shared IntersectionObserver pauses note animation outside the viewport, and a visibility listener pauses it when the document is hidden. Notes sway around their pin rather than translating the entire card. Keyboard focus and pointer hover use short, small transforms; reduced motion disables these effects. The shaded red SVG pins include their own cast shadow instead of a per-icon CSS filter. Observer subscriptions are released when notes unmount.
+One shared IntersectionObserver pauses note animation outside the viewport, and a visibility listener pauses it when the document is hidden. Notes pivot around their pin. Keyboard focus and pointer hover use short, small transforms. Reduced motion disables these effects. The shaded red SVG pins use a small contact shadow at the base to suggest a pin inserted into the paper. Observer subscriptions are released when notes unmount.
 
 Phone layouts use `.record-note-people` for compact two-column Students and Classes notes, independently of the wider Lesson and Statement notes. In the Lessons filters, Lesson type and Clear filters share a phone row, followed by Today, This month and Select. Desktop controls retain their existing arrangement.
 

@@ -6,7 +6,7 @@ Dashboard shows the current outstanding, unbilled, received, and student totals.
 
 On the welcome screen, **View demo** opens all five tabs with fictional students, classes, lessons, and statements, without signing in. Demo edits stay in the current app view and reset when the web view reloads. **Sign in** returns to native sign-in. Demo actions never modify an account.
 
-Phone layouts use compact cards, form spacing, and controls across all themes. Native tabs sit outside the scrollable page; the last row remains reachable above the tab bar.
+Phone layouts use compact cards, form spacing, and controls across all themes. The themed native tab bar sits below the scrollable page with room for the device's safe-area inset. The selected button and labels use the active theme's colors and type.
 
 Students and Classes notes use two columns on phones. Lessons places Clear filters beside the smaller Lesson type field, with Today, This month and Select on the next row. These shared screens update with the web deployment.
 
@@ -14,7 +14,7 @@ The native Dashboard uses the selected theme's palette, contrasting text, card b
 
 Mobile uses the same server read cache as the web app. Dashboard also retains its latest account-local snapshot and view in RAM, while still checking the server on return and refresh. An unchanged response keeps the current view and scroll position. Data, theme and locale changes refresh it; sign-out or demo entry clears it. No tuition data is persisted offline. Embedded workspace reads coalesce overlapping requests, and lists retain their contents during a refresh of the same filter. Notes animate only in view and respect reduced-motion settings.
 
-Tap the outstanding or overdue amount to open the corresponding statement filter. Upcoming lessons shows planned lessons and weekly class slots from today through seven days ahead. Set weekly days and times when creating or editing a class. Opening a weekly slot prefills the date and time for a lesson you can save. Open a lesson to update it, or use **View full schedule** for the complete date range.
+The Outstanding tuition card displays the total. Open the Statements tab to view individual balances. The Dashboard places Upcoming lessons below Active students, with row colors from the active theme. The schedule shows planned lessons and weekly class slots from today through seven days ahead. Set weekly days and times when creating or editing a class. Opening a weekly slot prefills the date and time for a lesson you can save. Open a lesson to update it, or use **View full schedule** for the complete date range.
 
 Switching tabs or using the app's Back button while editing a marked form asks whether to keep editing or discard the changes. While a save is in progress, wait for it to finish before leaving.
 

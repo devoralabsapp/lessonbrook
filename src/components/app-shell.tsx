@@ -297,7 +297,7 @@ export function AppShell({
               // Keep the final row above bottom navigation in the app and the mobile browser.
               "mx-auto max-w-[1320px] px-5 pt-5 pb-[calc(7rem+var(--font-size-offset)+env(safe-area-inset-bottom,0px))] sm:px-9 sm:pt-9",
               !embedded && "lg:pb-9",
-              nativeChrome && "pb-6!",
+              nativeChrome && "pb-3!",
             )}
           >
             {children}

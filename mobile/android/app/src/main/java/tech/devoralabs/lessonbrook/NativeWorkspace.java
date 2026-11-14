@@ -179,6 +179,13 @@ final class NativeWorkspace {
             case "sticker-sprint" -> 0xff111111;
             default -> 0xff211f1b;
         }; }
+        int[] scheduleTones() {
+            return switch (theme) {
+                case "mono-os" -> new int[] { surface, background };
+                case "chapter-desk" -> new int[] { surface, background, 0xfff1dfc2 };
+                default -> new int[] { blue(), mint(), yellow() };
+            };
+        }
         Typeface font() {
             return switch (theme) {
                 case "mono-os" -> Typeface.MONOSPACE;
@@ -241,23 +248,9 @@ final class NativeWorkspace {
         LinearLayout page = page();
         add(page, heading(text(R.string.hello, data.displayName()), 26), 0);
         LinearLayout hero = card(palette.yellow(), 18, 14);
-        LinearLayout outstanding = column();
-        add(outstanding, label(text(R.string.outstanding_tuition), 15, palette.dashboardInk()), 0);
-        add(outstanding, bold(money(data.outstanding()) + " ›", 34, palette.dashboardInk()), 6);
-        action(outstanding, text(R.string.outstanding_tuition) + " " + money(data.outstanding()),
-            () -> open.accept("/app/statements?status=outstanding"));
-        add(hero, outstanding, 0);
-        if (data.overdue() > 0) {
-            String title = text(R.string.overdue_amount, money(data.overdue()));
-            TextView overdue = bold(title + " ›", 14, palette.dashboardInk());
-            overdue.setGravity(Gravity.CENTER_VERTICAL);
-            overdue.setMinimumHeight(dp(44));
-            action(overdue, title, () -> open.accept("/app/statements?status=overdue"));
-            add(hero, overdue, 4);
-        }
+        add(hero, label(text(R.string.outstanding_tuition), 15, palette.dashboardInk()), 0);
+        add(hero, bold(money(data.outstanding()), 34, palette.dashboardInk()), 6);
         add(page, hero, 16);
-        add(page, button(text(R.string.record_lesson), () -> open.accept("/app/lessons/new"), true), 12);
-        if (data.schedule() != null) add(page, schedule(data.schedule(), open), 16);
 
         LinearLayout unbilled = metric(R.string.unbilled_lessons, money(data.unbilled()), R.drawable.ic_lessons, palette.blue());
         add(unbilled, label(text(R.string.lesson_count, numbers.format(data.unbilledCount())), 12, palette.dashboardInk()), 6);
@@ -275,6 +268,7 @@ final class NativeWorkspace {
             add(page, received, 12);
         }
         add(page, metric(R.string.active_students, numbers.format(data.students()), R.drawable.ic_students), 12);
+        if (data.schedule() != null) add(page, schedule(data.schedule(), open), 12);
         if (data.needsOnboarding()) {
             add(page, button(text(R.string.get_started), () -> open.accept("/onboarding"), false), 8);
         }
@@ -288,23 +282,24 @@ final class NativeWorkspace {
             add(section, label(text(R.string.no_planned_lessons), 14, palette.foreground()), 8);
             return section;
         }
-        LinearLayout rows = card(palette.surface(), 16, 14);
+        LinearLayout rows = column();
+        int[] tones = palette.scheduleTones();
+        int index = 0;
         var dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
             .withLocale(context.getResources().getConfiguration().getLocales().get(0));
         for (Lesson lesson : data.items()) {
-            LinearLayout row = column();
-            row.setPadding(0, dp(8), 0, dp(8));
+            LinearLayout row = card(tones[index % tones.length], 16, 10);
             String name = lesson.name() == null ? text(R.string.group_lesson) : lesson.name();
             String day = data.today().equals(lesson.date()) ? text(R.string.today)
                 : LocalDate.parse(lesson.date()).format(dateFormat);
             String time = lesson.time() == null ? text(R.string.time_not_set) : lesson.time();
             String when = day + " · " + time
                 + ("recurring".equals(lesson.kind()) ? " · " + text(R.string.weekly) : "");
-            add(row, bold(name + " ›", 15, palette.foreground()), 0);
-            add(row, label(when, 13, palette.foreground()), 3);
+            add(row, bold(name + " ›", 15, palette.dashboardInk()), 0);
+            add(row, label(when, 13, palette.dashboardInk()), 3);
             row.setMinimumHeight(dp(50));
             action(row, name + ", " + when, () -> open.accept(lesson.path()));
-            add(rows, row, 0);
+            add(rows, row, index++ == 0 ? 0 : 6);
         }
         add(section, rows, 8);
         add(section, button(text(R.string.full_schedule), () -> open.accept("/app/schedule"), false), 6);
@@ -330,25 +325,24 @@ final class NativeWorkspace {
         LinearLayout row = new LinearLayout(context);
         row.setGravity(Gravity.CENTER);
         row.setBackgroundColor(palette.surface());
-        row.setPadding(dp(4), dp(6), dp(4), dp(5));
+        row.setPadding(dp(6), dp(4), dp(6), dp(3));
         for (Tab tab : Tab.values()) {
             boolean active = tab == selected;
             LinearLayout item = column();
             item.setGravity(Gravity.CENTER);
-            item.setMinimumHeight(dp(56));
+            item.setMinimumHeight(dp(46));
+            item.setPadding(dp(2), dp(3), dp(2), dp(3));
             item.setSelected(active);
             action(item, text(tab.title), () -> select.accept(tab));
-            ImageView icon = icon(tab.icon, active ? palette.onAccent() : palette.foreground());
-            if (active) {
-                icon.setBackground(shape(palette.accent(), 14));
-                icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-                icon.setPadding(dp(10), dp(3), dp(10), dp(3));
-            }
-            item.addView(icon, new LinearLayout.LayoutParams(dp(active ? 54 : 24), dp(27)));
-            TextView title = label(text(tab.title), 11, active ? palette.controlTint() : palette.foreground());
+            int ink = active ? palette.onAccent() : palette.foreground();
+            if (active) item.setBackground(panel(palette.accent()));
+            ImageView icon = icon(tab.icon, ink);
+            item.addView(icon, new LinearLayout.LayoutParams(dp(18), dp(18)));
+            TextView title = label(text(tab.title), 11, ink);
+            if (active) title.setTypeface(palette.font(), Typeface.BOLD);
             title.setGravity(Gravity.CENTER);
             title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            add(item, title, 4);
+            add(item, title, 2);
             row.addView(item, new LinearLayout.LayoutParams(0, -1, 1));
         }
         return row;
@@ -414,7 +408,7 @@ final class NativeWorkspace {
 
     private LinearLayout page() {
         LinearLayout page = column();
-        page.setPadding(dp(14), dp(12), dp(14), dp(20));
+        page.setPadding(dp(14), dp(12), dp(14), dp(9));
         return page;
     }
 

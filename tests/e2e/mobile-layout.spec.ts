@@ -32,7 +32,27 @@ for (const platform of ["iOS", "Android"]) {
       await expect(
         page.getByRole("link", { name: "Sign in", exact: true }),
       ).toHaveAttribute("href", "/login");
-      await expect(page.locator("#main")).toHaveCSS("padding-bottom", "24px");
+      await expect(page.locator("#main")).toHaveCSS("padding-bottom", "12px");
+      const tuition = page.getByText("Outstanding tuition", { exact: true });
+      await expect(tuition).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "Outstanding tuition" }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: /Record (a )?lesson/ }),
+      ).toHaveCount(0);
+      const active = page.getByText("Active students", { exact: true });
+      const upcoming = page.getByRole("heading", {
+        name: "Upcoming lessons",
+        exact: true,
+      });
+      await expect(upcoming).toBeVisible();
+      expect((await upcoming.boundingBox())!.y).toBeGreaterThan(
+        (await active.boundingBox())!.y,
+      );
+      const rows = page.locator("li[data-calendar-tone]");
+      await expect(rows.first()).toBeVisible();
+      await expect(rows.first()).toHaveAttribute("data-calendar-tone", "blue");
       const marker = await page.evaluate(() => {
         (window as Window & { demoVisit?: string }).demoVisit = "kept";
         return !window.dispatchEvent(

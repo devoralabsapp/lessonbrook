@@ -6,7 +6,7 @@ final class WorkspaceNavigationController: UINavigationController {
     override var childForStatusBarStyle: UIViewController? { topViewController }
 }
 
-final class BrowserViewController: UIViewController, WKNavigationDelegate, UITabBarDelegate {
+final class BrowserViewController: UIViewController, WKNavigationDelegate {
     private enum Screen { case welcome, today, page }
     private struct Availability: Decodable { let available: Bool }
 
@@ -18,7 +18,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private let backButton = UIButton(type: .system)
     private let appearanceButton = UIButton(type: .system)
     private let settingsButton = UIButton(type: .system)
-    private let tabs = UITabBar()
+    private let tabs = UIView()
+    private let tabRow = UIStackView()
+    private var tabButtons: [UIButton] = []
     private let activity = UIActivityIndicatorView(style: .large)
     private var bottom: NSLayoutConstraint?
     private var headerHeight: NSLayoutConstraint?
@@ -67,7 +69,6 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         navigationController?.setNavigationBarHidden(true, animated: false)
         content.translatesAutoresizingMaskIntoConstraints = false
         tabs.translatesAutoresizingMaskIntoConstraints = false
-        tabs.delegate = self
         activity.translatesAutoresizingMaskIntoConstraints = false
         activity.hidesWhenStopped = true
         view.addSubview(header)
@@ -81,6 +82,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         native.didMove(toParent: self)
         let safe = view.safeAreaLayoutGuide
         configureHeader()
+        configureTabs()
         headerHeight = header.heightAnchor.constraint(equalToConstant: 0)
         NSLayoutConstraint.activate([
             header.topAnchor.constraint(equalTo: safe.topAnchor),
@@ -99,7 +101,6 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         headerHeight?.isActive = true
         tabHeight = tabs.heightAnchor.constraint(equalToConstant: 0)
         tabHeight?.isActive = true
-        sizeTabs()
         pin(native.view)
         configureChrome()
         NotificationCenter.default.addObserver(self, selector: #selector(updateTextSize),
@@ -170,22 +171,78 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     @objc private func updateTextSize() {
         let scale = UIFontMetrics(forTextStyle: .body).scaledValue(for: 17) / 17
         webView?.pageZoom = min(max(scale, 1), 1.6)
+        styleTabs()
         headerHeight?.constant = screen == .welcome ? 0 : max(52, headerTitle.font.lineHeight + 16)
+    }
+
+    private func configureTabs() {
+        tabs.accessibilityIdentifier = "workspace-tabs"
+        tabs.accessibilityTraits = [.tabBar]
+        tabs.isAccessibilityElement = false
+        tabRow.translatesAutoresizingMaskIntoConstraints = false
+        tabRow.distribution = .fillEqually
+        tabRow.spacing = 4
+        tabs.addSubview(tabRow)
+        let safe = view.safeAreaLayoutGuide
+        NSLayoutConstraint.activate([
+            tabRow.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: 8),
+            tabRow.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -8),
+            tabRow.topAnchor.constraint(equalTo: tabs.topAnchor, constant: 4),
+            tabRow.bottomAnchor.constraint(equalTo: safe.bottomAnchor, constant: -3),
+        ])
+        for tab in WorkspaceTab.allCases {
+            let button = UIButton(type: .system)
+            button.tag = tab.rawValue
+            button.accessibilityIdentifier = "workspace-tab-\(tab.label.lowercased())"
+            button.addTarget(self, action: #selector(selectTab(_:)), for: .touchUpInside)
+            tabRow.addArrangedSubview(button)
+            tabButtons.append(button)
+        }
+    }
+
+    private func styleTabs() {
+        let colors = palette
+        let fontSize = min(UIFontMetrics(forTextStyle: .caption2).scaledValue(for: 11), 17)
+        tabHeight?.constant = max(53, fontSize * 2.4 + 27) + view.safeAreaInsets.bottom
+        tabs.backgroundColor = UIColor(colors.surface)
+        for (tab, button) in zip(WorkspaceTab.allCases, tabButtons) {
+            let selected = tab == selectedTab
+            let label = t(tab.label)
+            let font = UIFont.systemFont(ofSize: fontSize, weight: selected ? .bold : .medium)
+            let design: UIFontDescriptor.SystemDesign
+            switch colors.fontDesign {
+            case .monospaced: design = .monospaced
+            case .serif: design = .serif
+            case .rounded: design = .rounded
+            default: design = .default
+            }
+            let titleFont = font.fontDescriptor.withDesign(design).map { UIFont(descriptor: $0, size: fontSize) } ?? font
+            var config = UIButton.Configuration.plain()
+            config.image = UIImage(systemName: tab.icon, withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
+            config.imagePlacement = .top
+            config.imagePadding = 3
+            config.contentInsets = NSDirectionalEdgeInsets(top: 3, leading: 1, bottom: 3, trailing: 1)
+            config.titleAlignment = .center
+            config.titleLineBreakMode = .byWordWrapping
+            config.attributedTitle = AttributedString(label, attributes: AttributeContainer([.font: titleFont]))
+            config.baseForegroundColor = UIColor(selected ? colors.onAccent : colors.foreground)
+            config.background.backgroundColor = selected ? UIColor(colors.accent) : .clear
+            config.background.strokeColor = selected ? UIColor(colors.border) : .clear
+            config.background.strokeWidth = selected ? colors.outline : 0
+            config.background.cornerRadius = min(colors.radius, 12)
+            config.cornerStyle = .fixed
+            button.configuration = config
+            button.titleLabel?.numberOfLines = 2
+            button.titleLabel?.adjustsFontSizeToFitWidth = true
+            button.titleLabel?.minimumScaleFactor = 0.8
+            button.accessibilityLabel = label
+            button.accessibilityTraits = selected ? [.button, .selected] : [.button]
+        }
     }
 
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
-        sizeTabs()
-    }
-
-    private func sizeTabs() {
-        let barHeight: CGFloat
-        if #available(iOS 26, *) {
-            barHeight = 70
-        } else {
-            barHeight = 49
-        }
-        tabHeight?.constant = barHeight + view.safeAreaInsets.bottom
+        styleTabs()
     }
 
     private func pin(_ child: UIView) {
@@ -204,26 +261,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         bottom = content.bottomAnchor.constraint(equalTo: showTabs ? tabs.topAnchor : view.safeAreaLayoutGuide.bottomAnchor)
         bottom?.priority = .defaultHigh
         bottom?.isActive = true
-        tabs.items = WorkspaceTab.allCases.map {
-            UITabBarItem(title: t($0.label), image: UIImage(systemName: $0.icon), tag: $0.rawValue)
-        }
-        tabs.selectedItem = tabs.items?[selectedTab.rawValue]
-        let surface = UIColor(palette.surface)
         let ink = UIColor(palette.foreground)
         let accent = UIColor(palette.controlTint)
-        let tabAppearance = UITabBarAppearance()
-        tabAppearance.configureWithOpaqueBackground()
-        tabAppearance.backgroundColor = surface
-        for item in [tabAppearance.stackedLayoutAppearance, tabAppearance.inlineLayoutAppearance,
-                     tabAppearance.compactInlineLayoutAppearance] {
-            item.normal.iconColor = ink
-            item.normal.titleTextAttributes = [.foregroundColor: ink]
-            item.selected.iconColor = accent
-            item.selected.titleTextAttributes = [.foregroundColor: accent]
-        }
-        tabs.standardAppearance = tabAppearance
-        tabs.scrollEdgeAppearance = tabAppearance
-        tabs.tintColor = accent
         view.backgroundColor = UIColor(palette.background)
         overrideUserInterfaceStyle = palette.dark ? .dark : .light
         navigationController?.setNeedsStatusBarAppearanceUpdate()
@@ -422,9 +461,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         }
     }
 
-    func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
-        guard let next = WorkspaceTab(rawValue: item.tag) else { return }
-        tabBar.selectedItem = tabs.items?[selectedTab.rawValue]
+    @objc private func selectTab(_ button: UIButton) {
+        guard let next = WorkspaceTab(rawValue: button.tag) else { return }
         beforeLeavingPage { [self] in
             if let path = next.path { switchWebTab(next, path: path) }
             else if demoMode { switchWebTab(next, path: "/app") }
@@ -445,7 +483,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             if accepted as? Bool == true {
                 webRoot = destination(path)
                 selectedTab = next
-                tabs.selectedItem = tabs.items?[next.rawValue]
+                configureChrome()
             } else if web.url == source {
                 openPage(path)
             }

@@ -175,6 +175,17 @@ struct WorkspacePalette {
         }
     }
 
+    var scheduleTones: [Color] {
+        switch fontDesign {
+        case .monospaced:
+            return [surface, background]
+        case .serif where radius == 0:
+            return [surface, background, Self.color(0xf1dfc2)]
+        default:
+            return [blue, mint, yellow]
+        }
+    }
+
     private static func color(_ rgb: UInt32) -> Color {
         Color(
             red: Double((rgb >> 16) & 255) / 255,
@@ -205,13 +216,6 @@ struct NativeDashboard: View {
                     .accessibilityAddTraits(.isHeader)
                     .fixedSize(horizontal: false, vertical: true)
                 tuition
-                Button { open("/app/lessons/new") } label: {
-                    Label(t("Record a lesson"), systemImage: "plus.circle")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                }
-                .buttonStyle(WorkspacePrimaryButton(palette: palette))
-                if let schedule = snapshot.schedule { scheduleView(schedule) }
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 12) {
                         unbilled
@@ -223,6 +227,7 @@ struct NativeDashboard: View {
                     }
                 }
                 metric("Active students", value: number(snapshot.summary.activeStudents), icon: "person.2")
+                if let schedule = snapshot.schedule { scheduleView(schedule) }
                 if snapshot.needsOnboarding {
                     Button { open("/onboarding") } label: {
                         Label(t("Get started"), systemImage: "list.bullet.clipboard")
@@ -233,7 +238,9 @@ struct NativeDashboard: View {
                 }
             }
             .frame(maxWidth: 640)
-            .padding(14)
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 8)
             .frame(maxWidth: .infinity)
         }
         .refreshable { await refresh() }
@@ -242,32 +249,15 @@ struct NativeDashboard: View {
     }
 
     private var tuition: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button { open("/app/statements?status=outstanding") } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label(t("Outstanding tuition"), systemImage: "doc.text")
-                            .font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
-                        Text(money(snapshot.summary.outstandingVnd))
-                            .font(.system(.largeTitle, design: palette.fontDesign).bold())
-                            .monospacedDigit()
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").accessibilityHidden(true)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            if snapshot.summary.overdueVnd > 0 {
-                Button { open("/app/statements?status=overdue") } label: {
-                    Label(String(format: t("%@ overdue"), money(snapshot.summary.overdueVnd)),
-                          systemImage: "exclamationmark.circle")
-                        .font(.system(.footnote, design: palette.fontDesign).weight(.semibold))
-                        .frame(minHeight: 44)
-                }
-                .buttonStyle(.plain)
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Label(t("Outstanding tuition"), systemImage: "doc.text")
+                .font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
+            Text(money(snapshot.summary.outstandingVnd))
+                .font(.system(.largeTitle, design: palette.fontDesign).bold())
+                .monospacedDigit()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
         .foregroundStyle(palette.dashboardInk)
         .padding(14)
         .modifier(WorkspacePanel(palette: palette, fill: palette.yellow))
@@ -282,10 +272,10 @@ struct NativeDashboard: View {
                     .font(.system(.subheadline, design: palette.fontDesign)).foregroundStyle(palette.foreground)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(items, id: \.path) { lesson in
+                    ForEach(Array(items.enumerated()), id: \.element.path) { index, lesson in
                         Button { open(lesson.path) } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: "calendar").foregroundStyle(palette.controlTint)
+                                Image(systemName: "calendar")
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(lesson.name ?? t("Group lesson")).font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
@@ -296,15 +286,18 @@ struct NativeDashboard: View {
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.system(.footnote, design: palette.fontDesign)).accessibilityHidden(true)
                             }
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
                             .frame(minHeight: 46)
+                            .foregroundStyle(palette.dashboardInk)
+                            .background(palette.scheduleTones[index % palette.scheduleTones.count])
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        if lesson.path != items.last?.path { Divider() }
+                        if index < items.count - 1 { Divider().overlay(palette.border.opacity(0.4)) }
                     }
                 }
-                .padding(.horizontal, 14)
+                .clipShape(RoundedRectangle(cornerRadius: palette.radius))
                 .modifier(WorkspacePanel(palette: palette, fill: palette.surface))
                 Button(t("View full schedule")) { open("/app/schedule") }
                     .font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))

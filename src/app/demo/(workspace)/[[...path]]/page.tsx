@@ -1,3 +1,6 @@
+import { headers } from "next/headers";
+import { hasNativeChrome } from "@/domain/mobile-sign-in";
+import { MobileDemoDashboard } from "@/features/demo/mobile-dashboard";
 import { notFound, redirect } from "next/navigation";
 import Dashboard from "@/app/app/page";
 import Students from "@/app/app/students/page";
@@ -53,7 +56,11 @@ export default async function DemoPage({
         `/demo/${route}${view === "statements" && typeof status === "string" ? `?status=${encodeURIComponent(status)}` : ""}`,
       );
     }
-    return <Dashboard />;
+    return hasNativeChrome((await headers()).get("user-agent")) ? (
+      <MobileDemoDashboard />
+    ) : (
+      <Dashboard />
+    );
   }
   if (path.length === 2 && idSchema.safeParse(id).success) {
     const detail = Promise.resolve({ id });

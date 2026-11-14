@@ -72,14 +72,7 @@ function NotePin({ id }: { id: string }) {
           <stop offset="1" stopColor="#93112b" />
         </linearGradient>
       </defs>
-      <ellipse cx="21" cy="33" rx="10" ry="3" fill="#211f1b" opacity=".18" />
-      <path
-        d="M17 26 18 40 22 26Z"
-        fill="#b8c5cb"
-        stroke="#65747b"
-        strokeWidth=".65"
-      />
-      <path d="m19 28-.5 9" stroke="#f5fafb" strokeWidth="1.2" />
+      <ellipse cx="21" cy="29" rx="10" ry="3" fill="#211f1b" opacity=".22" />
       <path
         d="M13 12c1 5 1 8-3 12-4 5 20 7 16 0-4-4-4-7-3-12Z"
         fill={`url(#${body})`}
