@@ -76,7 +76,10 @@ export function ClassesList() {
 
   return (
     <div className="fade-in">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+      <div
+        data-slot="page-heading"
+        className="mb-8 flex flex-wrap items-start justify-between gap-4"
+      >
         <div>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">
             {t("SỔ BUỔI DẠY & HỌC PHÍ")}

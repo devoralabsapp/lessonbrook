@@ -4,6 +4,10 @@ The iOS and Android apps have native sign-in screens, a Dashboard and a bottom t
 
 Dashboard shows the current outstanding, unbilled, received, and student totals. Pull down to refresh on iOS or use the refresh button on Android. Open the gear in the header for account settings and language. Use the palette button beside it to choose and save a theme.
 
+On the welcome screen, **View demo** opens all five tabs with fictional students, classes, lessons, and statements, without signing in. Demo edits stay in the current app view and reset when the web view reloads. **Sign in** returns to native sign-in. Demo actions never modify an account.
+
+Phone layouts use compact cards, form spacing, and controls across all themes. Native tabs sit outside the scrollable page; the last row remains reachable above the tab bar.
+
 Tap the outstanding or overdue amount to open the corresponding statement filter. Upcoming lessons shows planned lessons and weekly class slots from today through seven days ahead. Set weekly days and times when creating or editing a class. Opening a weekly slot prefills the date and time for a lesson you can save. Open a lesson to update it, or use **View full schedule** for the complete date range.
 
 Switching tabs or using the app's Back button while editing a marked form asks whether to keep editing or discard the changes. While a save is in progress, wait for it to finish before leaving.

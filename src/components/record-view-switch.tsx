@@ -26,6 +26,7 @@ export function RecordViewSwitch({
   const { t } = useI18n();
   return (
     <div
+      data-slot="record-view-switch"
       role="group"
       aria-label={t("Cách xem")}
       className="flex flex-wrap gap-2"
@@ -38,12 +39,14 @@ export function RecordViewSwitch({
             type="button"
             size="sm"
             variant={value === option ? "default" : "outline"}
+            aria-label={t(label)}
+            title={t(label)}
             aria-pressed={value === option}
             disabled={disabled}
             onClick={() => onChange(option)}
           >
             <Icon aria-hidden="true" />
-            {t(label)}
+            <span className="hidden min-[420px]:inline">{t(label)}</span>
           </Button>
         ))}
     </div>

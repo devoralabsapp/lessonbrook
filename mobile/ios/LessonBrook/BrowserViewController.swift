@@ -38,6 +38,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private var verifier: String?
     private var signingIn = false
     private var signedIn = false
+    private var demoMode = false
     private var checkingDraft = false
 
     private static let draftState = """
@@ -224,14 +225,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         view.backgroundColor = UIColor(palette.background)
         overrideUserInterfaceStyle = palette.dark ? .dark : .light
         navigationController?.setNeedsStatusBarAppearanceUpdate()
-        let path = webView?.url?.path ?? webRoot ?? ""
+        let path = workspacePath(webView?.url?.path ?? webRoot ?? "")
         header.isHidden = screen == .welcome
         updateTextSize()
         header.backgroundColor = UIColor(palette.background)
         headerLine.backgroundColor = ink.withAlphaComponent(0.15)
         headerTitle.text = screen == .page ? pageTitle(path) : t(selectedTab.label)
         headerTitle.textColor = ink
-        backButton.isHidden = screen != .page || WorkspaceTab.allCases.contains(where: { $0.path == path })
+        backButton.isHidden = screen != .page || path == "/app" || WorkspaceTab.allCases.contains(where: { $0.path == path })
         backButton.tintColor = ink
         backButton.accessibilityLabel = t("Back")
         appearanceButton.isHidden = !showTabs || path == "/app/appearance"
@@ -246,6 +247,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     @objc private func openAppearance() { openToolbarPage("/app/appearance") }
 
     private func openToolbarPage(_ path: String) {
+        if demoMode {
+            beforeLeavingPage { [self] in switchWebTab(selectedTab, path: path) }
+            return
+        }
+        let path = destination(path)
         beforeLeavingPage { [self] in
             if let webView, let current = webView.url, MobileSignIn.isFirstParty(current),
                let url = URL(string: path, relativeTo: MobileSignIn.origin)?.absoluteURL {
@@ -274,6 +280,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func showWelcome(expired: Bool = false) {
         request?.cancel()
         signedIn = false
+        demoMode = false
         scheduleInitialized = false
         snapshot = nil
         webTheme = nil
@@ -295,6 +302,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         NativeWelcome(
             locale: locale, available: available, expired: expired, checkFailed: failed,
             signIn: { [weak self] in self?.startSignIn() },
+            demo: { [weak self] in self?.showDemo() },
             retry: { [weak self] in self?.showWelcome(expired: expired) },
             changeLanguage: { [weak self] value in self?.setLanguage(value, expired: expired) },
             help: { UIApplication.shared.open(MobileSignIn.origin.appending(path: "help")) }
@@ -315,7 +323,32 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         }
     }
 
+    private func showDemo() {
+        demoMode = true
+        snapshot = nil
+        webTheme = nil
+        selectedTab = .dashboard
+        openPage("/app")
+    }
+
+    // Only fixed workspace routes are mapped. Authentication and shared links
+    // always keep their original destinations.
+    private func destination(_ path: String) -> String {
+        guard demoMode else { return path }
+        if path == "/app" { return "/demo" }
+        if path.hasPrefix("/app/") { return "/demo/" + path.dropFirst(5) }
+        if path == "/onboarding" { return "/demo/onboarding" }
+        return path
+    }
+
+    private func workspacePath(_ path: String) -> String {
+        if path == "/demo" { return "/app" }
+        if path.hasPrefix("/demo/") { return "/app/" + path.dropFirst(6) }
+        return path
+    }
+
     private func showToday() {
+        demoMode = false
         request?.cancel()
         signedIn = true
         selectedTab = .dashboard
@@ -376,13 +409,15 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         tabBar.selectedItem = tabs.items?[selectedTab.rawValue]
         beforeLeavingPage { [self] in
             if let path = next.path { switchWebTab(next, path: path) }
+            else if demoMode { switchWebTab(next, path: "/app") }
             else { showToday() }
         }
     }
 
     private func switchWebTab(_ next: WorkspaceTab, path: String) {
         guard let web = webView, !web.isHidden, let source = web.url,
-              MobileSignIn.isFirstParty(source), source.path.hasPrefix("/app/") else {
+              MobileSignIn.isFirstParty(source),
+              source.path.hasPrefix(demoMode ? "/demo" : "/app/") else {
             return openPage(path)
         }
         // WorkspaceTab paths are fixed first-party destinations.
@@ -390,7 +425,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         web.evaluateJavaScript(script) { [weak self, weak web] accepted, _ in
             guard let self, let web, web === webView else { return }
             if accepted as? Bool == true {
-                webRoot = path
+                webRoot = destination(path)
                 selectedTab = next
                 tabs.selectedItem = tabs.items?[next.rawValue]
             } else if web.url == source {
@@ -400,6 +435,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     }
 
     private func openPage(_ path: String) {
+        let path = destination(path)
         guard let url = URL(string: path, relativeTo: MobileSignIn.origin)?.absoluteURL,
               MobileSignIn.isFirstParty(url) else { return }
         dashboardTimer?.invalidate()
@@ -443,6 +479,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             webView.goBack()
         } else if webRoot == "/account/deletion" {
             showWelcome()
+        } else if demoMode {
+            openPage("/app")
         } else {
             showToday()
         }
@@ -451,7 +489,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func beforeLeavingPage(_ leave: @escaping () -> Void) {
         guard !checkingDraft, presentedViewController == nil else { return }
         guard let web = webView, let url = web.url, MobileSignIn.isFirstParty(url),
-              url.path.hasPrefix("/app/") || url.path == "/onboarding"
+              url.path.hasPrefix("/app/") || url.path.hasPrefix("/demo") || url.path == "/onboarding"
         else { return leave() }
         checkingDraft = true
         web.evaluateJavaScript(Self.draftState) { [weak self, weak web] value, _ in
@@ -482,6 +520,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func track(_ web: WKWebView) {
         guard web === webView, let url = web.url, MobileSignIn.isFirstParty(url) else { return }
         switch url.path {
+        case "/demo":
+            demoMode = true
+            selectedTab = .dashboard
+            configureChrome()
         case "/app": showToday()
         case "/":
             if signedIn { showToday() } else { showWelcome() }
@@ -666,6 +708,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     }
 
     private func pageTab(_ path: String) -> WorkspaceTab? {
+        let path = workspacePath(path)
         if path.hasPrefix("/app/students") { return .students }
         if path.hasPrefix("/app/sessions") || path.hasPrefix("/app/lessons") || path == "/app/schedule" { return .lessons }
         if path.hasPrefix("/app/statements") { return .statements }
@@ -674,7 +717,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     }
 
     private func pageTitle(_ path: String) -> String {
-        switch path {
+        switch workspacePath(path) {
         case "/app/lessons/new": return t("Record a lesson")
         case "/app/schedule": return t("Upcoming lessons")
         case "/app/classes": return t("Classes")

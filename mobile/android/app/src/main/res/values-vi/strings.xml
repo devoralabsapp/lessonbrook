@@ -49,4 +49,6 @@
     <string name="appearance">Giao diện</string>
     <string name="choose_theme">Chọn theme</string>
     <string name="weekly">Hằng tuần</string>
+    <string name="view_demo">Xem demo</string>
+    <string name="demo_description">Trải nghiệm với dữ liệu mẫu. Không cần tài khoản.</string>
 </resources>

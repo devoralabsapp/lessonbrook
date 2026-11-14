@@ -459,7 +459,10 @@ export function Workspace({
         : (student?.displayName ?? t("Sổ buổi dạy"));
   return (
     <div className="fade-in">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+      <div
+        data-slot="page-heading"
+        className="mb-8 flex flex-wrap items-start justify-between gap-4"
+      >
         <div>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">
             {mode === "overview"
@@ -719,13 +722,13 @@ export function Workspace({
             {!showCalendar && (
               <>
                 <ThemedDateField
-                  className="col-span-2 min-[420px]:col-span-1"
+                  className="col-span-2 min-[360px]:col-span-1"
                   label={t("Từ ngày")}
                   value={range.from}
                   onChange={(from) => changeRange({ ...range, from })}
                 />
                 <ThemedDateField
-                  className="col-span-2 min-[420px]:col-span-1"
+                  className="col-span-2 min-[360px]:col-span-1"
                   label={t("Đến ngày")}
                   value={range.to}
                   onChange={(to) => changeRange({ ...range, to })}
@@ -733,7 +736,10 @@ export function Workspace({
               </>
             )}
             {!studentId && (
-              <div className="col-span-2 grid min-w-0 items-start gap-x-3 gap-y-2.5 sm:grid-cols-2">
+              <div
+                data-layout="lesson-target-filters"
+                className="col-span-2 grid min-w-0 items-start gap-x-3 gap-y-2.5 sm:grid-cols-2"
+              >
                 <label className="field-label">
                   {t("Tìm theo")}
                   <ThemedSelect

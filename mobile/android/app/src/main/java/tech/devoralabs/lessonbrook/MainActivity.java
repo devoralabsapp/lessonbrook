@@ -72,6 +72,7 @@ public final class MainActivity extends Activity {
     private int requestVersion;
     private boolean signingIn;
     private boolean signedIn;
+    private boolean demoMode;
     private boolean scheduleInitialized;
     private boolean webFailed;
     private View webError;
@@ -162,10 +163,14 @@ public final class MainActivity extends Activity {
             getWindow().getDecorView().setSystemUiVisibility(colors.dark() ? 0 : light);
         }
 
+        String currentPath = screen == Screen.PAGE ? workspacePath(webPath()) : "/app";
+        boolean mainTab = "/app".equals(currentPath)
+            || java.util.Arrays.stream(NativeWorkspace.Tab.values()).anyMatch(item -> currentPath.equals(item.path));
+        boolean showBack = screen == Screen.PAGE && !mainTab;
         toolbar.removeAllViews();
         toolbar.setVisibility(screen == Screen.WELCOME ? View.GONE : View.VISIBLE);
         toolbar.setBackgroundColor(colors.surface());
-        if (screen == Screen.PAGE) toolbar.addView(tool(R.drawable.ic_back, R.string.back, this::goBack));
+        if (showBack) toolbar.addView(tool(R.drawable.ic_back, R.string.back, this::goBack));
 
         TextView title = new TextView(this);
         title.setText(ui.text(screen == Screen.PAGE ? pageTitle(webPath()) : tab.title));
@@ -175,11 +180,11 @@ public final class MainActivity extends Activity {
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         if (Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
-        title.setPadding(dp(screen == Screen.PAGE ? 2 : 20), 0, dp(8), 0);
+        title.setPadding(dp(showBack ? 2 : 12), 0, dp(8), 0);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         if (screen == Screen.TODAY) toolbar.addView(tool(R.drawable.ic_refresh, R.string.reload, this::showToday));
         if (screen != Screen.WELCOME && !DELETION.equals(webRoot)) {
-            String path = screen == Screen.PAGE ? webPath() : "/app";
+            String path = workspacePath(screen == Screen.PAGE ? webPath() : "/app");
             if (!"/app/appearance".equals(path))
                 toolbar.addView(tool(R.drawable.ic_palette, R.string.choose_theme, () -> openToolbarPage("/app/appearance")));
             if (!"/app/settings".equals(path))
@@ -210,34 +215,43 @@ public final class MainActivity extends Activity {
     }
 
     private void openTab(NativeWorkspace.Tab target) {
-        if (target.path != null) switchWebTab(target);
+        if (target.path != null || demoMode) switchWebTab(target);
         else showToday();
     }
 
     private void switchWebTab(NativeWorkspace.Tab target) {
+        switchWebTab(target, target.path == null ? "/app" : target.path);
+    }
+
+    private void switchWebTab(NativeWorkspace.Tab target, String path) {
         WebView web = webView;
         String source = web == null ? null : web.getUrl();
         Uri uri = source == null ? null : Uri.parse(source);
         if (webFailed || uri == null || !MobileSignIn.isFirstParty(uri)
-            || uri.getPath() == null || !uri.getPath().startsWith("/app/")) {
-            openPage(target.path);
+            || uri.getPath() == null || !uri.getPath().startsWith(demoMode ? "/demo" : "/app/")) {
+            openPage(path);
             return;
         }
         String script = "!window.dispatchEvent(new CustomEvent('lessonbrook:navigate-tab', {cancelable: true, detail: "
-            + JSONObject.quote(target.path) + "}))";
+            + JSONObject.quote(path) + "}))";
         web.evaluateJavascript(script, accepted -> {
             if (web != webView || isDestroyed()) return;
             if ("true".equals(accepted)) {
-                webRoot = target.path;
+                webRoot = destination(path);
                 tab = target;
                 chrome();
             } else if (source.equals(web.getUrl())) {
-                openPage(target.path);
+                openPage(path);
             }
         });
     }
 
-    private void openToolbarPage(String path) {
+    private void openToolbarPage(String target) {
+        if (demoMode) {
+            beforeLeavingPage(() -> switchWebTab(tab, target));
+            return;
+        }
+        String path = destination(target);
         beforeLeavingPage(() -> {
             String current = webView == null ? null : webView.getUrl();
             if (current != null && MobileSignIn.isFirstParty(Uri.parse(current))) {
@@ -256,6 +270,7 @@ public final class MainActivity extends Activity {
     private void showWelcome(boolean expired) {
         int version = ++requestVersion;
         signedIn = false;
+        demoMode = false;
         scheduleInitialized = false;
         snapshot = null;
         webTheme = null;
@@ -274,7 +289,7 @@ public final class MainActivity extends Activity {
 
     private void renderWelcome(Boolean available, boolean expired, boolean failed) {
         nativeView(workspace().welcome(
-            available, expired, failed, this::startSignIn, () -> showWelcome(expired),
+            available, expired, failed, this::startSignIn, this::showDemo, () -> showWelcome(expired),
             () -> chooseLanguage(expired), () -> openBrowser(Uri.parse(MobileSignIn.ORIGIN + "/help"))
         ));
     }
@@ -298,7 +313,30 @@ public final class MainActivity extends Activity {
             .show();
     }
 
+    private void showDemo() {
+        demoMode = true;
+        snapshot = null;
+        webTheme = null;
+        tab = NativeWorkspace.Tab.DASHBOARD;
+        openPage("/app");
+    }
+
+    private String destination(String path) {
+        if (!demoMode) return path;
+        if ("/app".equals(path)) return "/demo";
+        if (path.startsWith("/app/")) return "/demo/" + path.substring(5);
+        if ("/onboarding".equals(path)) return "/demo/onboarding";
+        return path;
+    }
+
+    private static String workspacePath(String path) {
+        if ("/demo".equals(path)) return "/app";
+        if (path != null && path.startsWith("/demo/")) return "/app/" + path.substring(6);
+        return path;
+    }
+
     private void showToday() {
+        demoMode = false;
         int version = ++requestVersion;
         signedIn = true;
         screen = Screen.TODAY;
@@ -351,7 +389,8 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void openPage(String path) {
+    private void openPage(String target) {
+        String path = destination(target);
         ++requestVersion;
         closePage();
         content.removeAllViews();
@@ -475,6 +514,11 @@ public final class MainActivity extends Activity {
         String path = uri.getPath();
         if (path == null) return;
         switch (path) {
+            case "/demo" -> {
+                demoMode = true;
+                tab = NativeWorkspace.Tab.DASHBOARD;
+                chrome();
+            }
             case "/app" -> showToday();
             case "/" -> { if (signedIn) showToday(); else showWelcome(false); }
             case "/login" -> { if (uri.getQueryParameter("expired") == null) showWelcome(false); else expireSession(); }
@@ -604,6 +648,7 @@ public final class MainActivity extends Activity {
     }
 
     private static NativeWorkspace.Tab pageTab(String path, NativeWorkspace.Tab fallback) {
+        path = workspacePath(path);
         if (path.startsWith("/app/students")) return NativeWorkspace.Tab.STUDENTS;
         if (path.startsWith("/app/sessions") || path.startsWith("/app/lessons") || path.equals("/app/schedule"))
             return NativeWorkspace.Tab.LESSONS;
@@ -613,7 +658,7 @@ public final class MainActivity extends Activity {
     }
 
     private int pageTitle(String path) {
-        return switch (path) {
+        return switch (workspacePath(path)) {
             case "/app/lessons/new" -> R.string.record_lesson;
             case "/app/schedule" -> R.string.upcoming_lessons;
             case "/app/classes" -> R.string.classes;
@@ -631,6 +676,7 @@ public final class MainActivity extends Activity {
             beforeLeavingPage(() -> {
                 if (webView != null && webView.canGoBack() && !java.util.Objects.equals(webPath(), webRoot)) webView.goBack();
                 else if (DELETION.equals(webRoot)) showWelcome(false);
+                else if (demoMode) openPage("/app");
                 else showToday();
             });
             return true;
@@ -645,7 +691,7 @@ public final class MainActivity extends Activity {
         Uri url = location == null ? null : Uri.parse(location);
         String path = url == null ? null : url.getPath();
         if (path == null || !MobileSignIn.isFirstParty(url)
-            || !(path.startsWith("/app/") || path.equals("/onboarding"))) {
+            || !(path.startsWith("/app/") || path.startsWith("/demo") || path.equals("/onboarding"))) {
             leave.run();
             return;
         }

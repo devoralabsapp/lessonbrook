@@ -157,7 +157,7 @@ test("native workspace opens account tools, planned lessons and filtered stateme
           return window.innerHeight - element.getBoundingClientRect().bottom;
         }),
       )
-      .toBeGreaterThanOrEqual(112);
+      .toBeGreaterThanOrEqual(24);
     const create = async (path: string, data: unknown) => {
       const result = await context.request.post(`${origin}${path}`, {
         headers: {
@@ -299,7 +299,7 @@ test("visitors can preview themes on the home page without saving an account pre
   const dashboardTitle = page.getByRole("heading", {
     name: "Have a good teaching day.",
   });
-  await expect(dashboardTitle).toHaveCSS("font-size", "31px");
+  await expect(dashboardTitle).toHaveCSS("font-size", "25px");
   await page.setViewportSize({ width: 320, height: 800 });
   expect(
     await page.evaluate(

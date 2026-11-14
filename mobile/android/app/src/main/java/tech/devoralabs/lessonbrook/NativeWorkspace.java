@@ -134,10 +134,10 @@ final class NativeWorkspace {
 
     String text(int id, Object... values) { return context.getString(id, values); }
 
-    View welcome(Boolean available, boolean expired, boolean failed, Runnable signIn, Runnable retry,
+    View welcome(Boolean available, boolean expired, boolean failed, Runnable signIn, Runnable demo, Runnable retry,
                  Runnable language, Runnable help) {
         LinearLayout page = column();
-        page.setPadding(dp(26), dp(72), dp(26), dp(24));
+        page.setPadding(dp(20), dp(36), dp(20), dp(20));
         ImageView mark = new ImageView(context);
         mark.setImageResource(R.drawable.lessonbrook_mark);
         mark.setBackground(shape(palette.accent(), 18));
@@ -157,6 +157,8 @@ final class NativeWorkspace {
         } else {
             add(page, loading(), 18);
         }
+        add(page, button(text(R.string.view_demo), demo, false), 12);
+        add(page, label(text(R.string.demo_description), 14, palette.foreground()), 8);
         LinearLayout links = new LinearLayout(context);
         links.addView(button("vi".equals(context.getResources().getConfiguration().getLocales().get(0).getLanguage())
             ? "Tiếng Việt" : "English", language, false), new LinearLayout.LayoutParams(0, -2, 1));
@@ -167,8 +169,8 @@ final class NativeWorkspace {
 
     View today(Snapshot data, Consumer<String> open) {
         LinearLayout page = page();
-        add(page, heading(text(R.string.hello, data.displayName()), 32), 0);
-        LinearLayout hero = card(palette.accent(), 22, 20);
+        add(page, heading(text(R.string.hello, data.displayName()), 26), 0);
+        LinearLayout hero = card(palette.accent(), 18, 14);
         LinearLayout outstanding = column();
         add(outstanding, label(text(R.string.outstanding_tuition), 15, palette.onAccent()), 0);
         add(outstanding, bold(money(data.outstanding()) + " ›", 34, palette.onAccent()), 6);
@@ -337,7 +339,7 @@ final class NativeWorkspace {
 
     private LinearLayout page() {
         LinearLayout page = column();
-        page.setPadding(dp(20), dp(14), dp(20), dp(24));
+        page.setPadding(dp(14), dp(12), dp(14), dp(20));
         return page;
     }
 

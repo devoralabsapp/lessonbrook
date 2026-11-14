@@ -134,7 +134,10 @@ export function StatementsList({
   }
   return (
     <div className="fade-in space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div
+        data-slot="page-heading"
+        className="flex flex-wrap items-start justify-between gap-4"
+      >
         <div>
           <p className="mb-2 text-xs text-muted-foreground">
             {t("SỔ BUỔI DẠY & HỌC PHÍ")}
@@ -152,7 +155,10 @@ export function StatementsList({
           </Link>
         </Button>
       </div>
-      <Card className="grid items-start gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
+      <Card
+        data-layout="statement-filters"
+        className="grid items-start gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3"
+      >
         <StudentPicker value={studentId} onChange={setStudentId} optional />
         <label className="field-label">
           {t("Trạng thái bảng kê")}

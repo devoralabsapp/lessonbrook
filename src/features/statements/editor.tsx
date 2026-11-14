@@ -166,6 +166,8 @@ export function StatementEditor({
         <fieldset disabled={mutation.busy} className="min-w-0 space-y-4">
           <Card className="@container p-4 sm:p-5">
             <div
+              data-layout="statement-fields"
+              data-custom-period={period === "custom" || undefined}
               className={cn(
                 "grid items-start gap-x-3 gap-y-4",
                 period === "custom"

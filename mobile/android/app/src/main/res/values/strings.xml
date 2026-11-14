@@ -49,4 +49,6 @@
     <string name="appearance">Appearance</string>
     <string name="choose_theme">Choose a theme</string>
     <string name="weekly">Weekly</string>
+    <string name="view_demo">View demo</string>
+    <string name="demo_description">Explore with sample data. No account needed.</string>
 </resources>

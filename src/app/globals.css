@@ -994,3 +994,152 @@ dialog::backdrop {
   background: color-mix(in srgb, #83e5b0 25%, var(--card));
   color: var(--foreground);
 }
+
+/* One density scale for phone workspaces, shared by every theme and native demo.
+   Desktop and the recipient-facing statement boundary retain their own layout. */
+@media (width < 640px) {
+  [data-workspace] {
+    --mobile-gutter: 12px;
+    --mobile-card-padding: 12px;
+    --mobile-section-gap: 16px;
+    --mobile-field-gap: 12px;
+    --mobile-control-height: 44px;
+  }
+  [data-workspace] [data-slot="workspace-main"] {
+    padding-inline: var(--mobile-gutter);
+    padding-top: 14px;
+  }
+  [data-workspace] [data-slot="workspace-header"] {
+    height: 64px;
+    min-height: 64px;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  [data-workspace] [data-slot="page-heading"] {
+    gap: 10px;
+    margin-bottom: var(--mobile-section-gap);
+  }
+  [data-workspace] :is(h1.text-3xl, h1.text-4xl) {
+    font-size: calc(1.5rem + var(--font-size-offset));
+    line-height: 1.25;
+  }
+  [data-workspace] h1 + p {
+    margin-top: 6px;
+  }
+  [data-workspace] :is(.space-y-5, .space-y-6, .space-y-8) > :not(:last-child) {
+    margin-block-end: var(--mobile-section-gap);
+  }
+  [data-workspace] :is(.gap-4, .gap-5, .gap-6) {
+    gap: var(--mobile-field-gap);
+  }
+  [data-workspace] :is(.gap-y-4, .gap-y-5) {
+    row-gap: var(--mobile-field-gap);
+  }
+  [data-workspace] :is(.p-5, .p-6):not([data-theme="statement"] *) {
+    padding: var(--mobile-card-padding);
+  }
+  [data-workspace] .p-8:not([data-theme="statement"] *) {
+    padding: 16px;
+  }
+  [data-workspace] :is(.px-5, .px-6, .px-7):not([data-theme="statement"] *) {
+    padding-inline: var(--mobile-card-padding);
+  }
+  [data-workspace] :is(.py-4, .py-5, .py-6):not([data-theme="statement"] *) {
+    padding-block: 12px;
+  }
+  [data-workspace] :is(.mb-7, .mb-8) {
+    margin-bottom: var(--mobile-section-gap);
+  }
+  [data-workspace] .mt-5 {
+    margin-top: 12px;
+  }
+  [data-workspace] [data-slot="button"] {
+    min-height: var(--mobile-control-height);
+    height: auto;
+    max-width: 100%;
+    padding: 8px 12px;
+    gap: 6px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+  [data-workspace] [data-slot="button"].size-11 {
+    width: 44px;
+    padding: 8px;
+  }
+  [data-workspace]
+    :is([data-slot="input"], .themed-select-trigger, .select-input) {
+    min-height: var(--mobile-control-height);
+    padding-block: 8px;
+    font-size: 16px;
+  }
+  [data-workspace] .themed-select-trigger {
+    height: var(--mobile-control-height);
+    gap: 6px;
+  }
+  [data-workspace] .themed-select-trigger[data-toolbar] {
+    font-size: calc(12px + var(--font-size-offset));
+  }
+  [data-workspace] .field-label {
+    min-width: 0;
+    gap: 6px;
+  }
+  [data-workspace] dialog {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    border-radius: var(--radius-2xl);
+    scroll-padding-block: 12px;
+  }
+  [data-workspace] .record-note-grid {
+    column-width: 12rem;
+    column-gap: 14px;
+    padding-inline: 6px;
+  }
+  [data-workspace] .record-note-statements {
+    column-width: 16.5rem;
+  }
+  [data-workspace] nav[data-position="bottom"] a {
+    min-height: 56px;
+    padding-block: 8px;
+    gap: 3px;
+  }
+}
+
+@media (min-width: 360px) and (max-width: 639px) {
+  [data-workspace]
+    :is([data-layout="statement-filters"], [data-layout="statement-fields"]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  [data-workspace]
+    :is([data-layout="statement-filters"], [data-layout="statement-fields"])
+    > :first-child,
+  [data-workspace]
+    [data-layout="statement-fields"][data-custom-period]
+    > :nth-child(2),
+  [data-workspace]
+    [data-layout="statement-fields"][data-custom-period]
+    > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (width < 640px) {
+  [data-workspace] [data-slot="record-view-switch"] {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  [data-workspace] [data-slot="record-view-switch"] [data-slot="button"] {
+    min-width: 44px;
+  }
+  [data-workspace] [data-slot="input"]:has(> [data-slot="date-input"]) {
+    padding: 0;
+  }
+  [data-workspace] [data-slot="date-input"] {
+    padding-inline: 8px;
+    font-size: 16px;
+  }
+}
+@media (min-width: 360px) and (max-width: 639px) {
+  [data-workspace] [data-layout="lesson-target-filters"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

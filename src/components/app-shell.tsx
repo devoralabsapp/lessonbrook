@@ -48,13 +48,21 @@ export function AppShell({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    if (!nativeChrome || demo) return;
+    if (!nativeChrome) return;
     function navigate(event: Event) {
       const target: unknown = (event as CustomEvent).detail;
-      if (!workspaceTabs.some(({ href }) => href !== "/app" && href === target))
+      if (
+        !workspaceTabs.some(
+          ({ href }) => (demo || href !== "/app") && href === target,
+        ) &&
+        !(demo && ["/app/settings", "/app/appearance"].includes(String(target)))
+      )
         return;
       event.preventDefault();
-      if (typeof target === "string" && target !== path) router.replace(target);
+      if (typeof target === "string" && target !== path)
+        router.replace(
+          demo ? target.replace(/^\/app(?=\/|$)/, "/demo") : target,
+        );
     }
     window.addEventListener("lessonbrook:navigate-tab", navigate);
     return () =>
@@ -120,6 +128,8 @@ export function AppShell({
   return (
     <AppearanceContext.Provider value={appearance}>
       <div
+        data-workspace=""
+        data-native-chrome={nativeChrome || undefined}
         data-theme={appearance.theme}
         data-saved-theme={appearance.savedTheme}
         className="min-h-dvh bg-background text-foreground"
@@ -263,13 +273,31 @@ export function AppShell({
                 {t("Firebase Emulator · Chỉ dùng dữ liệu giả")}
               </div>
             )}
+          {embedded && demo && (
+            <div
+              data-slot="demo-toolbar"
+              className="flex items-center justify-between gap-2 border-b border-border px-3 py-1"
+            >
+              <span className="text-xs font-semibold">
+                {t("Sổ dạy học mẫu")}
+              </span>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/login">
+                  <LogIn />
+                  {t("Đăng nhập")}
+                </Link>
+              </Button>
+            </div>
+          )}
           <main
             id="main"
+            data-slot="workspace-main"
             tabIndex={-1}
             className={cn(
               // Keep the final row above bottom navigation in the app and the mobile browser.
               "mx-auto max-w-[1320px] px-5 pt-5 pb-[calc(7rem+var(--font-size-offset)+env(safe-area-inset-bottom,0px))] sm:px-9 sm:pt-9",
               !embedded && "lg:pb-9",
+              nativeChrome && "pb-6!",
             )}
           >
             {children}

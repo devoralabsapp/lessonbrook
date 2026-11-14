@@ -137,9 +137,9 @@ struct NativeDashboard: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(String(format: t("Hello, %@"), snapshot.displayName))
-                    .font(.largeTitle.bold())
+                    .font(.title2.bold())
                     .accessibilityAddTraits(.isHeader)
                     .fixedSize(horizontal: false, vertical: true)
                 tuition
@@ -173,7 +173,7 @@ struct NativeDashboard: View {
                 }
             }
             .frame(maxWidth: 640)
-            .padding(20)
+            .padding(14)
             .frame(maxWidth: .infinity)
         }
         .refreshable { await refresh() }
@@ -209,7 +209,7 @@ struct NativeDashboard: View {
             }
         }
         .foregroundStyle(palette.onAccent)
-        .padding(20)
+        .padding(14)
         .background(palette.accent, in: RoundedRectangle(cornerRadius: 22))
     }
 
@@ -281,8 +281,8 @@ struct NativeDashboard: View {
             Text(value).font(.headline.monospacedDigit()).fixedSize(horizontal: false, vertical: true)
             if let detail { Text(detail).font(.caption) }
         }
-        .frame(maxWidth: .infinity, minHeight: 94, alignment: .topLeading)
-        .padding(15)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(12)
         .background(palette.surface, in: RoundedRectangle(cornerRadius: 17))
         .accessibilityElement(children: .combine)
     }
@@ -302,6 +302,7 @@ struct NativeWelcome: View {
     let expired: Bool
     let checkFailed: Bool
     let signIn: () -> Void
+    let demo: () -> Void
     let retry: () -> Void
     let changeLanguage: (String) -> Void
     let help: () -> Void
@@ -337,6 +338,16 @@ struct NativeWelcome: View {
                 } else {
                     ProgressView().accessibilityLabel(t("Checking sign-in availability"))
                 }
+                Button(action: demo) {
+                    Label(t("View demo"), systemImage: "play.rectangle")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                }
+                .buttonStyle(.bordered)
+                .tint(palette.controlTint)
+                Text(t("Explore with sample data. No account needed."))
+                    .font(.footnote)
+                    .foregroundStyle(palette.foreground)
                 HStack {
                     Menu {
                         Button("English") { changeLanguage("en") }
@@ -352,8 +363,8 @@ struct NativeWelcome: View {
                 .padding(.top, 8)
             }
             .frame(maxWidth: 420, alignment: .leading)
-            .padding(26)
-            .padding(.top, 56)
+            .padding(20)
+            .padding(.top, 24)
             .frame(maxWidth: .infinity)
         }
         .background(palette.background)
