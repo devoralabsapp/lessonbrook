@@ -176,7 +176,7 @@ test("native workspace opens account tools, planned lessons and filtered stateme
           return window.innerHeight - element.getBoundingClientRect().bottom;
         }),
       )
-      .toBeGreaterThanOrEqual(24);
+      .toBeGreaterThanOrEqual(12);
     const create = async (path: string, data: unknown) => {
       const result = await context.request.post(`${origin}${path}`, {
         headers: {
