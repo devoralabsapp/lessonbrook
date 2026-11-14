@@ -724,6 +724,7 @@ export function Workspace({
         )}
         {mode === "sessions" && (
           <fieldset
+            data-layout="lesson-filters"
             disabled={bulkBusy}
             className="grid min-w-0 grid-cols-2 items-start gap-x-3 gap-y-2.5 border-b border-border bg-surface p-3 sm:grid-cols-4 sm:px-5"
           >
@@ -823,7 +824,7 @@ export function Workspace({
               />
             </label>
             {searchBy === "student" && (
-              <label className="field-label col-span-2 min-w-0">
+              <label className="field-label min-w-0 sm:col-span-2">
                 {t("Loại buổi dạy")}
                 <ThemedSelect
                   label={t("Loại buổi dạy")}
@@ -838,6 +839,21 @@ export function Workspace({
                 />
               </label>
             )}
+            {searchBy === "student" && (
+              <div className="flex self-end justify-end sm:hidden">
+                <Button
+                  variant="ghost"
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setSearchBy("student");
+                    changeRange({ ...initialRange, billing: "all" });
+                  }}
+                >
+                  {t("Xóa bộ lọc")}
+                </Button>
+              </div>
+            )}
             {!showCalendar && invalidRange && (
               <p
                 role="alert"
@@ -846,7 +862,10 @@ export function Workspace({
                 {t("Khoảng ngày không hợp lệ.")}
               </p>
             )}
-            <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-4">
+            <div
+              data-layout="lesson-filter-actions"
+              className="col-span-2 flex flex-wrap gap-2 sm:col-span-4"
+            >
               {!showCalendar && (
                 <>
                   <Button
@@ -878,6 +897,9 @@ export function Workspace({
                 </>
               )}
               <Button
+                className={
+                  searchBy === "student" ? "hidden sm:inline-flex" : undefined
+                }
                 variant="ghost"
                 type="button"
                 size="sm"
@@ -985,7 +1007,9 @@ export function Workspace({
           view?.students.items.length ? (
             <div
               className={
-                showNotes ? "record-note-grid p-5" : "divide-y divide-border"
+                showNotes
+                  ? "record-note-grid record-note-people p-5"
+                  : "divide-y divide-border"
               }
             >
               {view.students.items.map((s, index) => (

@@ -6,6 +6,8 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.view.Gravity;
@@ -101,22 +103,90 @@ final class NativeWorkspace {
         }
     }
 
-    record Palette(int background, int surface, int accent, int foreground, int onAccent, boolean dark, int controlTint) {
-        Palette(int background, int surface, int accent, int foreground, int onAccent, boolean dark) {
-            this(background, surface, accent, foreground, onAccent, dark, accent);
-        }
-
+    record Palette(int background, int surface, int accent, int foreground, int onAccent, boolean dark,
+                   int controlTint, String theme) {
         static Palette from(String theme) {
             return switch (theme) {
-                case "mono-os" -> new Palette(0xffd9d9d9, 0xffffffff, 0xff111111, 0xff111111, 0xffffffff, false);
-                case "chapter-desk" -> new Palette(0xfff4e9d5, 0xfffff5e2, 0xffa34018, 0xff29271f, 0xffffffff, false);
-                case "afterhours-fm" -> new Palette(0xff101010, 0xff1d1d1d, 0xfff7d449, 0xfffaf9f3, 0xff101010, true);
-                case "margin-notes" -> new Palette(0xfff0e9df, 0xfffffcf5, 0xff713346, 0xff30262b, 0xffffffff, false);
-                case "sticker-sprint" -> new Palette(0xfffff8ec, 0xfffffaf1, 0xffffd34e, 0xff211b18, 0xff211b18, false, 0xff503298);
-                default -> new Palette(0xfffff6e6, 0xfffffdf8, 0xff734626, 0xff211f1b, Color.WHITE, false);
+                case "mono-os" -> new Palette(0xffd9d9d9, 0xffffffff, 0xff111111, 0xff111111, 0xffffffff, false, 0xff111111, "mono-os");
+                case "chapter-desk" -> new Palette(0xfff4e9d5, 0xfffff5e2, 0xffa34018, 0xff29271f, 0xffffffff, false, 0xffa34018, "chapter-desk");
+                case "afterhours-fm" -> new Palette(0xff101010, 0xff1d1d1d, 0xfff7d449, 0xfffaf9f3, 0xff101010, true, 0xfff7d449, "afterhours-fm");
+                case "margin-notes" -> new Palette(0xfff0e9df, 0xfffffcf5, 0xff713346, 0xff30262b, 0xffffffff, false, 0xff713346, "margin-notes");
+                case "sticker-sprint" -> new Palette(0xfffff8ec, 0xfffffaf1, 0xff503298, 0xff111111, 0xffffffff, false, 0xff503298, "sticker-sprint");
+                default -> new Palette(0xfffff6e6, 0xfffffdf7, 0xffffd02c, 0xff211f1b, 0xff211f1b, false, 0xff211f1b, "playful-retro");
             };
         }
-
+        int border() { return switch (theme) {
+            case "mono-os" -> 0xff111111;
+            case "chapter-desk" -> 0xff9d8c73;
+            case "afterhours-fm" -> 0xff555551;
+            case "margin-notes" -> 0xff9c8790;
+            case "sticker-sprint" -> 0xff211b18;
+            default -> 0xff211f1b;
+        }; }
+        int radius() { return switch (theme) {
+            case "mono-os" -> 7;
+            case "chapter-desk" -> 0;
+            case "afterhours-fm" -> 16;
+            case "margin-notes" -> 2;
+            case "sticker-sprint" -> 16;
+            default -> 20;
+        }; }
+        int outline() { return switch (theme) {
+            case "mono-os" -> 1;
+            case "chapter-desk" -> 1;
+            case "afterhours-fm" -> 1;
+            case "margin-notes" -> 1;
+            case "sticker-sprint" -> 1;
+            default -> 2;
+        }; }
+        int shadowOffset() { return switch (theme) {
+            case "mono-os" -> 3;
+            case "chapter-desk" -> 0;
+            case "afterhours-fm" -> 0;
+            case "margin-notes" -> 4;
+            case "sticker-sprint" -> 4;
+            default -> 4;
+        }; }
+        int yellow() { return switch (theme) {
+            case "mono-os" -> 0xffffffff;
+            case "chapter-desk" -> 0xfffff5e2;
+            case "afterhours-fm" -> 0xfff7d449;
+            case "margin-notes" -> 0xfff2d978;
+            case "sticker-sprint" -> 0xffffd34e;
+            default -> 0xffffd02c;
+        }; }
+        int blue() { return switch (theme) {
+            case "mono-os" -> 0xffffffff;
+            case "chapter-desk" -> 0xfffff5e2;
+            case "afterhours-fm" -> 0xffdbabdf;
+            case "margin-notes" -> 0xffded8eb;
+            case "sticker-sprint" -> 0xffded2f9;
+            default -> 0xff79c8ff;
+        }; }
+        int mint() { return switch (theme) {
+            case "mono-os" -> 0xffffffff;
+            case "chapter-desk" -> 0xfffff5e2;
+            case "afterhours-fm" -> 0xff71d6c8;
+            case "margin-notes" -> 0xffc5d9cd;
+            case "sticker-sprint" -> 0xffbdebd9;
+            default -> 0xff83e5b0;
+        }; }
+        int dashboardInk() { return switch (theme) {
+            case "mono-os" -> 0xff111111;
+            case "chapter-desk" -> 0xff29271f;
+            case "afterhours-fm" -> 0xff211b18;
+            case "margin-notes" -> 0xff30262b;
+            case "sticker-sprint" -> 0xff111111;
+            default -> 0xff211f1b;
+        }; }
+        Typeface font() {
+            return switch (theme) {
+                case "mono-os" -> Typeface.MONOSPACE;
+                case "chapter-desk", "margin-notes" -> Typeface.SERIF;
+                case "playful-retro", "sticker-sprint" -> Typeface.create("sans-serif-rounded", Typeface.NORMAL);
+                default -> Typeface.DEFAULT;
+            };
+        }
     }
 
     private final Context context;
@@ -170,16 +240,16 @@ final class NativeWorkspace {
     View today(Snapshot data, Consumer<String> open) {
         LinearLayout page = page();
         add(page, heading(text(R.string.hello, data.displayName()), 26), 0);
-        LinearLayout hero = card(palette.accent(), 18, 14);
+        LinearLayout hero = card(palette.yellow(), 18, 14);
         LinearLayout outstanding = column();
-        add(outstanding, label(text(R.string.outstanding_tuition), 15, palette.onAccent()), 0);
-        add(outstanding, bold(money(data.outstanding()) + " ›", 34, palette.onAccent()), 6);
+        add(outstanding, label(text(R.string.outstanding_tuition), 15, palette.dashboardInk()), 0);
+        add(outstanding, bold(money(data.outstanding()) + " ›", 34, palette.dashboardInk()), 6);
         action(outstanding, text(R.string.outstanding_tuition) + " " + money(data.outstanding()),
             () -> open.accept("/app/statements?status=outstanding"));
         add(hero, outstanding, 0);
         if (data.overdue() > 0) {
             String title = text(R.string.overdue_amount, money(data.overdue()));
-            TextView overdue = bold(title + " ›", 14, palette.onAccent());
+            TextView overdue = bold(title + " ›", 14, palette.dashboardInk());
             overdue.setGravity(Gravity.CENTER_VERTICAL);
             overdue.setMinimumHeight(dp(44));
             action(overdue, title, () -> open.accept("/app/statements?status=overdue"));
@@ -189,9 +259,9 @@ final class NativeWorkspace {
         add(page, button(text(R.string.record_lesson), () -> open.accept("/app/lessons/new"), true), 12);
         if (data.schedule() != null) add(page, schedule(data.schedule(), open), 16);
 
-        LinearLayout unbilled = metric(R.string.unbilled_lessons, money(data.unbilled()), R.drawable.ic_lessons);
-        add(unbilled, label(text(R.string.lesson_count, numbers.format(data.unbilledCount())), 12, palette.foreground()), 6);
-        LinearLayout received = metric(R.string.received_this_month, money(data.received()), R.drawable.ic_tuition);
+        LinearLayout unbilled = metric(R.string.unbilled_lessons, money(data.unbilled()), R.drawable.ic_lessons, palette.blue());
+        add(unbilled, label(text(R.string.lesson_count, numbers.format(data.unbilledCount())), 12, palette.dashboardInk()), 6);
+        LinearLayout received = metric(R.string.received_this_month, money(data.received()), R.drawable.ic_tuition, palette.mint());
         float fontScale = context.getResources().getConfiguration().fontScale;
         if (context.getResources().getConfiguration().screenWidthDp >= 350 && fontScale <= 1.2f) {
             LinearLayout row = new LinearLayout(context);
@@ -298,10 +368,15 @@ final class NativeWorkspace {
     }
 
     private LinearLayout metric(int title, String value, int symbol) {
-        LinearLayout metric = card(palette.surface(), 18, 14);
-        metric.addView(icon(symbol, palette.controlTint()), new LinearLayout.LayoutParams(dp(20), dp(20)));
-        add(metric, label(text(title), 13, palette.foreground()), 8);
-        add(metric, bold(value, 19, palette.foreground()), 5);
+        return metric(title, value, symbol, palette.surface());
+    }
+
+    private LinearLayout metric(int title, String value, int symbol, int fill) {
+        int ink = fill == palette.surface() ? palette.foreground() : palette.dashboardInk();
+        LinearLayout metric = card(fill, 18, 14);
+        metric.addView(icon(symbol, ink), new LinearLayout.LayoutParams(dp(20), dp(20)));
+        add(metric, label(text(title), 13, ink), 8);
+        add(metric, bold(value, 19, ink), 5);
         return metric;
     }
 
@@ -318,12 +393,12 @@ final class NativeWorkspace {
         button.setAllCaps(false);
         button.setText(title);
         button.setTextSize(16);
-        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setTypeface(palette.font(), Typeface.BOLD);
         button.setTextColor(primary ? palette.onAccent() : palette.controlTint());
         button.setMinimumHeight(dp(50));
         button.setBackground(new RippleDrawable(
             ColorStateList.valueOf(0x284b916e),
-            shape(primary ? palette.accent() : palette.surface(), 16), null
+            panel(primary ? palette.accent() : palette.surface()), null
         ));
         button.setOnClickListener(view -> action.run());
         return button;
@@ -351,9 +426,20 @@ final class NativeWorkspace {
 
     private LinearLayout card(int color, int radius, int padding) {
         LinearLayout card = column();
-        card.setBackground(shape(color, radius));
+        card.setBackground(panel(color));
         card.setPadding(dp(padding), dp(padding), dp(padding), dp(padding));
         return card;
+    }
+
+    private Drawable panel(int color) {
+        GradientDrawable face = shape(color, palette.radius());
+        face.setStroke(dp(palette.outline()), palette.border());
+        int offset = dp(palette.shadowOffset());
+        if (offset == 0) return face;
+        LayerDrawable layers = new LayerDrawable(new Drawable[] { shape(palette.border(), palette.radius()), face });
+        layers.setLayerInset(0, offset, offset, 0, 0);
+        layers.setLayerInset(1, 0, 0, offset, offset);
+        return layers;
     }
 
     private GradientDrawable shape(int color, int radius) {
@@ -377,7 +463,7 @@ final class NativeWorkspace {
 
     private TextView bold(String text, int size, int color) {
         TextView label = label(text, size, color);
-        label.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        label.setTypeface(palette.font(), Typeface.BOLD);
         return label;
     }
 
@@ -385,6 +471,7 @@ final class NativeWorkspace {
         TextView label = new TextView(context);
         label.setText(text);
         label.setTextSize(size);
+        label.setTypeface(palette.font());
         label.setTextColor(color);
         return label;
     }

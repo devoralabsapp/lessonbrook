@@ -1179,6 +1179,46 @@ dialog::backdrop {
     column-gap: 14px;
     padding-inline: 6px;
   }
+  [data-workspace] .record-note-grid.record-note-people {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+  [data-workspace] .record-note-people > .record-note {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    margin-block: 4px;
+    padding: 24px 7px 6px;
+  }
+  [data-workspace] .record-note-people .record-identity {
+    flex: none;
+    gap: 5px;
+    padding: 5px;
+  }
+  [data-workspace] .record-note-people .record-identity > span {
+    width: 24px;
+    height: 24px;
+  }
+  [data-workspace] .record-note-people .record-identity-name {
+    font-size: calc(14px + var(--font-size-offset));
+  }
+  [data-workspace] .record-note-people .record-identity a {
+    overflow-wrap: anywhere;
+  }
+  [data-workspace] .record-note-people .record-text-action {
+    padding-inline: 3px;
+    font-size: calc(12px + var(--font-size-offset));
+  }
+  [data-workspace] .record-note-people .record-note > div:last-child {
+    column-gap: 6px;
+  }
+  [data-workspace] [data-layout="lesson-filter-actions"] {
+    gap: 6px;
+  }
+  [data-workspace] [data-layout="lesson-filter-actions"] [data-slot="button"] {
+    padding-inline: 7px;
+    font-size: calc(12px + var(--font-size-offset));
+  }
   [data-workspace] nav[data-position="bottom"] a {
     min-height: 56px;
     padding-block: 8px;

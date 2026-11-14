@@ -175,7 +175,7 @@ public final class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText(ui.text(screen == Screen.PAGE ? pageTitle(webPath()) : tab.title));
         title.setTextColor(colors.foreground());
-        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setTypeface(colors.font(), Typeface.BOLD);
         title.setTextSize(20);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);

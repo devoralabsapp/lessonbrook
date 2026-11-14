@@ -183,7 +183,9 @@ export function ClassesList() {
           (list.page.items.length ? (
             <div
               className={
-                showNotes ? "record-note-grid p-5" : "divide-y divide-border"
+                showNotes
+                  ? "record-note-grid record-note-people p-5"
+                  : "divide-y divide-border"
               }
             >
               {list.page.items.map((item, index) => (

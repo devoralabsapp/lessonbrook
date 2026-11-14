@@ -68,6 +68,8 @@ English is the default locale. The translation helpers in `src/lib/i18n/` resolv
 
 Statements use the same directory card structure: the list title and view switch sit in its header, filters follow, and results stay inside the card. List mode uses compact rows with separators and a right-aligned amount and status; Notes keep their pinned paper layout. Loading, empty, error and pagination states also stay inside the directory card.
 
+Phone layouts use `.record-note-people` for compact two-column Students and Classes notes, independently of the wider Lesson and Statement notes. In the Lessons filters, Lesson type and Clear filters share a phone row, followed by Today, This month and Select. Desktop controls retain their existing arrangement.
+
 The main Lessons and Statements tabs default to the current month in Vietnam. Lessons filter by lesson date and Statements by issue date, falling back to creation date in Vietnam. Dashboard billing/status links and student ledgers use all dates by default so older balances remain visible. Clearing the Lessons filters or choosing **All time** in Statements is the path to earlier records from those tabs. Dashboard totals retain their own reporting rules.
 
 Workspace directories request Vietnamese alphabetical ordering for students and the next weekly slot for classes, with unscheduled classes last. Lesson lists request ascending date/time order, placing untimed lessons last within their day. The API sorts before pagination, binds cursors to the owner and filters, and holds the class schedule reference time across pages. Date ordering uses the existing date index and completes boundary days to keep equal-date lessons in time order. Note grids follow row-major reading order.

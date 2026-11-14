@@ -93,24 +93,86 @@ struct WorkspacePalette {
     let onAccent: Color
     let controlTint: Color
     let dark: Bool
+    let border: Color
+    let yellow: Color
+    let blue: Color
+    let mint: Color
+    let dashboardInk: Color
+    let radius: CGFloat
+    let outline: CGFloat
+    let shadowOffset: CGFloat
+    let fontDesign: Font.Design
 
     init(_ theme: String? = nil) {
-        let colors: (UInt32, UInt32, UInt32, UInt32, UInt32, Bool)
+        dark = theme == "afterhours-fm"
         switch theme {
-        case "mono-os": colors = (0xd9d9d9, 0xffffff, 0x111111, 0x111111, 0xffffff, false)
-        case "chapter-desk": colors = (0xf4e9d5, 0xfff5e2, 0xa34018, 0x29271f, 0xffffff, false)
-        case "afterhours-fm": colors = (0x101010, 0x1d1d1d, 0xf7d449, 0xfaf9f3, 0x101010, true)
-        case "margin-notes": colors = (0xf0e9df, 0xfffcf5, 0x713346, 0x30262b, 0xffffff, false)
-        case "sticker-sprint": colors = (0xfff8ec, 0xfffaf1, 0xffd34e, 0x211b18, 0x211b18, false)
-        default: colors = (0xfff6e6, 0xfffdf8, 0x734626, 0x211f1b, 0xffffff, false)
+        case "mono-os":
+            background = Self.color(0xd9d9d9)
+            surface = Self.color(0xffffff)
+            accent = Self.color(0x111111)
+            foreground = Self.color(0x111111)
+            onAccent = Self.color(0xffffff)
+            controlTint = Self.color(0x111111)
+            border = Self.color(0x111111)
+            radius = 7; outline = 1; shadowOffset = 3
+            yellow = Self.color(0xffffff); blue = Self.color(0xffffff); mint = Self.color(0xffffff)
+            dashboardInk = Self.color(0x111111); fontDesign = .monospaced
+        case "chapter-desk":
+            background = Self.color(0xf4e9d5)
+            surface = Self.color(0xfff5e2)
+            accent = Self.color(0xa34018)
+            foreground = Self.color(0x29271f)
+            onAccent = Self.color(0xffffff)
+            controlTint = Self.color(0xa34018)
+            border = Self.color(0x9d8c73)
+            radius = 0; outline = 1; shadowOffset = 0
+            yellow = Self.color(0xfff5e2); blue = Self.color(0xfff5e2); mint = Self.color(0xfff5e2)
+            dashboardInk = Self.color(0x29271f); fontDesign = .serif
+        case "afterhours-fm":
+            background = Self.color(0x101010)
+            surface = Self.color(0x1d1d1d)
+            accent = Self.color(0xf7d449)
+            foreground = Self.color(0xfaf9f3)
+            onAccent = Self.color(0x101010)
+            controlTint = Self.color(0xf7d449)
+            border = Self.color(0x555551)
+            radius = 16; outline = 1; shadowOffset = 0
+            yellow = Self.color(0xf7d449); blue = Self.color(0xdbabdf); mint = Self.color(0x71d6c8)
+            dashboardInk = Self.color(0x211b18); fontDesign = .default
+        case "margin-notes":
+            background = Self.color(0xf0e9df)
+            surface = Self.color(0xfffcf5)
+            accent = Self.color(0x713346)
+            foreground = Self.color(0x30262b)
+            onAccent = Self.color(0xffffff)
+            controlTint = Self.color(0x713346)
+            border = Self.color(0x9c8790)
+            radius = 2; outline = 1; shadowOffset = 4
+            yellow = Self.color(0xf2d978); blue = Self.color(0xded8eb); mint = Self.color(0xc5d9cd)
+            dashboardInk = Self.color(0x30262b); fontDesign = .serif
+        case "sticker-sprint":
+            background = Self.color(0xfff8ec)
+            surface = Self.color(0xfffaf1)
+            accent = Self.color(0x503298)
+            foreground = Self.color(0x111111)
+            onAccent = Self.color(0xffffff)
+            controlTint = Self.color(0x503298)
+            border = Self.color(0x211b18)
+            radius = 16; outline = 1; shadowOffset = 4
+            yellow = Self.color(0xffd34e); blue = Self.color(0xded2f9); mint = Self.color(0xbdebd9)
+            dashboardInk = Self.color(0x111111); fontDesign = .rounded
+        default:
+            background = Self.color(0xfff6e6)
+            surface = Self.color(0xfffdf7)
+            accent = Self.color(0xffd02c)
+            foreground = Self.color(0x211f1b)
+            onAccent = Self.color(0x211f1b)
+            controlTint = Self.color(0x211f1b)
+            border = Self.color(0x211f1b)
+            radius = 20; outline = 2; shadowOffset = 4
+            yellow = Self.color(0xffd02c); blue = Self.color(0x79c8ff); mint = Self.color(0x83e5b0)
+            dashboardInk = Self.color(0x211f1b); fontDesign = .rounded
         }
-        background = Self.color(colors.0)
-        surface = Self.color(colors.1)
-        accent = Self.color(colors.2)
-        foreground = Self.color(colors.3)
-        onAccent = Self.color(colors.4)
-        dark = colors.5
-        controlTint = theme == "sticker-sprint" ? Self.color(0x503298) : Self.color(colors.2)
     }
 
     private static func color(_ rgb: UInt32) -> Color {
@@ -139,7 +201,7 @@ struct NativeDashboard: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text(String(format: t("Hello, %@"), snapshot.displayName))
-                    .font(.title2.bold())
+                    .font(.system(.title2, design: palette.fontDesign).bold())
                     .accessibilityAddTraits(.isHeader)
                     .fixedSize(horizontal: false, vertical: true)
                 tuition
@@ -148,9 +210,7 @@ struct NativeDashboard: View {
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity, minHeight: 40)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(palette.accent)
-                .foregroundStyle(palette.onAccent)
+                .buttonStyle(WorkspacePrimaryButton(palette: palette))
                 if let schedule = snapshot.schedule { scheduleView(schedule) }
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 12) {
@@ -187,9 +247,9 @@ struct NativeDashboard: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 8) {
                         Label(t("Outstanding tuition"), systemImage: "doc.text")
-                            .font(.subheadline.weight(.semibold))
+                            .font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
                         Text(money(snapshot.summary.outstandingVnd))
-                            .font(.system(.largeTitle, design: .rounded).bold())
+                            .font(.system(.largeTitle, design: palette.fontDesign).bold())
                             .monospacedDigit()
                     }
                     Spacer()
@@ -202,24 +262,24 @@ struct NativeDashboard: View {
                 Button { open("/app/statements?status=overdue") } label: {
                     Label(String(format: t("%@ overdue"), money(snapshot.summary.overdueVnd)),
                           systemImage: "exclamationmark.circle")
-                        .font(.footnote.weight(.semibold))
+                        .font(.system(.footnote, design: palette.fontDesign).weight(.semibold))
                         .frame(minHeight: 44)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .foregroundStyle(palette.onAccent)
+        .foregroundStyle(palette.dashboardInk)
         .padding(14)
-        .background(palette.accent, in: RoundedRectangle(cornerRadius: 22))
+        .modifier(WorkspacePanel(palette: palette, fill: palette.yellow))
     }
 
     private func scheduleView(_ schedule: WorkspaceSnapshot.Schedule) -> some View {
         let items = schedule.upcoming
         return VStack(alignment: .leading, spacing: 9) {
-            Text(t("Upcoming lessons")).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+            Text(t("Upcoming lessons")).font(.system(.title2, design: palette.fontDesign).bold()).accessibilityAddTraits(.isHeader)
             if items.isEmpty {
                 Text(t("No planned lessons in the next seven days."))
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.system(.subheadline, design: palette.fontDesign)).foregroundStyle(palette.foreground)
             } else {
                 VStack(spacing: 0) {
                     ForEach(items, id: \.path) { lesson in
@@ -228,13 +288,13 @@ struct NativeDashboard: View {
                                 Image(systemName: "calendar").foregroundStyle(palette.controlTint)
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(lesson.name ?? t("Group lesson")).font(.subheadline.weight(.semibold))
+                                    Text(lesson.name ?? t("Group lesson")).font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
                                     Text("\(dayLabel(lesson.date, today: schedule.today)) · \(lesson.time ?? t("Time not set"))")
-                                        .font(.footnote)
-                                    if lesson.kind == "recurring" { Text(t("Weekly")).font(.caption) }
+                                        .font(.system(.footnote, design: palette.fontDesign))
+                                    if lesson.kind == "recurring" { Text(t("Weekly")).font(.system(.caption, design: palette.fontDesign)) }
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right").font(.footnote).accessibilityHidden(true)
+                                Image(systemName: "chevron.right").font(.system(.footnote, design: palette.fontDesign)).accessibilityHidden(true)
                             }
                             .padding(.vertical, 10)
                             .frame(minHeight: 46)
@@ -245,9 +305,9 @@ struct NativeDashboard: View {
                     }
                 }
                 .padding(.horizontal, 14)
-                .background(palette.surface, in: RoundedRectangle(cornerRadius: 16))
+                .modifier(WorkspacePanel(palette: palette, fill: palette.surface))
                 Button(t("View full schedule")) { open("/app/schedule") }
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
                     .tint(palette.controlTint)
             }
         }
@@ -267,23 +327,24 @@ struct NativeDashboard: View {
 
     private var unbilled: some View {
         metric("Unbilled lessons", value: money(snapshot.summary.unbilledVnd), icon: "calendar.badge.clock",
-               detail: String(format: t("%@ lessons"), number(snapshot.summary.unbilledCount)))
+               detail: String(format: t("%@ lessons"), number(snapshot.summary.unbilledCount)), fill: palette.blue)
     }
 
     private var received: some View {
-        metric("Received this month", value: money(snapshot.summary.receivedMonthVnd), icon: "arrow.down.circle")
+        metric("Received this month", value: money(snapshot.summary.receivedMonthVnd), icon: "arrow.down.circle", fill: palette.mint)
     }
 
-    private func metric(_ title: String, value: String, icon: String, detail: String? = nil) -> some View {
+    private func metric(_ title: String, value: String, icon: String, detail: String? = nil, fill: Color? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon).foregroundStyle(palette.controlTint).accessibilityHidden(true)
-            Text(t(title)).font(.footnote.weight(.medium)).fixedSize(horizontal: false, vertical: true)
-            Text(value).font(.headline.monospacedDigit()).fixedSize(horizontal: false, vertical: true)
-            if let detail { Text(detail).font(.caption) }
+            Image(systemName: icon).foregroundStyle(fill == nil ? palette.controlTint : palette.dashboardInk).accessibilityHidden(true)
+            Text(t(title)).font(.system(.footnote, design: palette.fontDesign).weight(.medium)).fixedSize(horizontal: false, vertical: true)
+            Text(value).font(.system(.headline, design: palette.fontDesign).monospacedDigit()).fixedSize(horizontal: false, vertical: true)
+            if let detail { Text(detail).font(.system(.caption, design: palette.fontDesign)) }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(12)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 17))
+        .foregroundStyle(fill == nil ? palette.foreground : palette.dashboardInk)
+        .modifier(WorkspacePanel(palette: palette, fill: fill ?? palette.surface))
         .accessibilityElement(children: .combine)
     }
 
@@ -294,6 +355,31 @@ struct NativeDashboard: View {
     }
 
     private func money(_ value: Int) -> String { "\(number(value)) ₫" }
+}
+
+// Shared tokens for native cards and buttons, matching the web theme surfaces.
+struct WorkspacePanel: ViewModifier {
+    let palette: WorkspacePalette
+    let fill: Color
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: palette.radius)
+        content
+            .background(fill, in: shape)
+            .overlay(shape.stroke(palette.border, lineWidth: palette.outline))
+            .background(shape.fill(palette.border).offset(x: palette.shadowOffset, y: palette.shadowOffset))
+    }
+}
+
+struct WorkspacePrimaryButton: ButtonStyle {
+    let palette: WorkspacePalette
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.body, design: palette.fontDesign).weight(.semibold))
+            .foregroundStyle(palette.onAccent)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .modifier(WorkspacePanel(palette: palette, fill: palette.accent))
+            .offset(y: configuration.isPressed ? 2 : 0)
+    }
 }
 
 struct NativeWelcome: View {
@@ -313,7 +399,7 @@ struct NativeWelcome: View {
             VStack(alignment: .leading, spacing: 16) {
                 Image(systemName: "checkmark.rectangle")
                     .font(.system(size: 32, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.onAccent)
                     .frame(width: 66, height: 66)
                     .background(palette.accent, in: RoundedRectangle(cornerRadius: 19))
                     .accessibilityHidden(true)
@@ -326,8 +412,7 @@ struct NativeWelcome: View {
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity, minHeight: 43)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(palette.accent)
+                    .buttonStyle(WorkspacePrimaryButton(palette: palette))
                     .padding(.top, 8)
                 } else if checkFailed {
                     Text(t("Check your connection and try again.")).font(.footnote)
@@ -359,7 +444,7 @@ struct NativeWelcome: View {
                     Button(t("Help & support"), action: help)
                 }
                 .font(.footnote.weight(.semibold))
-                .tint(palette.accent)
+                .tint(palette.controlTint)
                 .padding(.top, 8)
             }
             .frame(maxWidth: 420, alignment: .leading)

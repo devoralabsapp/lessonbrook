@@ -8,6 +8,10 @@ On the welcome screen, **View demo** opens all five tabs with fictional students
 
 Phone layouts use compact cards, form spacing, and controls across all themes. Native tabs sit outside the scrollable page; the last row remains reachable above the tab bar.
 
+Students and Classes notes use two columns on phones. Lessons places Clear filters beside the smaller Lesson type field, with Today, This month and Select on the next row. These shared screens update with the web deployment.
+
+The native Dashboard uses the selected theme's palette, contrasting text, card borders, corner sizes, offset shadows and platform font styles. Its tokens live in `WorkspacePalette` on iOS and `NativeWorkspace.Palette` on Android; keep them aligned with the web tokens in `src/app/globals.css`. The iOS card and primary button styles are reusable modifiers, and Android shares its panel drawable. Native Dashboard styling requires rebuilding and installing the app; a web deployment alone does not update it.
+
 Tap the outstanding or overdue amount to open the corresponding statement filter. Upcoming lessons shows planned lessons and weekly class slots from today through seven days ahead. Set weekly days and times when creating or editing a class. Opening a weekly slot prefills the date and time for a lesson you can save. Open a lesson to update it, or use **View full schedule** for the complete date range.
 
 Switching tabs or using the app's Back button while editing a marked form asks whether to keep editing or discard the changes. While a save is in progress, wait for it to finish before leaving.
