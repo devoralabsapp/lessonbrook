@@ -70,7 +70,9 @@ export function RecordIdentity({
         {Array.from(name)[0]?.toUpperCase()}
       </span>
       <Link href={href} className="min-w-0 flex-1 self-center">
-        <span className="block break-words text-sm font-semibold">{name}</span>
+        <span className="record-identity-name block break-words text-base leading-snug font-extrabold text-foreground">
+          {name}
+        </span>
         {detail && (
           <span className="mt-1 block break-words text-xs text-muted-foreground">
             {detail}

@@ -149,6 +149,7 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     page.getByText("Đơn giá đã lưu: 150.000", { exact: false }),
   ).toBeVisible();
   await page.goto("/app/sessions");
+  await page.getByRole("button", { name: "Xóa bộ lọc", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "Ghi buổi nhóm/lớp", exact: true }),
   ).toHaveCount(0);
@@ -240,6 +241,7 @@ test("360px: tạo lớp giá chung → chọn người tham gia → retry khôn
     animations: "disabled",
   });
   await page.goto("/app/sessions");
+  await page.getByRole("button", { name: "Xóa bộ lọc", exact: true }).click();
   const type = page.getByRole("combobox", { name: "Loại buổi dạy" });
   const groupRows = page.getByRole("link", {
     name: "Buổi nhóm tự chọn",

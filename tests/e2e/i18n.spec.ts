@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { googleToken, origin } from "../integration/helpers";
 import { vietnamToday } from "../../src/domain";
+import { periodBounds } from "../../src/domain/statements";
 
 test.use({ locale: "vi-VN", storageState: { cookies: [], origins: [] } });
 
@@ -53,6 +54,24 @@ test("demo reuses the workspace and keeps sample changes in its tab", async ({
     await expect(
       page.getByRole("button", { name: "Notes", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
+    if (path === "sessions") {
+      const month = periodBounds("month", vietnamToday());
+      await expect(page.getByLabel("From date", { exact: true })).toHaveValue(
+        month.start,
+      );
+      await expect(page.getByLabel("To date", { exact: true })).toHaveValue(
+        month.end,
+      );
+      await page.getByRole("button", { name: "Clear filters" }).click();
+      await expect(page.getByLabel("From date", { exact: true })).toHaveValue(
+        "",
+      );
+      await expect(page.getByLabel("To date", { exact: true })).toHaveValue("");
+    }
+    if (path === "statements")
+      await expect(
+        page.getByRole("combobox", { name: "Statement date" }),
+      ).toHaveText("This month");
     await page.getByRole("button", { name: "List", exact: true }).click();
     const coloredRow = page.locator("[data-list-tone]").first();
     await expect(coloredRow).toBeVisible();

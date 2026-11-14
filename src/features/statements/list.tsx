@@ -47,8 +47,9 @@ export function StatementsList({
   const showNotes = recordView === "notes";
   const [status, setStatus] = useState(initialStatus);
   const [studentId, setStudentId] = useState(initialStudentId);
-  const [period, setPeriod] =
-    useState<(typeof dateFilters)[number]["value"]>("all");
+  const [period, setPeriod] = useState<(typeof dateFilters)[number]["value"]>(
+    initialStudentId || initialStatus !== "all" ? "all" : "month",
+  );
   const [custom, setCustom] = useState({ from: "", to: "" });
   const [revision, setRevision] = useState(0);
   const [data, setData] = useState<{

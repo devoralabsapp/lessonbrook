@@ -33,7 +33,7 @@ import {
   sessionTypeLabels,
   type SessionWithPayment,
 } from "@/domain/list-filters";
-import { paymentStatusLabels } from "@/domain/statements";
+import { paymentStatusLabels, periodBounds } from "@/domain/statements";
 import {
   canCompleteSession,
   completedSessionFields,
@@ -115,7 +115,13 @@ export function Workspace({
     type: "all",
     billing: initialBilling,
   };
-  const [range, setRange] = useState(initialRange);
+  const [range, setRange] = useState(() => {
+    // Explicit dashboard filters and student ledgers keep their full history.
+    if (mode !== "sessions" || studentId || initialBilling !== "all")
+      return initialRange;
+    const month = periodBounds("month", vietnamToday());
+    return { ...initialRange, from: month.start, to: month.end };
+  });
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set<string>());
   const [allSelected, setAllSelected] = useState(false);
@@ -859,15 +865,11 @@ export function Workspace({
                     type="button"
                     size="sm"
                     onClick={() => {
-                      const today = vietnamToday();
-                      const [year, month] = today.split("-").map(Number);
-                      const last = new Date(Date.UTC(year, month, 0))
-                        .toISOString()
-                        .slice(0, 10);
+                      const month = periodBounds("month", vietnamToday());
                       changeRange({
                         ...range,
-                        from: today.slice(0, 8) + "01",
-                        to: last,
+                        from: month.start,
+                        to: month.end,
                       });
                     }}
                   >
