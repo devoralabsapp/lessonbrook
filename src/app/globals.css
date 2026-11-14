@@ -353,14 +353,24 @@ summary:focus-visible {
 }
 
 .record-note-grid {
-  columns: 16.5rem;
-  column-gap: 1.75rem;
+  columns: 13rem;
+  column-gap: 1.25rem;
+}
+
+.record-note-statements {
+  column-width: 16.5rem;
 }
 
 .record-note-grid > .record-note {
+  display: inline-block;
   width: 100%;
-  margin-block: 0.75rem 1.75rem;
+  margin-block: 0.6rem 1.15rem;
   break-inside: avoid;
+  vertical-align: top;
+}
+
+.record-note-grid > .record-note.flex {
+  display: inline-flex;
 }
 
 .record-note-grid > .record-note:nth-child(6n + 2) {
@@ -391,10 +401,12 @@ summary:focus-visible {
   --note-tilt: -1.1deg;
   --note-lift: 0rem;
   --note-delay: 0s;
+  --pin-left: 50%;
+  --pin-angle: 24deg;
+  --pin-top: -0.2rem;
   position: relative;
   min-width: 0;
-  min-height: 11rem;
-  padding: 2.5rem 1rem 1rem;
+  padding: 1.8rem 0.75rem 0.65rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl) var(--radius-xl) 0 var(--radius-xl);
   background: color-mix(in srgb, var(--note-color) 70%, var(--card));
@@ -402,6 +414,25 @@ summary:focus-visible {
   color: var(--foreground);
   transform: translateY(var(--note-lift)) rotate(var(--note-tilt));
   transform-origin: 50% 1rem;
+}
+
+.record-note-grid > .record-note:nth-child(5n + 1) {
+  --pin-left: 28%;
+  --pin-angle: -18deg;
+}
+.record-note-grid > .record-note:nth-child(5n + 2) {
+  --pin-left: 78%;
+  --pin-angle: 32deg;
+  --pin-top: 0.05rem;
+}
+.record-note-grid > .record-note:nth-child(5n + 3) {
+  --pin-left: 43%;
+  --pin-angle: -28deg;
+  --pin-top: -0.35rem;
+}
+.record-note-grid > .record-note:nth-child(5n + 4) {
+  --pin-left: 66%;
+  --pin-angle: 14deg;
 }
 
 @keyframes note-sway {
@@ -423,6 +454,23 @@ summary:focus-visible {
   }
   .record-note:is(:hover, :focus-within) {
     animation-play-state: paused;
+  }
+  .record-note {
+    transition:
+      translate 180ms ease-out,
+      scale 180ms ease-out;
+  }
+  .record-note:focus-within {
+    translate: 0 -3px;
+    scale: 1.015;
+    z-index: 1;
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .record-note:hover {
+    translate: 0 -5px;
+    scale: 1.025;
+    z-index: 1;
   }
 }
 
@@ -459,11 +507,11 @@ summary:focus-visible {
 
 .record-note-pin {
   position: absolute;
-  top: 0.4rem;
-  left: calc(50% - 0.8rem);
+  top: var(--pin-top);
+  left: calc(var(--pin-left) - 0.8rem);
   width: 1.6rem;
   height: 1.6rem;
-  transform: rotate(24deg);
+  transform: rotate(var(--pin-angle));
   color: #9f1426;
   fill: #ef334f;
   filter: drop-shadow(1px 2px 0 #211f1b33);

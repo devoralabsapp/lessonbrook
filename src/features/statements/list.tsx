@@ -252,7 +252,13 @@ export function StatementsList({
           </p>
         </Card>
       ) : (
-        <div className={showNotes ? "record-note-grid px-1" : "space-y-3"}>
+        <div
+          className={
+            showNotes
+              ? "record-note-grid record-note-statements px-1"
+              : "space-y-3"
+          }
+        >
           {page.items.map((statement) => {
             const display = statementDisplayStatus(statement, today);
             const paid = statementIsPaid(statement);
@@ -274,7 +280,7 @@ export function StatementsList({
                 className={showNotes ? undefined : "p-5"}
               >
                 <Link
-                  className="block space-y-3"
+                  className={showNotes ? "block space-y-2" : "block space-y-3"}
                   href={`/app/statements/${statement.id}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -282,13 +288,14 @@ export function StatementsList({
                       {statement.number ?? t("Bản nháp")} ·{" "}
                       {statement.recipientSnapshot.displayName}
                     </strong>
-                    <span
-                      data-slot="list-status"
-                      className={`status rounded-full px-3 ${statement.status === "issued" ? (paid ? "status-paid" : "status-unpaid") : "bg-muted"}`}
-                    >
-                      {t(display.label)}
-                      {display.overdue ? t(" · Quá hạn") : ""}
-                    </span>
+                    {statement.status !== "issued" && (
+                      <span
+                        data-slot="list-status"
+                        className="status rounded-full bg-muted px-3"
+                      >
+                        {t(display.label)}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {formatDate(statement.periodStart, locale)} –{" "}
@@ -299,23 +306,32 @@ export function StatementsList({
                     {t(statement.issueDate ? "Ngày phát hành:" : "Ngày tạo:")}{" "}
                     {formatDate(statementListDate(statement), locale)}
                   </p>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
                     <span className="text-xs text-muted-foreground">
                       {t("Đến hạn ")}
                       {formatDate(statement.dueDate, locale)}
                     </span>
-                    <strong className="text-base">
+                    <strong className="ml-auto text-base">
                       {formatVnd(statement.totalVnd, locale)}
                     </strong>
                   </div>
                   {statement.status === "issued" && (
-                    <p className="text-xs">
-                      {t("Còn phải thu:")}{" "}
-                      {formatVnd(
-                        statement.totalVnd - statement.paidVnd,
-                        locale,
-                      )}
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs">
+                        {t("Còn phải thu:")}{" "}
+                        {formatVnd(
+                          statement.totalVnd - statement.paidVnd,
+                          locale,
+                        )}
+                      </p>
+                      <span
+                        data-slot="list-status"
+                        className={`status ml-auto rounded-full px-3 ${paid ? "status-paid" : "status-unpaid"}`}
+                      >
+                        {t(display.label)}
+                        {display.overdue ? t(" · Quá hạn") : ""}
+                      </span>
+                    </div>
                   )}
                 </Link>
               </RecordNote>

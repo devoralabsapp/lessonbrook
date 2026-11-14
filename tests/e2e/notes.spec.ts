@@ -23,6 +23,13 @@ test("notes share filters, actions and selection with the four workspace lists",
       ).size,
     ).toBeGreaterThan(1);
     await expect(page.locator(".record-note-pin")).toHaveCount(count);
+    expect(
+      new Set(
+        await page
+          .locator(".record-note-pin")
+          .evaluateAll((pins) => pins.map((pin) => getComputedStyle(pin).left)),
+      ).size,
+    ).toBeGreaterThan(1);
     await expect(papers.first().locator(".record-note-pin")).toHaveCSS(
       "fill",
       "rgb(239, 51, 79)",
@@ -67,6 +74,33 @@ test("notes share filters, actions and selection with the four workspace lists",
       await expect(papers).toHaveCount(0);
     }
     if (tab === "statements") {
+      const first = papers.first();
+      const amount = first.locator("strong.text-base");
+      const paymentStatus = first.locator('[data-slot="list-status"]');
+      expect(
+        await paymentStatus.evaluate(
+          (badge) =>
+            badge.getBoundingClientRect().top >=
+            badge
+              .closest("a")!
+              .querySelector("strong.text-base")!
+              .getBoundingClientRect().bottom,
+        ),
+      ).toBe(true);
+      await expect(amount).toBeVisible();
+      expect(
+        await papers
+          .locator('[data-slot="list-status"]')
+          .evaluateAll((badges) =>
+            badges.every((badge) =>
+              badge.matches(".status-paid, .status-unpaid")
+                ? badge.previousElementSibling?.matches("p.text-xs")
+                : badge.parentElement?.firstElementChild?.matches(
+                    "strong.text-sm",
+                  ),
+            ),
+          ),
+      ).toBe(true);
       await papers.first().getByRole("link").click();
       await expect(page).toHaveURL(/\/demo\/statements\/[^/]+$/);
     }

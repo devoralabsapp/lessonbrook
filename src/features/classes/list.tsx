@@ -193,13 +193,13 @@ export function ClassesList() {
                   }
                   className={
                     showNotes
-                      ? "flex flex-col gap-3"
+                      ? "flex flex-wrap items-center gap-2"
                       : "flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
                   }
                 >
                   <span
                     aria-hidden="true"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold text-primary"
+                    className={`flex ${showNotes ? "size-7" : "size-10"} shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold text-primary`}
                   >
                     {item.displayName[0]}
                   </span>
@@ -217,7 +217,7 @@ export function ClassesList() {
                   <div
                     className={
                       showNotes
-                        ? "mt-auto flex flex-wrap gap-2 border-t border-border pt-3"
+                        ? "flex w-full flex-wrap gap-2 border-t border-border pt-2"
                         : "contents"
                     }
                   >

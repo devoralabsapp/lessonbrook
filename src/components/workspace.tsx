@@ -986,11 +986,13 @@ export function Workspace({
                   tone={s.archivedAt ? "neutral" : index % 2 ? "mint" : "blue"}
                   className={
                     showNotes
-                      ? "flex flex-col gap-3"
+                      ? "flex flex-wrap items-center gap-2"
                       : "flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
                   }
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold text-primary">
+                  <span
+                    className={`flex ${showNotes ? "size-7" : "size-10"} shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold text-primary`}
+                  >
                     {s.displayName[0]}
                   </span>
                   <Link
@@ -1009,7 +1011,7 @@ export function Workspace({
                   <div
                     className={
                       showNotes
-                        ? "mt-auto flex flex-wrap gap-2 border-t border-border pt-3"
+                        ? "flex w-full flex-wrap gap-2 border-t border-border pt-2"
                         : "contents"
                     }
                   >
@@ -1071,7 +1073,7 @@ export function Workspace({
                 }
                 className={
                   showNotes
-                    ? "flex flex-wrap content-start items-start gap-3"
+                    ? "flex flex-wrap content-start items-start gap-2"
                     : "flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6"
                 }
               >
@@ -1166,7 +1168,7 @@ export function Workspace({
                 <div
                   className={
                     showNotes
-                      ? "mt-auto flex w-full flex-wrap items-center justify-end gap-2 border-t border-border pt-3"
+                      ? "flex w-full flex-wrap items-center justify-end gap-2 border-t border-border pt-2"
                       : "ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3"
                   }
                 >
