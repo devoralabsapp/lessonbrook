@@ -16,7 +16,7 @@ export function LessonPaymentStatus({
   const status = sessionPaymentStatus(session);
   if (!status)
     return session.status === "planned" && session.billable ? null : (
-      <span className="text-xs text-muted-foreground">
+      <span className="status bg-muted text-foreground">
         {t("Không tính phí")}
       </span>
     );
