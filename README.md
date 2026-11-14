@@ -93,6 +93,6 @@ You can run this public edition on your own deployment. It excludes account data
 
 ## Development
 
-See [ARCHITECTURE](docs/ARCHITECTURE.md), [CONTRIBUTING](CONTRIBUTING.md), and [SECURITY](SECURITY.md). Amounts are integer VND and business dates use Asia/Ho_Chi_Minh. Preserve price snapshots, transaction idempotency, and `billedStatementId` locks when changing business logic.
+See [ARCHITECTURE](docs/ARCHITECTURE.md), [CONTRIBUTING](CONTRIBUTING.md), and [SECURITY](SECURITY.md). Agents continuing work should start with [AGENTS.md](AGENTS.md) and the [current handoff](HANDOFF.md). Amounts are integer VND and business dates use Asia/Ho_Chi_Minh. Preserve price snapshots, transaction idempotency, and `billedStatementId` locks when changing business logic.
 
 The MIT License covers the project's source code. Dependencies retain their own licenses; no rights to third-party services or accounts are included. Names and emails in seeds and fixtures are fictional.

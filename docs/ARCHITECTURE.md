@@ -2,15 +2,18 @@
 
 **English** | [Tiếng Việt](ARCHITECTURE.vi.md)
 
-Next.js App Router, React, TypeScript, Tailwind 4, Firebase Authentication, and Cloud Firestore. Node 24; dependencies are pinned exactly in the lockfile. Keep bundler and dependency changes separate from unrelated business fixes.
+LessonBrook uses Next.js App Router, React, TypeScript, Tailwind 4, Firebase Authentication, and Cloud Firestore. It runs on Node 24, with Webpack for development and production builds. The lockfile pins dependency versions. See [AGENTS.md](../AGENTS.md) for repository rules and [HANDOFF.md](../HANDOFF.md) for the latest recorded checkpoint.
 
 | Directory           | Contents                                                               |
 | ------------------- | ---------------------------------------------------------------------- |
 | `src/app`           | Pages and Node APIs                                                    |
 | `src/domain`        | Schemas, money, dates, statements, and export data                     |
+| `src/components`    | Workspace shell, navigation, shared forms, Notes/List UI and controls  |
 | `src/lib/firebase`  | Client Auth, server Admin, and OIDC/WIF                                |
 | `src/lib/server`    | Repositories, sessions, HTTP handling, and transactions                |
+| `src/lib/i18n`      | Locale resolution, translation helpers and English dictionary          |
 | `src/features`      | Student, class, lesson, statement, payment, and sharing UI             |
+| `mobile`            | Native iOS and Android shells, build and sign-in configuration         |
 | `firebase`          | Rules, indexes, and independent Rules tests                            |
 | `tests/integration` | HTTP/backend isolation with two UIDs, transactions, and data workflows |
 | `tests/e2e`         | Chromium, real Auth Emulator popups, retries, and reloads              |
@@ -25,7 +28,19 @@ All business operations go through server APIs. Derive the UID from a revocation
 
 Session cookies are HttpOnly/Lax, Secure on HTTPS, and last up to five days. Browser Auth uses memory persistence: exchange a recent-auth ID token for a server cookie, then sign out the client. Mutations check Origin/CSRF, strict payloads/body limits, and UUID idempotency keys. Do not cache session verification between requests or store tokens/tuition data in browser storage or logs.
 
-The public demo renders the same workspace pages. Its Node API builds a fictional ledger and applies a bounded history of actions from the current browser tab. The demo API works entirely with fictional data in memory. The tab discards changes on reload.
+## Request paths
+
+- Signed-in web screens mount under the server layout in `src/app/app/layout.tsx`. Workspace components call `src/lib/client-api.ts`, which attaches CSRF and idempotency headers to mutations. The Node handler in `src/app/api/[...path]/route.ts` verifies the session and passes the server-derived UID to repositories in `src/lib/server/`. Domain validation and calculations live in `src/domain/`.
+- `/demo` reuses the workspace pages and components. `src/components/workspace-link.tsx` maps workspace navigation to demo routes, and `src/lib/demo-api.ts` sends commands to `/api/demo` without account cookies. The Node handler builds a fictional ledger and replays a bounded history from the browser tab using `src/features/demo/workspace.ts`. Changes are held in tab memory until reload. When a change affects both modes, keep their filters, validation and results consistent.
+- A recipient opens `/s` with a share token in the URL fragment. The page posts the token to `/api/share/resolve`, which verifies the link and returns an allowlisted statement. The server keeps only the token hash. Public rendering uses the statement palette.
+- The native apps provide sign-in, a Dashboard and tab navigation. They load workspace routes in a WebView for Students, Classes, Lessons, Statements and settings. The native Dashboard fetches its data and syncs due class slots through `/api/mobile/workspace`. The Upcoming lessons screen uses `/api/mobile/schedule`. Browser-based sign-in hands off a short-lived, verifier-bound, single-use code to `/api/auth/mobile` to establish the same HTTP session. Configured iOS builds can use native Google sign-in. See [the mobile guide](../mobile/README.md) for platform setup.
+
+## Ledger workflow
+
+1. Create a student and optionally add them to classes. The student form collects identity and contact details. A single lesson takes its own rate, and a class lesson uses the class rate. Saved lessons keep their price snapshots.
+2. The Lessons tab at `/app/sessions` lists per-student attendance and tuition rows. A shared group or class lesson at `/app/lessons/[id]` holds common lesson information and links those rows. Recording a group or class lesson writes one row per selected participant. Bulk completion applies to selected eligible planned rows.
+3. The statement editor selects completed, chargeable, unlocked attendance for one student. Issuance saves the statement snapshots and locks those attendance rows. Amendments and voids handle lesson locks in the same transaction as statement changes.
+4. A teacher records or adjusts a payment from the statement. The payment transaction updates the amount received, which drives paid/unpaid labels in Lessons and Statements. Issued statements can produce expiring share links. Optional Gmail delivery uses the active link and saved recipient, is gated by the verified-teacher whitelist, and can embed a VietQR for an unpaid balance with bank details. The email captures the balance at send time. See [Deployment](DEPLOYMENT.md#optional-statement-email-through-gmail).
 
 ## Invariants
 
@@ -45,14 +60,28 @@ The application shell holds a preview from the header picker separately from the
 
 Retro component styles are scoped to `data-theme="playful-retro"` and exclude the `data-theme="statement"` boundary. Palette, border and shadow tokens live in globals.css; shared cards can opt into `data-tone="yellow|pink|blue|mint"`. Buttons expose their existing variant as data for theme styling. Nunito is bundled under SIL OFL 1.1 via next/font/local, with preloading disabled so unused themes do not preload it.
 
-## Limits
+English is the default locale. The translation helpers in `src/lib/i18n/` resolve the locale and map source strings through `src/lib/i18n/en.json`. Keep labels and messages available in both English and Vietnamese. The locale does not change Vietnam business dates or the VND currency.
+
+## Workspace lists and calendars
+
+`src/components/workspace.tsx` drives Dashboard, Students, student ledgers, and the Lessons tab. Class and Statement lists live in `src/features/classes/list.tsx` and `src/features/statements/list.tsx`. The four directory tabs reuse `RecordViewSwitch` and `RecordNote`. Notes are the default and preserve the same actions and filters as List. Classes and Lessons also offer a month calendar. `RecordIdentity` is shared by Students and Classes. Its name frame uses theme tokens and the surrounding note has a lighter tint. Lesson and Statement notes have their own styles.
+
+The main Lessons and Statements tabs default to the current month in Vietnam. Lessons filter by lesson date and Statements by issue date, falling back to creation date in Vietnam. Dashboard billing/status links and student ledgers use all dates by default so older balances remain visible. Clearing the Lessons filters or choosing **All time** in Statements is the path to earlier records from those tabs. Dashboard totals retain their own reporting rules.
+
+Workspace directories request Vietnamese alphabetical ordering for students and the next weekly slot for classes, with unscheduled classes last. Lesson lists request ascending date/time order, placing untimed lessons last within their day. The API sorts before pagination, binds cursors to the owner and filters, and holds the class schedule reference time across pages. Date ordering uses the existing date index and completes boundary days to keep equal-date lessons in time order. Note grids follow row-major reading order.
+
+Monthly calendars reuse the authenticated list APIs and follow every pagination cursor, including empty filtered pages. The Classes calendar projects saved weekly timetables and excludes archived classes. The Lessons calendar shows recorded sessions for the selected month and filters, grouping attendance rows by lesson ID. Date-only calendar arithmetic uses UTC to avoid browser timezone shifts. Class times remain Vietnam times.
+
+Weekly class slots use Vietnam time. The upcoming schedule projects the next seven days. While the signed-in workspace is open, it checks for due slots and records them as planned lessons with one row per active participant. It catches up when the teacher returns. A saved class lesson at the same time takes precedence. A planned lesson enters billing after the teacher marks it complete and chargeable. The manifest provides a launch shortcut.
+
+## Bank transfer reconciliation
 
 Issuing a statement freezes the configured bank details on that statement. The teacher and the recipient can scan the same VietQR while there is an outstanding balance. The app renders it locally with the outstanding amount and a transfer reference that fits the NAPAS 25-character memo field. Existing issued statements retain their transfer references and any legacy text instructions.
 
 An optional iPhone Shortcut can forward incoming bank notices. Its scoped key unlocks an encrypted Firebase session that the server verifies for revocation on every request. The user can confirm with Google to enable renewal on demand. Firebase refresh credentials are encrypted with the Shortcut key and stored only on the server. Disconnecting deletes the connection. Revoked Firebase credentials require reconnection. The payment transaction checks the connection again and matches the receiving account on the statement, a unique issued-statement reference, and the full outstanding balance. The server retains the normal transfer record and idempotency hash, without the notice text or bank balance.
 
-Workspace directories request Vietnamese alphabetical ordering for students and the next weekly slot for classes, with unscheduled classes last. Lesson lists request ascending date/time order, placing untimed lessons last within their day. The API sorts before pagination, binds cursors to the owner and filters, and holds the class schedule reference time across pages. Date ordering uses the existing date index and completes boundary days to keep equal-date lessons in time order. Note grids follow row-major reading order.
+The notification entry point is `/api/bank-notifications`. Parsing lives in `src/domain/bank-notification.ts`. Shortcut authorization lives in `src/lib/server/bank-shortcut.ts`, and the payment record is committed by `src/lib/server/payments-repository.ts`. The parser accepts the supported compact bank reference when separators have been removed. Notifications with insufficient data leave the ledger unchanged.
 
-Monthly calendars reuse the authenticated list APIs and follow every pagination cursor, including empty filtered pages. The Classes calendar projects saved weekly timetables and excludes archived classes; it does not create or confirm lessons. The Lessons calendar shows recorded sessions for the selected month and filters, grouping attendance rows by lesson ID. Date-only calendar arithmetic uses UTC to avoid browser timezone shifts; class times remain Vietnam times.
+## Verification boundaries
 
-Weekly class slots use Vietnam time. The upcoming schedule projects the next seven days. While the signed-in app is open, it checks for due slots and records them as planned lessons with one row per active participant. It catches up when the teacher returns. A saved class lesson at the same time takes precedence. A planned lesson enters billing after the teacher marks it complete and chargeable. Prepaid packages and multi-staff permissions are outside the current scope. The manifest provides a launch shortcut. Emulator tests do not prove cloud indexes, IAM, OAuth, or installation on real devices. Cloud checks need isolated staging and fake data.
+Keep Firestore Rules tests separate from backend isolation tests because Admin SDK bypasses Rules. The Emulator suite covers both and runs browser tests against a demo build. Hosted public smoke checks verify public routes and anonymous access controls. Cloud indexes, IAM, real Google OAuth, authenticated cloud flows and installation on real devices need separate validation. Prepaid packages and multi-staff permissions are outside the current scope.
