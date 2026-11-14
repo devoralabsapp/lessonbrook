@@ -79,7 +79,7 @@ test("giáo viên 360px: học viên không cần đơn giá → nhập giá khi
   ).toBeVisible();
   const refreshStarted = Promise.withResolvers<void>();
   const releaseRefresh = Promise.withResolvers<void>();
-  await page.route("**/api/students?archived=false", async (route) => {
+  await page.route("**/api/students?**", async (route) => {
     refreshStarted.resolve();
     await releaseRefresh.promise;
     await route.continue();

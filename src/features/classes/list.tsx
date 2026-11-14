@@ -39,7 +39,7 @@ export function ClassesList() {
   const mutation = useStatementMutation();
   const term = useDebounced(search);
   const list = usePaged<TeachingClass>(
-    `/api/classes?${new URLSearchParams({ q: term, archived: String(archived) })}`,
+    `/api/classes?${new URLSearchParams({ order: "schedule", q: term, archived: String(archived) })}`,
   );
 
   async function edit(id: string) {
@@ -174,7 +174,7 @@ export function ClassesList() {
         {showCalendar && (
           <WorkspaceMonthCalendar
             kind="classes"
-            endpoint={`/api/classes?${new URLSearchParams({ q: term, archived: String(archived) })}`}
+            endpoint={`/api/classes?${new URLSearchParams({ order: "schedule", q: term, archived: String(archived) })}`}
             revision={calendarRevision}
           />
         )}

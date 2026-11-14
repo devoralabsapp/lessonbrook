@@ -34,6 +34,8 @@ import {
 } from "./repository";
 import { AppError } from "./errors";
 import { listPage, listScope } from "./list-page";
+import { chronologicalListPage, orderedListPage } from "./ordered-list-page";
+import { classOrderKey } from "@/domain/record-order";
 import { admin } from "@/lib/firebase/admin";
 import { assertAccountWritable } from "./account-access";
 
@@ -162,6 +164,7 @@ export async function archiveClass(
 }
 const classListSchema = z
   .object({
+    order: z.literal("schedule").optional(),
     archived: z.enum(["true", "false", "all"]).default("false"),
     q: searchSchema,
     cursor: z.string().optional(),
@@ -170,6 +173,26 @@ const classListSchema = z
   .strict();
 export async function listClasses(uid: string, raw: unknown) {
   const input = classListSchema.parse(raw);
+  if (input.order === "schedule") {
+    return orderedListPage({
+      read: async () =>
+        (await userRef(uid).collection("classes").get()).docs
+          .map(classDto)
+          .filter(
+            (item) =>
+              (input.archived === "all" ||
+                Boolean(item.archivedAt) === (input.archived === "true")) &&
+              normalizeSearch(item.displayName).includes(input.q),
+          ),
+      key: classOrderKey,
+      scope: listScope(uid, "classes-schedule", {
+        archived: input.archived,
+        q: input.q,
+      }),
+      cursor: input.cursor,
+      limit: input.limit,
+    });
+  }
   return listPage({
     query: userRef(uid)
       .collection("classes")
@@ -562,6 +585,7 @@ async function materializeOccurrence(
 }
 const lessonListSchema = z
   .object({
+    order: z.literal("chronological").optional(),
     classId: idSchema.optional(),
     type: z.enum(["all", "group"]).default("all"),
     cursor: z.string().optional(),
@@ -572,6 +596,24 @@ export async function listLessons(uid: string, raw: unknown) {
   const input = lessonListSchema.parse(raw);
   if (input.classId)
     classDto(await userRef(uid).collection("classes").doc(input.classId).get());
+  if (input.order === "chronological") {
+    return chronologicalListPage({
+      query: userRef(uid)
+        .collection("lessons")
+        .orderBy("sessionDate", "desc")
+        .orderBy(FieldPath.documentId(), "desc"),
+      dto: lessonDto,
+      matches: (item) =>
+        (!input.classId || item.classId === input.classId) &&
+        (input.type !== "group" || item.classId === null),
+      scope: listScope(uid, "lessons-chronological", {
+        classId: input.classId ?? null,
+        type: input.type,
+      }),
+      cursor: input.cursor,
+      limit: input.limit,
+    });
+  }
   return listPage({
     query: userRef(uid)
       .collection("lessons")

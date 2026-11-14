@@ -39,6 +39,11 @@ import {
   completedSessionFields,
   MAX_SESSION_COMPLETION,
 } from "@/domain/session-completion";
+import {
+  compareRecordKeys,
+  studentOrderKey,
+  lessonOrderKey,
+} from "@/domain/record-order";
 import { LessonPaymentStatus } from "./lesson-payment-status";
 import { ApiError, api } from "@/lib/client-api";
 import { Button } from "./ui/button";
@@ -156,9 +161,11 @@ export function Workspace({
   const params = new URLSearchParams();
   const [targetKind, targetId] = range.target.split(":");
   if (mode === "students") {
+    params.set("order", "name");
     params.set("archived", String(archived));
     if (queryText.trim()) params.set("q", queryText.trim());
   } else {
+    if (mode === "sessions") params.set("order", "chronological");
     if (studentId || range.studentId)
       params.set("studentId", studentId || range.studentId);
     if (targetId)
@@ -425,12 +432,10 @@ export function Workspace({
           matchesSession(record, range.status, range.billing, range.type);
         return {
           ...current,
-          sessions: updatePage(
-            current.sessions,
-            record,
-            matches,
-            (a, b) =>
-              compare(b.sessionDate, a.sessionDate) || compare(b.id, a.id),
+          sessions: updatePage(current.sessions, record, matches, (a, b) =>
+            mode === "sessions"
+              ? compareRecordKeys(lessonOrderKey(a), lessonOrderKey(b))
+              : compare(b.sessionDate, a.sessionDate) || compare(b.id, a.id),
           ),
         };
       }
@@ -443,10 +448,7 @@ export function Workspace({
       return {
         ...current,
         students: updatePage(current.students, record, matches, (a, b) =>
-          archived
-            ? compare(b.archivedAt ?? "", a.archivedAt ?? "") ||
-              compare(b.id, a.id)
-            : compare(a.displayName, b.displayName) || compare(a.id, b.id),
+          compareRecordKeys(studentOrderKey(a), studentOrderKey(b)),
         ),
       };
     });
@@ -1172,7 +1174,7 @@ export function Workspace({
                 <div
                   className={
                     showNotes
-                      ? "record-lesson-actions flex w-full flex-wrap items-center justify-end gap-x-2 gap-y-1 border-t border-border pt-2"
+                      ? "record-lesson-actions flex w-full flex-wrap items-center justify-start gap-x-2 gap-y-1 border-t border-border pt-2"
                       : "ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3"
                   }
                 >

@@ -11,7 +11,7 @@ import { LoadError, usePaged } from "./shared";
 export function LessonsList({ classId }: { classId?: string }) {
   const { t, locale } = useI18n();
   const list = usePaged<GroupLesson>(
-    `/api/lessons?limit=20${classId ? `&classId=${encodeURIComponent(classId)}` : ""}`,
+    `/api/lessons?order=chronological&limit=20${classId ? `&classId=${encodeURIComponent(classId)}` : ""}`,
   );
   return (
     <div className="space-y-4">

@@ -1,3 +1,9 @@
+import {
+  compareRecordKeys,
+  studentOrderKey,
+  classOrderKey,
+  lessonOrderKey,
+} from "@/domain/record-order";
 import "server-only";
 
 import { createHash } from "node:crypto";
@@ -332,10 +338,13 @@ function read(
           state.students
             .filter((s) => matches(s.displayName, s.archivedAt))
             .sort((a, b) =>
-              archived === "true"
-                ? compare(b.archivedAt ?? "", a.archivedAt ?? "") ||
-                  compare(b.id, a.id)
-                : compare(a.displayName, b.displayName) || compare(a.id, b.id),
+              query.get("order") === "name"
+                ? compareRecordKeys(studentOrderKey(a), studentOrderKey(b))
+                : archived === "true"
+                  ? compare(b.archivedAt ?? "", a.archivedAt ?? "") ||
+                    compare(b.id, a.id)
+                  : compare(a.displayName, b.displayName) ||
+                    compare(a.id, b.id),
             ),
           query,
         );
@@ -350,9 +359,13 @@ function read(
     return page(
       state.classes
         .filter((c) => matches(c.displayName, c.archivedAt))
-        .sort(
-          (a, b) =>
-            compare(a.displayName, b.displayName) || compare(a.id, b.id),
+        .sort((a, b) =>
+          query.get("order") === "schedule"
+            ? compareRecordKeys(
+                classOrderKey(a, new Date(at)),
+                classOrderKey(b, new Date(at)),
+              )
+            : compare(a.displayName, b.displayName) || compare(a.id, b.id),
         ),
       query,
     );
@@ -379,7 +392,11 @@ function read(
                   query.get("type") ?? "all",
                 ),
             )
-            .sort((a, b) => oldest(b, a)),
+            .sort((a, b) =>
+              query.get("order") === "chronological"
+                ? compareRecordKeys(lessonOrderKey(a), lessonOrderKey(b))
+                : oldest(b, a),
+            ),
           query,
         );
   }
@@ -400,9 +417,10 @@ function read(
             (!query.has("classId") || l.classId === query.get("classId")) &&
             (query.get("type") !== "group" || !l.classId),
         )
-        .sort(
-          (a, b) =>
-            compare(b.sessionDate, a.sessionDate) || compare(b.id, a.id),
+        .sort((a, b) =>
+          query.get("order") === "chronological"
+            ? compareRecordKeys(lessonOrderKey(a), lessonOrderKey(b))
+            : compare(b.sessionDate, a.sessionDate) || compare(b.id, a.id),
         ),
       query,
     );

@@ -32,6 +32,8 @@ import { AppError } from "./errors";
 import { teacherSettingsSchema } from "@/domain/onboarding";
 import type { Theme } from "@/domain/appearance";
 import { listPage, listScope } from "./list-page";
+import { chronologicalListPage, orderedListPage } from "./ordered-list-page";
+import { studentOrderKey, lessonOrderKey } from "@/domain/record-order";
 import {
   searchSchema,
   normalizeSearch,
@@ -323,6 +325,7 @@ export async function getStudent(uid: string, id: string) {
 }
 export const studentListSchema = z
   .object({
+    order: z.literal("name").optional(),
     archived: z.enum(["false", "true"]).default("false"),
     q: searchSchema,
     cursor: z.string().optional(),
@@ -331,6 +334,25 @@ export const studentListSchema = z
   .strict();
 export async function listStudents(uid: string, raw: unknown) {
   const input = studentListSchema.parse(raw);
+  if (input.order === "name") {
+    return orderedListPage({
+      read: async () =>
+        (await userRef(uid).collection("students").get()).docs
+          .map(studentDto)
+          .filter(
+            (item) =>
+              Boolean(item.archivedAt) === (input.archived === "true") &&
+              normalizeSearch(item.displayName).includes(input.q),
+          ),
+      key: studentOrderKey,
+      scope: listScope(uid, "students-name", {
+        archived: input.archived,
+        q: input.q,
+      }),
+      cursor: input.cursor,
+      limit: input.limit,
+    });
+  }
   // archivedAt != null requires ordering by archivedAt. Active list orders by name.
   let query: Query = userRef(uid).collection("students");
   query =
@@ -526,6 +548,7 @@ export async function getSession(uid: string, id: string) {
 }
 export const sessionListSchema = z
   .object({
+    order: z.literal("chronological").optional(),
     studentId: idSchema.optional(),
     classId: idSchema.optional(),
     lessonId: idSchema.optional(),
@@ -555,6 +578,73 @@ export async function listSessions(uid: string, raw: unknown) {
     .orderBy(FieldPath.documentId(), "desc");
   const filterByPayment =
     input.billing === "paid" || input.billing === "unpaid";
+  if (input.order === "chronological" && input.studentId) {
+    // Equality on studentId uses its automatic single-field index. Sorting the
+    // student's history in memory also covers legacy rows without stored time keys.
+    const page = await orderedListPage<SessionWithPayment>({
+      read: async () => {
+        const records = (
+          await root
+            .collection("sessions")
+            .where("studentId", "==", input.studentId)
+            .get()
+        ).docs
+          .map(sessionDto)
+          .filter(
+            (item) =>
+              (!input.from || item.sessionDate >= input.from) &&
+              (!input.to || item.sessionDate <= input.to) &&
+              (!input.classId || item.classId === input.classId) &&
+              (!input.lessonId || item.lessonId === input.lessonId) &&
+              matchesSession(
+                item,
+                input.status,
+                filterByPayment ? "all" : input.billing,
+                input.type,
+              ),
+          );
+        return filterByPayment
+          ? (await withSessionPayments(root, records)).filter((item) =>
+              matchesSession(item, input.status, input.billing, input.type),
+            )
+          : records;
+      },
+      key: lessonOrderKey,
+      scope: listScope(uid, "student-sessions-chronological", {
+        ...input,
+        cursor: undefined,
+        limit: undefined,
+      }),
+      cursor: input.cursor,
+      limit: input.limit,
+    });
+    return filterByPayment
+      ? page
+      : { ...page, items: await withSessionPayments(root, page.items) };
+  }
+  if (input.order === "chronological") {
+    const page = await chronologicalListPage<SessionWithPayment>({
+      query,
+      dto: sessionDto,
+      matches: (item) =>
+        (!input.classId || item.classId === input.classId) &&
+        (!input.lessonId || item.lessonId === input.lessonId) &&
+        matchesSession(item, input.status, input.billing, input.type),
+      enrich: filterByPayment
+        ? (items) => withSessionPayments(root, items)
+        : undefined,
+      scope: listScope(uid, "sessions-chronological", {
+        ...input,
+        cursor: undefined,
+        limit: undefined,
+      }),
+      cursor: input.cursor,
+      limit: input.limit,
+    });
+    return filterByPayment
+      ? page
+      : { ...page, items: await withSessionPayments(root, page.items) };
+  }
   const page = await listPage<SessionWithPayment>({
     query,
     orderField: "sessionDate",

@@ -353,16 +353,22 @@ summary:focus-visible {
 }
 
 .record-note-grid {
-  columns: 13rem;
-  column-gap: 1.25rem;
+  --note-width: 13rem;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, var(--note-width)), 1fr)
+  );
+  align-items: start;
+  gap: 1rem 1.25rem;
 }
 
 .record-note-grid.record-note-lessons {
-  column-width: 19rem;
+  --note-width: 17.5rem;
 }
 
 .record-note-grid.record-note-statements {
-  column-width: 20rem;
+  --note-width: 20rem;
 }
 
 .record-statement-payment {
@@ -370,15 +376,6 @@ summary:focus-visible {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 0.5rem;
-}
-
-@media (width < 360px) {
-  .record-note-lessons [data-slot="lesson-date"] {
-    width: 4rem;
-  }
-  .record-note-lessons .lesson-date-month {
-    padding-inline: 0;
-  }
 }
 
 /* The action stays a button for keyboard and disabled behavior. */
@@ -401,6 +398,12 @@ summary:focus-visible {
 .record-text-action:disabled {
   opacity: 0.5;
 }
+.record-note-lessons [data-slot="lesson-date"] {
+  width: 4.5rem;
+}
+.record-note-lessons .lesson-date-month {
+  padding-inline: 0;
+}
 .record-lesson-actions .status {
   white-space: nowrap;
 }
@@ -413,7 +416,7 @@ summary:focus-visible {
 .record-note-grid > .record-note {
   display: inline-block;
   width: 100%;
-  margin-block: 0.6rem 1.15rem;
+  margin-block: 0.6rem;
   break-inside: avoid;
   vertical-align: top;
 }
@@ -1142,7 +1145,7 @@ dialog::backdrop {
     .record-note-grid:where(
       :not(.record-note-lessons, .record-note-statements)
     ) {
-    column-width: 12rem;
+    --note-width: 12rem;
   }
   [data-workspace] .record-note-grid {
     column-gap: 14px;

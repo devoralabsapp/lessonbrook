@@ -132,7 +132,6 @@ test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi
     await page.goto("/app/students");
     const search = page.getByLabel("Tìm học viên", { exact: true });
     await search.fill("dang hong anh");
-    await page.getByRole("button", { name: "Tìm tiếp", exact: true }).click();
     await expect(page.getByRole("link", { name: /Đặng Hồng Ánh/ })).toHaveCount(
       3,
     );
@@ -150,7 +149,6 @@ test("360px: tìm ngoài trang đầu/không dấu/lưu trữ, bỏ phản hồi
     await search.fill("lan");
     await requested.promise;
     await search.fill("Ánh");
-    await page.getByRole("button", { name: "Tìm tiếp", exact: true }).click();
     await expect(page.getByRole("link", { name: /Đặng Hồng Ánh/ })).toHaveCount(
       3,
     );
