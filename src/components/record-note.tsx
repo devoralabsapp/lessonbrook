@@ -59,7 +59,7 @@ export function RecordIdentity({
   note: boolean;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 items-start gap-2 rounded-lg border border-border px-2 py-1.5">
+    <div className="record-identity flex min-w-0 flex-1 items-start gap-2 rounded-xl border-2 border-primary px-2 py-1.5">
       <span
         aria-hidden="true"
         className={cn(
