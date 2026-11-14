@@ -240,10 +240,10 @@ export function Workspace({
   ]);
   const view = data?.key === key ? data : null;
   const loadError = error?.key === requestKey ? error.message : "";
-  const loading =
-    !invalidRange &&
-    ((mode === "students" && search !== queryText) || (!view && !loadError));
-  const updating = !!view && view.revision !== revision && !loadError;
+  const loading = !invalidRange && !view && !loadError;
+  const updating =
+    (mode === "students" && search !== queryText) ||
+    (!!view && view.revision !== revision && !loadError);
   const bulkBusy = selectionBusy || completing;
   const selectable = !loading && !updating && !invalidRange && !loadError;
 
@@ -653,7 +653,7 @@ export function Workspace({
           </Button>
         </div>
       )}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden" aria-busy={updating}>
         <div
           className={`flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 sm:px-6 ${mode === "sessions" ? "py-3" : "py-5"}`}
         >

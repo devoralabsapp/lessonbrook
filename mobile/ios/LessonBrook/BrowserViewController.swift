@@ -29,6 +29,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private var screen = Screen.welcome
     private var selectedTab = WorkspaceTab.dashboard
     private var snapshot: WorkspaceSnapshot?
+    private var dashboardDisplayed = false
+    private var dashboardTheme: String?
     private var webTheme: String?
     private var locale = "en"
     private var request: Task<Void, Never>?
@@ -262,7 +264,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         }
     }
 
-    private func showNative(_ next: Screen, body: some View) {
+    private func showNative(_ next: Screen, body: some View, reuseDashboard: Bool = false) {
         activity.stopAnimating()
         dashboardTimer?.invalidate()
         dashboardTimer = nil
@@ -273,7 +275,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         webRoot = nil
         screen = next
         native.view.isHidden = false
-        native.rootView = AnyView(body)
+        if !reuseDashboard { native.rootView = AnyView(body) }
         configureChrome()
     }
 
@@ -283,6 +285,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         demoMode = false
         scheduleInitialized = false
         snapshot = nil
+        dashboardDisplayed = false
+        dashboardTheme = nil
         webTheme = nil
         selectedTab = .dashboard
         showNative(.welcome, body: welcome(nil, expired: expired))
@@ -326,6 +330,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
     private func showDemo() {
         demoMode = true
         snapshot = nil
+        dashboardDisplayed = false
+        dashboardTheme = nil
         webTheme = nil
         selectedTab = .dashboard
         openPage("/app")
@@ -353,7 +359,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
         signedIn = true
         selectedTab = .dashboard
         if let snapshot {
-            showNative(.today, body: dashboard(snapshot))
+            let theme = webTheme ?? snapshot.theme
+            showNative(.today, body: dashboard(snapshot),
+                       reuseDashboard: dashboardDisplayed && dashboardTheme == theme)
+            dashboardDisplayed = true
+            dashboardTheme = theme
         } else {
             showNative(.today, body: ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity))
         }
@@ -383,11 +393,18 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             )
             guard !Task.isCancelled, screen == .today else { return }
             scheduleInitialized = true
+            // Keep the mounted dashboard/scroll position when validation finds no change.
+            let changed = !dashboardDisplayed || snapshot != value ||
+                dashboardTheme != value.theme
             snapshot = value
             webTheme = nil
             locale = value.locale
-            native.rootView = AnyView(dashboard(value))
-            configureChrome()
+            if changed {
+                native.rootView = AnyView(dashboard(value))
+                dashboardDisplayed = true
+                dashboardTheme = value.theme
+                configureChrome()
+            }
         } catch MobileSignIn.Failure.expired {
             guard !Task.isCancelled, screen == .today else { return }
             if let session = saved.first(where: { $0.name == MobileSignIn.sessionName }) {
@@ -400,6 +417,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, UITab
             openPage("/account/deletion")
         } catch {
             guard !quiet, !Task.isCancelled, screen == .today else { return }
+            dashboardDisplayed = false
             native.rootView = AnyView(failure { [weak self] in self?.showToday() })
         }
     }

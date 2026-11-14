@@ -484,7 +484,7 @@ summary:focus-visible {
   box-shadow: var(--theme-card-edge, 0 3px 7px #24201d1c);
   color: var(--foreground);
   transform: translateY(var(--note-lift)) rotate(var(--note-tilt));
-  transform-origin: 50% 1rem;
+  transform-origin: var(--pin-left) 20px;
 }
 
 .record-note-grid > .record-note:nth-child(5n + 1) {
@@ -514,33 +514,37 @@ summary:focus-visible {
   }
   50%,
   85% {
-    transform: translateY(calc(var(--note-lift) - 3px))
-      rotate(calc(var(--note-tilt) + 0.55deg));
+    transform: translateY(var(--note-lift))
+      rotate(calc(var(--note-tilt) + 0.3deg));
   }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .record-note {
-    animation: note-sway 9s ease-in-out var(--note-delay) infinite;
+    animation: note-sway 12s ease-in-out var(--note-delay) infinite;
+    animation-play-state: paused;
   }
-  .record-note:is(:hover, :focus-within) {
+  .record-note[data-note-visible] {
+    animation-play-state: running;
+  }
+  .record-note:is(:hover, :has(:focus-visible)) {
     animation-play-state: paused;
   }
   .record-note {
     transition:
-      translate 180ms ease-out,
-      scale 180ms ease-out;
+      translate 240ms cubic-bezier(0.22, 1, 0.36, 1),
+      scale 240ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .record-note:focus-within {
-    translate: 0 -3px;
-    scale: 1.015;
+  .record-note:has(:focus-visible) {
+    translate: 0 -1px;
+    scale: 1.005;
     z-index: 1;
   }
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .record-note:hover {
-    translate: 0 -5px;
-    scale: 1.025;
+    translate: 0 -2px;
+    scale: 1.01;
     z-index: 1;
   }
 }
@@ -578,14 +582,13 @@ summary:focus-visible {
 
 .record-note-pin {
   position: absolute;
-  top: var(--pin-top);
-  left: calc(var(--pin-left) - 0.8rem);
-  width: 1.6rem;
-  height: 1.6rem;
+  top: calc(var(--pin-top) - 12px);
+  left: calc(var(--pin-left) - 1rem);
+  width: 2rem;
+  height: 2.375rem;
   transform: rotate(var(--pin-angle));
   color: #9f1426;
   fill: #ef334f;
-  filter: drop-shadow(1px 2px 0 #211f1b33);
   pointer-events: none;
 }
 
@@ -846,16 +849,14 @@ dialog::backdrop {
 
 @media (prefers-reduced-motion: no-preference) {
   .fade-in {
-    animation: appear 0.3s ease both;
+    animation: appear 160ms ease-out both;
   }
   @keyframes appear {
     from {
       opacity: 0;
-      transform: translateY(5px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
     }
   }
 }

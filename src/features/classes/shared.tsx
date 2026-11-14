@@ -64,13 +64,14 @@ export function usePaged<
   const key = `${endpoint}:${revision}`;
   const [result, setResult] = useState<{
     key: string;
+    endpoint: string;
     page: Page<T>;
   } | null>(null);
   useEffect(() => {
     let active = true;
     api<Page<T>>(endpoint)
       .then((page) => {
-        if (active) setResult({ key, page });
+        if (active) setResult({ key, endpoint, page });
       })
       .catch((error) => {
         if (active)
@@ -86,9 +87,10 @@ export function usePaged<
       active = false;
     };
   }, [endpoint, key, t]);
-  const page = result?.key === key ? result.page : null;
+  const page = result?.endpoint === endpoint ? result.page : null;
+  const refreshing = !!page && result?.key !== key && failure?.key !== key;
   async function more() {
-    if (!page?.nextCursor || moreBusy) return;
+    if (!page?.nextCursor || moreBusy || result?.key !== key) return;
     setMoreBusy(true);
     try {
       const next = await api<Page<T>>(
@@ -98,6 +100,7 @@ export function usePaged<
         prev?.key === key
           ? {
               key,
+              endpoint,
               page: {
                 items: [
                   ...prev.page.items,
@@ -125,6 +128,7 @@ export function usePaged<
   }
   return {
     page,
+    refreshing,
     more,
     moreBusy,
     error: failure?.key === key ? failure.message : "",

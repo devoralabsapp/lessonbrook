@@ -41,6 +41,21 @@ test("notes share filters, actions and selection with the four workspace lists",
         .evaluate((pin) => parseFloat(getComputedStyle(pin).width)),
     ).toBeGreaterThan(24);
     await expect(papers.first()).toHaveCSS("animation-name", "note-sway");
+    await papers.first().scrollIntoViewIfNeeded();
+    await expect(papers.first()).toHaveAttribute("data-note-visible");
+    await expect
+      .poll(() =>
+        papers.evaluateAll((nodes) =>
+          nodes.every((node) => {
+            const box = node.getBoundingClientRect();
+            return (
+              (box.bottom > 0 && box.top < innerHeight) ||
+              getComputedStyle(node).animationPlayState === "paused"
+            );
+          }),
+        ),
+      )
+      .toBe(true);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect(papers.first()).toHaveCSS("animation-name", "none");
     expect(
@@ -106,4 +121,56 @@ test("notes share filters, actions and selection with the four workspace lists",
     }
     await page.emulateMedia({ reducedMotion: "no-preference" });
   }
+});
+
+test("refreshing the same class filter retains its notes until the validated response arrives", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    { name: "chotcong_locale", value: "en", domain: "localhost", path: "/" },
+  ]);
+  await page.goto("/demo/classes");
+  const papers = page.locator("article[data-note-color]");
+  await expect(papers.first()).toBeVisible();
+  const count = await papers.count();
+  const first = papers.first();
+  await first.evaluate((node) =>
+    node.setAttribute("data-retained-note", "true"),
+  );
+  let release!: () => void;
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const requested = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let hold = false;
+  await page.route("**/api/demo", async (route) => {
+    const { command } = route.request().postDataJSON();
+    if (command.method === "POST" && command.path.endsWith("/archive"))
+      hold = true;
+    if (
+      hold &&
+      command.method === "GET" &&
+      command.path.startsWith("/api/classes?")
+    ) {
+      started();
+      await waiting;
+    }
+    await route.continue();
+  });
+  try {
+    await first.getByRole("button", { name: "Archive", exact: true }).click();
+    await requested;
+    await expect(page.locator('[data-retained-note="true"]')).toBeVisible();
+    await expect(papers).toHaveCount(count);
+    await expect(
+      page.locator('[data-slot="card"][aria-busy="true"]'),
+    ).toBeVisible();
+  } finally {
+    release();
+  }
+  await expect(papers).toHaveCount(count - 1);
 });

@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct WorkspaceSnapshot: Decodable {
-    struct Summary: Decodable {
+struct WorkspaceSnapshot: Decodable, Equatable {
+    struct Summary: Decodable, Equatable {
         let activeStudents: Int
         let outstandingVnd: Int
         let overdueVnd: Int
@@ -17,7 +17,7 @@ struct WorkspaceSnapshot: Decodable {
     let locale: String
     let schedule: Schedule?
 
-    struct Schedule: Decodable {
+    struct Schedule: Decodable, Equatable {
         let today: String
         let items: [Lesson]
         let recurring: [Lesson]?
@@ -29,7 +29,7 @@ struct WorkspaceSnapshot: Decodable {
         }
     }
 
-    struct Lesson: Decodable, Identifiable {
+    struct Lesson: Decodable, Identifiable, Equatable {
         let id: String
         let kind: String
         let name: String?

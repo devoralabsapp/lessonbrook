@@ -26,9 +26,11 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONException;
@@ -65,6 +67,11 @@ public final class MainActivity extends Activity {
     private Screen screen = Screen.WELCOME;
     private NativeWorkspace.Tab tab = NativeWorkspace.Tab.DASHBOARD;
     private NativeWorkspace.Snapshot snapshot;
+    // Account-local RAM cache; no tuition data is persisted to disk.
+    private View dashboardView;
+    private NativeWorkspace.Snapshot dashboardSnapshot;
+    private String dashboardTheme;
+    private String dashboardLocale;
     private String webTheme;
     private String locale = "en";
     private String webRoot;
@@ -273,6 +280,10 @@ public final class MainActivity extends Activity {
         demoMode = false;
         scheduleInitialized = false;
         snapshot = null;
+        dashboardView = null;
+        dashboardSnapshot = null;
+        dashboardTheme = null;
+        dashboardLocale = null;
         webTheme = null;
         screen = Screen.WELCOME;
         tab = NativeWorkspace.Tab.DASHBOARD;
@@ -316,6 +327,10 @@ public final class MainActivity extends Activity {
     private void showDemo() {
         demoMode = true;
         snapshot = null;
+        dashboardView = null;
+        dashboardSnapshot = null;
+        dashboardTheme = null;
+        dashboardLocale = null;
         webTheme = null;
         tab = NativeWorkspace.Tab.DASHBOARD;
         openPage("/app");
@@ -379,7 +394,22 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void renderToday() { nativeView(workspace().today(snapshot, this::openPage)); }
+    private void renderToday() {
+        String theme = webTheme != null ? webTheme : snapshot.theme();
+        boolean changed = dashboardView == null || !snapshot.equals(dashboardSnapshot)
+            || !Objects.equals(theme, dashboardTheme) || !Objects.equals(locale, dashboardLocale);
+        if (!changed && dashboardView.getParent() == content) return;
+        if (changed) {
+            int scroll = dashboardView instanceof ScrollView ? dashboardView.getScrollY() : 0;
+            dashboardView = workspace().today(snapshot, this::openPage);
+            dashboardSnapshot = snapshot;
+            dashboardTheme = theme;
+            dashboardLocale = locale;
+            View restored = dashboardView;
+            if (scroll > 0) restored.post(() -> restored.scrollTo(0, scroll));
+        }
+        nativeView(dashboardView);
+    }
 
     private void showDashboardError() { nativeView(workspace().error(this::showToday)); }
 

@@ -1,5 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
-import { Pin } from "lucide-react";
+import { observeNoteMotion } from "@/lib/note-motion";
 import { cn } from "@/lib/utils";
 import { Card } from "./ui/card";
 import Link from "./workspace-link";
@@ -31,10 +33,11 @@ export function RecordNote({
   if (note)
     return (
       <article
+        ref={observeNoteMotion}
         data-note-color={paperColor(recordId)}
         className={cn("record-note", className)}
       >
-        <Pin className="record-note-pin" aria-hidden="true" />
+        <NotePin id={recordId} />
         {children}
       </article>
     );
@@ -44,6 +47,70 @@ export function RecordNote({
     <Container data-list-tone={tone} className={className}>
       {children}
     </Container>
+  );
+}
+
+function NotePin({ id }: { id: string }) {
+  const cap = `note-pin-cap-${id}`;
+  const body = `note-pin-body-${id}`;
+  return (
+    <svg
+      className="record-note-pin"
+      viewBox="0 0 36 42"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id={cap} x1="0" y1="0" x2="1" y2="1">
+          <stop stopColor="#ff8896" />
+          <stop offset=".45" stopColor="#ef334f" />
+          <stop offset="1" stopColor="#a9112c" />
+        </linearGradient>
+        <linearGradient id={body} x1="0" y1="0" x2="1" y2="0">
+          <stop stopColor="#ff6278" />
+          <stop offset=".5" stopColor="#dc2340" />
+          <stop offset="1" stopColor="#93112b" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="21" cy="33" rx="10" ry="3" fill="#211f1b" opacity=".18" />
+      <path
+        d="M17 26 18 40 22 26Z"
+        fill="#b8c5cb"
+        stroke="#65747b"
+        strokeWidth=".65"
+      />
+      <path d="m19 28-.5 9" stroke="#f5fafb" strokeWidth="1.2" />
+      <path
+        d="M13 12c1 5 1 8-3 12-4 5 20 7 16 0-4-4-4-7-3-12Z"
+        fill={`url(#${body})`}
+        stroke="#96142c"
+        strokeWidth="1"
+      />
+      <path
+        d="M15 16c1 4 0 7-3 9"
+        fill="none"
+        stroke="#ffb2bd"
+        strokeWidth="1.5"
+        opacity=".7"
+      />
+      <ellipse cx="18" cy="12" rx="11" ry="5" fill="#94132a" />
+      <path
+        d="M7 8v4c0 7 22 7 22 0V8Z"
+        fill={`url(#${body})`}
+        stroke="#96142c"
+        strokeWidth="1"
+      />
+      <ellipse
+        cx="18"
+        cy="8"
+        rx="11"
+        ry="5"
+        fill={`url(#${cap})`}
+        stroke="#a51a33"
+        strokeWidth="1"
+      />
+      <ellipse cx="15" cy="6.5" rx="6" ry="1.8" fill="#ffe1e4" opacity=".65" />
+    </svg>
   );
 }
 

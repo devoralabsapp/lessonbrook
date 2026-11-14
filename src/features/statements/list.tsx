@@ -54,6 +54,7 @@ export function StatementsList({
   const [revision, setRevision] = useState(0);
   const [data, setData] = useState<{
     key: string;
+    endpoint: string;
     page: Page<Statement>;
   } | null>(null);
   const [error, setError] = useState<{
@@ -89,7 +90,7 @@ export function StatementsList({
     let active = true;
     api<Page<Statement>>(endpoint)
       .then((page) => {
-        if (active) setData({ key, page });
+        if (active) setData({ key, endpoint, page });
       })
       .catch((error) => {
         if (active) setError({ key, message: error.message });
@@ -98,9 +99,10 @@ export function StatementsList({
       active = false;
     };
   }, [endpoint, key, t]);
-  const page = data?.key === key ? data.page : null;
+  const page = data?.endpoint === endpoint ? data.page : null;
+  const refreshing = !!page && data?.key !== key && error?.key !== key;
   async function more() {
-    if (!page?.nextCursor) return;
+    if (!page?.nextCursor || data?.key !== key) return;
     setMoreBusy(true);
     try {
       const next = await api<Page<Statement>>(
@@ -110,6 +112,7 @@ export function StatementsList({
         current?.key === key
           ? {
               key,
+              endpoint,
               page: {
                 items: [
                   ...current.page.items,
@@ -156,7 +159,7 @@ export function StatementsList({
           </Link>
         </Button>
       </div>
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden" aria-busy={refreshing}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
           <h2 className="text-sm font-semibold">{t("Danh sách bảng kê")}</h2>
           <RecordViewSwitch value={recordView} onChange={setRecordView} />
@@ -419,7 +422,11 @@ export function StatementsList({
         )}
         {page?.nextCursor && (
           <div className="border-t border-border p-4 text-center">
-            <Button variant="outline" disabled={moreBusy} onClick={more}>
+            <Button
+              variant="outline"
+              disabled={moreBusy || refreshing}
+              onClick={more}
+            >
               {moreBusy ? t("Đang tải…") : t("Tải thêm bảng kê")}
             </Button>
           </div>

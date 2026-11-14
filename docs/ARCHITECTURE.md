@@ -68,6 +68,8 @@ English is the default locale. The translation helpers in `src/lib/i18n/` resolv
 
 Statements use the same directory card structure: the list title and view switch sit in its header, filters follow, and results stay inside the card. List mode uses compact rows with separators and a right-aligned amount and status; Notes keep their pinned paper layout. Loading, empty, error and pagination states also stay inside the directory card.
 
+One shared IntersectionObserver pauses note animation outside the viewport, and a visibility listener pauses it when the document is hidden. Notes sway around their pin rather than translating the entire card. Keyboard focus and pointer hover use short, small transforms; reduced motion disables these effects. The shaded red SVG pins include their own cast shadow instead of a per-icon CSS filter. Observer subscriptions are released when notes unmount.
+
 Phone layouts use `.record-note-people` for compact two-column Students and Classes notes, independently of the wider Lesson and Statement notes. In the Lessons filters, Lesson type and Clear filters share a phone row, followed by Today, This month and Select. Desktop controls retain their existing arrangement.
 
 The main Lessons and Statements tabs default to the current month in Vietnam. Lessons filter by lesson date and Statements by issue date, falling back to creation date in Vietnam. Dashboard billing/status links and student ledgers use all dates by default so older balances remain visible. Clearing the Lessons filters or choosing **All time** in Statements is the path to earlier records from those tabs. Dashboard totals retain their own reporting rules.
@@ -95,6 +97,10 @@ After checking Firebase session revocation, the API reads the maintenance lock, 
 The read and write dependency maps are in `src/lib/server/workspace-cache.ts`. The shared `operation` transaction handles normal mutations including cash and Shortcut payments. Profile creation and guest theme changes, shared link creation, and scheduled lesson creation write revisions in their own transactions. Keep revision writes in the same transaction when adding a business mutation. Direct Admin edits outside the application can remain stale until the short TTL expires.
 
 Session verification, sharing authorization, bank Shortcut credentials, exports, and mutations use their existing direct reads. The demo is independent. Private HTTP responses still use `no-store` for browsers and CDNs. No additional caching service or client storage is required.
+
+The same server cache serves the native mobile APIs and embedded workspace screens. The browser client coalesces overlapping GET requests in a bounded RAM registry and drops entries when they settle; every later read still contacts the server. Starting and finishing a mutation clears the registry, so a pre-write read cannot be reused by a post-write request. Completed tuition responses are not stored in browser storage. Classes and Statements keep their current rows while the same filter is revalidated, but changing a filter hides the old result; pagination waits for the new response.
+
+Native iOS/Android retain an account-local Dashboard snapshot and mounted content in RAM. Returning to Dashboard, refreshing, resuming and periodic checks still validate with the server. Equal snapshots reuse the existing view and scroll position; data, theme or locale changes update it. Sign-out and demo entry clear this memory. There is no persistent offline tuition cache. Native cache/rendering changes require installing a rebuilt app.
 
 ## Verification boundaries
 

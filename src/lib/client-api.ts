@@ -25,7 +25,7 @@ export function csrfToken() {
     });
   return csrf;
 }
-export async function api<T>(
+async function request<T>(
   path: string,
   options?: {
     method?: string;
@@ -34,13 +34,6 @@ export async function api<T>(
     returnRecord?: boolean;
   },
 ): Promise<T> {
-  if (
-    path !== "/api/locale" &&
-    /^\/demo(?:\/|$)/.test(window.location.pathname)
-  ) {
-    const { demoApi } = await import("./demo-api");
-    return demoApi<T>(path, options);
-  }
   const mutation = options?.method && options.method !== "GET";
   const response = await fetch(path, {
     method: options?.method ?? "GET",
@@ -74,4 +67,40 @@ export async function api<T>(
     );
   }
   return data;
+}
+
+// RAM only, and only while an authenticated read is in flight. Completed results
+// remain governed by the server cache and its transactional revisions.
+const pendingReads = new Map<string, Promise<unknown>>();
+export async function api<T>(
+  path: string,
+  options?: Parameters<typeof request<T>>[1],
+): Promise<T> {
+  if (
+    path !== "/api/locale" &&
+    /^\/demo(?:\/|$)/.test(window.location.pathname)
+  ) {
+    const { demoApi } = await import("./demo-api");
+    return demoApi<T>(path, options);
+  }
+  const mutation = options?.method && options.method !== "GET";
+  if (mutation) {
+    pendingReads.clear();
+    try {
+      return await request<T>(path, options);
+    } finally {
+      // A read started before/during a write cannot be reused after that write.
+      pendingReads.clear();
+    }
+  }
+  const previous = pendingReads.get(path);
+  if (previous) return JSON.parse(JSON.stringify(await previous)) as T;
+  if (pendingReads.size >= 64) return request<T>(path, options);
+  const loading = request<T>(path, options);
+  pendingReads.set(path, loading);
+  try {
+    return await loading;
+  } finally {
+    if (pendingReads.get(path) === loading) pendingReads.delete(path);
+  }
 }

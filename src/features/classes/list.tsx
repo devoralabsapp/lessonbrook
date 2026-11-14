@@ -106,7 +106,7 @@ export function ClassesList() {
           {notice}
         </p>
       )}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden" aria-busy={list.refreshing}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
           <div>
             <h2 className="text-sm font-semibold">{t("Danh sách lớp học")}</h2>
@@ -245,7 +245,7 @@ export function ClassesList() {
             <Button
               variant="outline"
               size="sm"
-              disabled={list.moreBusy || search !== term}
+              disabled={list.moreBusy || list.refreshing || search !== term}
               onClick={list.more}
             >
               {list.moreBusy ? t("Đang tải…") : t("Tải tiếp lớp học")}
