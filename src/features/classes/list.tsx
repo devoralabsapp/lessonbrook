@@ -5,9 +5,9 @@ import {
   RecordViewSwitch,
   type RecordView,
 } from "@/components/record-view-switch";
-import { RecordNote } from "@/components/record-note";
+import { RecordIdentity, RecordNote } from "@/components/record-note";
 import { useState } from "react";
-import Link, { useWorkspaceHref } from "@/components/workspace-link";
+import { useWorkspaceHref } from "@/components/workspace-link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus } from "lucide-react";
 import type { TeachingClass } from "@/domain/classes";
@@ -200,46 +200,33 @@ export function ClassesList() {
                       : "flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
                   }
                 >
-                  <span
-                    aria-hidden="true"
-                    className={`flex ${showNotes ? "size-7" : "size-10"} shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold text-primary`}
-                  >
-                    {item.displayName[0]}
-                  </span>
-                  <Link
+                  <RecordIdentity
+                    note={showNotes}
+                    name={item.displayName}
                     href={`/app/classes/${item.id}`}
-                    className="min-w-0 flex-1"
-                  >
-                    <span className="block break-words text-sm font-semibold">
-                      {item.displayName}
-                    </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {t("{0} học viên", { "0": item.studentIds.length })}
-                    </span>
-                  </Link>
+                    detail={t("{0} học viên", { "0": item.studentIds.length })}
+                  />
                   <div
                     className={
-                      showNotes
-                        ? "flex w-full flex-wrap gap-2 border-t border-border pt-2"
-                        : "contents"
+                      showNotes ? "flex w-full flex-wrap gap-x-3" : "contents"
                     }
                   >
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    <button
+                      type="button"
+                      className="record-text-action"
                       disabled={!!opening || mutation.busy}
                       onClick={() => void edit(item.id)}
                     >
                       {opening === item.id ? t("Đang tải…") : t("Sửa")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    </button>
+                    <button
+                      type="button"
+                      className="record-text-action"
                       disabled={!!opening || mutation.busy}
                       onClick={() => void archive(item)}
                     >
                       {item.archivedAt ? t("Khôi phục") : t("Lưu trữ")}
-                    </Button>
+                    </button>
                   </div>
                 </RecordNote>
               ))}

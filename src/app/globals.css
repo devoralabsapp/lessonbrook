@@ -357,8 +357,57 @@ summary:focus-visible {
   column-gap: 1.25rem;
 }
 
-.record-note-statements {
-  column-width: 16.5rem;
+.record-note-grid.record-note-lessons {
+  column-width: 19rem;
+}
+
+.record-note-grid.record-note-statements {
+  column-width: 20rem;
+}
+
+.record-statement-payment {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.5rem;
+}
+
+@media (width < 360px) {
+  .record-note-lessons [data-slot="lesson-date"] {
+    width: 4rem;
+  }
+  .record-note-lessons .lesson-date-month {
+    padding-inline: 0;
+  }
+}
+
+/* The action stays a button for keyboard and disabled behavior. */
+.record-text-action {
+  min-height: 36px;
+  padding-inline: 6px;
+  color: inherit;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.record-text-action:hover:not(:disabled) {
+  text-decoration-thickness: 2px;
+}
+.record-text-action:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.record-text-action:disabled {
+  opacity: 0.5;
+}
+.record-lesson-actions .status {
+  white-space: nowrap;
+}
+@media (pointer: coarse) {
+  .record-text-action {
+    min-height: 44px;
+  }
 }
 
 .record-note-grid > .record-note {
@@ -1089,13 +1138,15 @@ dialog::backdrop {
     border-radius: var(--radius-2xl);
     scroll-padding-block: 12px;
   }
-  [data-workspace] .record-note-grid {
+  [data-workspace]
+    .record-note-grid:where(
+      :not(.record-note-lessons, .record-note-statements)
+    ) {
     column-width: 12rem;
+  }
+  [data-workspace] .record-note-grid {
     column-gap: 14px;
     padding-inline: 6px;
-  }
-  [data-workspace] .record-note-statements {
-    column-width: 16.5rem;
   }
   [data-workspace] nav[data-position="bottom"] a {
     min-height: 56px;

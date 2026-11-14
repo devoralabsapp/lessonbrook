@@ -1,7 +1,7 @@
 "use client";
 import { WorkspaceMonthCalendar } from "@/features/calendar/month-view";
 import { RecordViewSwitch, type RecordView } from "./record-view-switch";
-import { RecordNote } from "./record-note";
+import { RecordIdentity, RecordNote } from "./record-note";
 import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -996,41 +996,29 @@ export function Workspace({
                       : "flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"
                   }
                 >
-                  <span
-                    className={`flex ${showNotes ? "size-7" : "size-10"} shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold text-primary`}
-                  >
-                    {s.displayName[0]}
-                  </span>
-                  <Link
-                    className="min-w-0 flex-1"
+                  <RecordIdentity
+                    note={showNotes}
+                    name={s.displayName}
                     href={`/app/students/${s.id}`}
-                  >
-                    <span className="block break-words text-sm font-semibold">
-                      {s.displayName}
-                    </span>
-                    {(s.contactName || s.phone) && (
-                      <span className="mt-1 block break-words text-xs text-muted-foreground">
-                        {[s.contactName, s.phone].filter(Boolean).join(" · ")}
-                      </span>
-                    )}
-                  </Link>
+                    detail={[s.contactName, s.phone]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  />
                   <div
                     className={
-                      showNotes
-                        ? "flex w-full flex-wrap gap-2 border-t border-border pt-2"
-                        : "contents"
+                      showNotes ? "flex w-full flex-wrap gap-x-3" : "contents"
                     }
                   >
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    <button
+                      type="button"
+                      className="record-text-action"
                       onClick={() => setModal({ kind: "student", record: s })}
                     >
                       {t("Sửa")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    </button>
+                    <button
+                      type="button"
+                      className="record-text-action"
                       disabled={!!actionBusy}
                       onClick={() => archive(s)}
                     >
@@ -1039,7 +1027,7 @@ export function Workspace({
                         : s.archivedAt
                           ? t("Khôi phục")
                           : t("Lưu trữ")}
-                    </Button>
+                    </button>
                   </div>
                 </RecordNote>
               ))}
@@ -1062,7 +1050,9 @@ export function Workspace({
         ) : view?.sessions.items.length ? (
           <div
             className={
-              showNotes ? "record-note-grid p-5" : "divide-y divide-border"
+              showNotes
+                ? "record-note-grid record-note-lessons p-5"
+                : "divide-y divide-border"
             }
           >
             {view.sessions.items.map((s) => (
@@ -1154,27 +1144,35 @@ export function Workspace({
                     </Link>
                   )}
                   <p className="mt-1 break-words text-[11px] text-muted-foreground">
-                    <span className="inline-block">
+                    <span
+                      className={
+                        showNotes ? "block whitespace-nowrap" : "inline-block"
+                      }
+                    >
                       {formatDate(s.sessionDate, locale)}
                       {s.startTime ? ` · ${s.startTime}` : ""}
                     </span>{" "}
-                    <span className="inline-block font-semibold tabular-nums text-foreground">
-                      {"· "}
-                      {s.status === "completed" && s.billable
-                        ? formatVnd(s.amountVnd, locale)
-                        : !s.billable
-                          ? t("Miễn phí")
-                          : formatVnd(s.rateVnd, locale)}
+                    <span className={showNotes ? "block" : undefined}>
+                      <strong className="inline-block font-bold tabular-nums text-foreground">
+                        {"· "}
+                        {s.status === "completed" && s.billable
+                          ? formatVnd(s.amountVnd, locale)
+                          : !s.billable
+                            ? t("Miễn phí")
+                            : formatVnd(s.rateVnd, locale)}
+                      </strong>
+                      {s.durationMinutes ? (
+                        <span className="ml-1 inline-block">
+                          {t(" · {0} phút", { "0": s.durationMinutes })}
+                        </span>
+                      ) : null}
                     </span>
-                    {s.durationMinutes
-                      ? t(" · {0} phút", { "0": s.durationMinutes })
-                      : ""}
                   </p>
                 </div>
                 <div
                   className={
                     showNotes
-                      ? "flex w-full flex-wrap items-center justify-end gap-2 border-t border-border pt-2"
+                      ? "record-lesson-actions flex w-full flex-wrap items-center justify-end gap-x-2 gap-y-1 border-t border-border pt-2"
                       : "ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3"
                   }
                 >

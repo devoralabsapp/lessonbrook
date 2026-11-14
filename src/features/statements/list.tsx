@@ -286,18 +286,20 @@ export function StatementsList({
                 className={showNotes ? undefined : "p-5"}
               >
                 <Link
-                  className={showNotes ? "block space-y-2" : "block space-y-3"}
+                  className={
+                    showNotes ? "grid gap-y-2 leading-5" : "block space-y-3"
+                  }
                   href={`/app/statements/${statement.id}`}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="break-words text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                    <strong className="min-w-0 break-words text-sm">
                       {statement.number ?? t("Bản nháp")} ·{" "}
                       {statement.recipientSnapshot.displayName}
                     </strong>
                     {statement.status !== "issued" && (
                       <span
                         data-slot="list-status"
-                        className="status rounded-full bg-muted px-3"
+                        className="status whitespace-nowrap rounded-full bg-muted px-3"
                       >
                         {t(display.label)}
                       </span>
@@ -312,18 +314,24 @@ export function StatementsList({
                     {t(statement.issueDate ? "Ngày phát hành:" : "Ngày tạo:")}{" "}
                     {formatDate(statementListDate(statement), locale)}
                   </p>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
                     <span className="text-xs text-muted-foreground">
                       {t("Đến hạn ")}
                       {formatDate(statement.dueDate, locale)}
                     </span>
-                    <strong className="ml-auto text-base">
+                    <strong className="ml-auto whitespace-nowrap text-base">
                       {formatVnd(statement.totalVnd, locale)}
                     </strong>
                   </div>
                   {statement.status === "issued" && (
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs">
+                    <div
+                      className={
+                        showNotes
+                          ? "record-statement-payment"
+                          : "flex flex-wrap items-center justify-between gap-2"
+                      }
+                    >
+                      <p className="wrap-anywhere text-xs">
                         {t("Còn phải thu:")}{" "}
                         {formatVnd(
                           statement.totalVnd - statement.paidVnd,
@@ -332,7 +340,7 @@ export function StatementsList({
                       </p>
                       <span
                         data-slot="list-status"
-                        className={`status ml-auto rounded-full px-3 ${paid ? "status-paid" : "status-unpaid"}`}
+                        className={`status ml-auto whitespace-nowrap rounded-full px-2.5 ${paid ? "status-paid" : "status-unpaid"}`}
                       >
                         {t(display.label)}
                         {display.overdue ? t(" · Quá hạn") : ""}
