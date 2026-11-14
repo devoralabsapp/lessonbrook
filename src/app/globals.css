@@ -382,6 +382,14 @@ summary:focus-visible {
   --note-width: 20rem;
 }
 
+.record-identity {
+  background: color-mix(
+    in srgb,
+    var(--card) 82%,
+    var(--note-color, var(--accent-soft))
+  );
+}
+
 .record-statement-payment {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
