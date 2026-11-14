@@ -8,6 +8,8 @@ import { client, googleToken, origin } from "./helpers";
 const accountNumber = "12345678901234";
 const message = (memo: string, amount = "30,000", account = accountNumber) =>
   `Account ${account}\r\nAmount: + ${amount}\r\nBalance:\u00a0 30,000\r\n${memo}`;
+const techcombankMessage = (memo: string) =>
+  `+ VND 30,000\nAccount: ${accountNumber}\nBalance:\u00a0 50,000\n${memo}`;
 
 async function setup(withBankTransfer = false, previousNumber?: number) {
   const app = await client("en");
@@ -135,14 +137,22 @@ describe("iPhone bank notification Shortcut", () => {
     });
   });
 
-  it("resolves a compact memo with a seven-digit serial and deduplicates simultaneous formats", async () => {
+  it("requires a Techcombank memo and deduplicates simultaneous formats with a seven-digit serial", async () => {
     const teacher = await setup(true, 999_999);
     const key = await teacher.connect();
     const reference: string = teacher.detail.transferReference;
     expect(reference).toMatch(/^CC-\d{4}-1000000-[A-F0-9]{9}$/);
     const compact = reference.replaceAll("-", "");
+    expect(
+      await (
+        await send(techcombankMessage("DEMO SENDER transfer"), key)
+      ).json(),
+    ).toEqual({ status: "missing_reference" });
+    expect((await (await teacher.app.call(teacher.path)).json()).paidVnd).toBe(
+      0,
+    );
     const results = await Promise.all([
-      send(message(compact), key),
+      send(techcombankMessage(`DEMO SENDER ${compact} transfer`), key),
       send(message(reference), key),
     ]);
     expect(results.map((result) => result.status)).toEqual([200, 200]);

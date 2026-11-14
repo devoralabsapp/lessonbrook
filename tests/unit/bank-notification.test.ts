@@ -61,3 +61,27 @@ it("extracts a compact VietQR memo and treats its hyphenated form as the same co
     parseBankNotification(notice("+ 30,000", `${compact}1`))?.reference,
   ).toBeNull();
 });
+
+it("reads a Techcombank credit before the account and ignores the balance", () => {
+  const header = "+ VND 30,000\nAccount: 12345678901234\nBalance:\u00a0 50,000";
+  expect(parseBankNotification(`${header}\nDEMO SENDER transfer`)).toEqual({
+    accountNumber: "12345678901234",
+    amountVnd: 30000,
+    reference: null,
+  });
+  expect(parseBankNotification(`${header}\n${memo}`)).toEqual({
+    accountNumber: "12345678901234",
+    amountVnd: 30000,
+    reference: "CC-2026-000001-4EA8C340B1D2",
+  });
+});
+
+it.each(["- VND 30,000", "+ USD 30,000", "+ VND 30,00"])(
+  "rejects unsupported amount-first notices (%s)",
+  (line) =>
+    expect(
+      parseBankNotification(
+        `${line}\nAccount: 12345678901234\nBalance: 50,000\n${memo}`,
+      ),
+    ).toBeNull(),
+);

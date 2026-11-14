@@ -55,7 +55,16 @@ The app keeps a random verifier in memory. The server ties the browser handoff t
 2. In the same section, create a Shortcut key for the saved account. Confirm with the same Google account, then copy the **Authorization** value. Create a new key when the receiving account changes. The server renews the Firebase session when a notice arrives after expiry. Creating a new key or disconnecting disables the previous key. If a connection still shows an expiry date, select **Enable automatic renewal** and paste its current **Authorization** value to keep the same key.
 3. In Apple Shortcuts, add **Get Contents of URL** with the URL shown in settings and choose **POST**. Add the **Authorization** header with the copied value and set **Request Body** to **JSON**. Add a text field named `message` with the full notification as its value.
 
-The currently supported format looks like this fictional example.
+Techcombank notifications can start with the credited amount. This example uses fictional data.
+
+```text
++ VND 30,000
+Account: 12345678901234
+Balance: 50,000
+DEMO SENDER CC-2026-000001-4EA8C340B1 transfer
+```
+
+The account-first format is also supported.
 
 ```text
 Account 12345678901234
@@ -64,7 +73,7 @@ Balance: 50,000
 DEMO SENDER CC-2026-000001-4EA8C340B1 transfer
 ```
 
-Only a credit to the configured account with one matching reference and an exact outstanding amount is recorded. A retry returns `duplicate`. An unsupported format, account mismatch, or missing reference returns a status for review. A transfer without a matching statement or amount leaves the ledger for the teacher to reconcile. The received date uses Vietnam time when the notice is processed. Enter cash payments using **Record payment** on the statement.
+Only a credit to the configured account with one matching reference and an exact outstanding amount is recorded. A retry returns `duplicate`. If the notification includes only the sender's name and a generic transfer description, the API returns `missing_reference` for a matching account. Check the transaction details for the statement reference and ask the payer to keep it in the transfer memo. The received date uses Vietnam time when the notice is processed. Enter cash payments using **Record payment** on the statement.
 
 For SMS or email, choose the relevant Apple Shortcuts trigger and restrict the sender to your bank. App push notifications may need to be copied or shared into the Shortcut. See [Apple’s communication triggers](https://support.apple.com/en-ae/guide/shortcuts/apdd711f9dff/ios) and [sending API requests from Shortcuts](https://support.apple.com/en-lb/guide/shortcuts/apd58d46713f/ios).
 

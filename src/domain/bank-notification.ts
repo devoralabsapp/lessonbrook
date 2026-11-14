@@ -17,8 +17,14 @@ export const bankNotificationSchema = z
 
 const amount = String.raw`(?:\d{1,3}(?:,\d{3})+|\d{1,3}(?:\.\d{3})+|\d+)`;
 const currency = String.raw`[ \t]*(?:VND|₫|đ)?[ \t]*`;
-const notice = new RegExp(
-  String.raw`^Account(?:[ \t]*:[ \t]*|[ \t]+)(\d{6,32})[ \t]*\n[ \t]*Amount:[ \t]*\+[ \t]*(${amount})${currency}\n[ \t]*Balance:[ \t]*-?[ \t]*${amount}${currency}(?:\n([\s\S]*))?$`,
+const accountLine = String.raw`Account(?:[ \t]*:[ \t]*|[ \t]+)(?<accountNumber>\d{6,32})[ \t]*`;
+const balanceAndMemo = String.raw`[ \t]*Balance:[ \t]*-?[ \t]*${amount}${currency}(?:\n(?<memo>[\s\S]*))?$`;
+const accountFirstNotice = new RegExp(
+  String.raw`^${accountLine}\n[ \t]*Amount:[ \t]*\+[ \t]*(?<credit>${amount})${currency}\n${balanceAndMemo}`,
+  "i",
+);
+const techcombankNotice = new RegExp(
+  String.raw`^\+[ \t]*VND[ \t]+(?<credit>${amount})[ \t]*\n[ \t]*${accountLine}\n${balanceAndMemo}`,
   "i",
 );
 export function parseBankNotification(message: string) {
@@ -26,15 +32,17 @@ export function parseBankNotification(message: string) {
     .replace(/\r\n?/g, "\n")
     .replace(/[\u00a0\u202f]/g, " ")
     .trim();
-  const match = notice.exec(normalized);
+  const match = (
+    accountFirstNotice.exec(normalized) ?? techcombankNotice.exec(normalized)
+  )?.groups;
   if (!match) return null;
   const parsedAmount = statementMoneySchema.safeParse(
-    Number(match[2].replace(/[,.]/g, "")),
+    Number(match.credit.replace(/[,.]/g, "")),
   );
   if (!parsedAmount.success || parsedAmount.data === 0) return null;
   const references = new Set(
     [
-      ...(match[3] ?? "")
+      ...(match.memo ?? "")
         .replace(/[\u2010-\u2014\u2212]/g, "-")
         .matchAll(
           /(?<![a-z\d-])CC(?:-\d{4}-\d{6,10}-[a-f0-9]{6,12}|\d{10}[a-f0-9]{10})(?![a-z\d-])/gi,
@@ -48,7 +56,7 @@ export function parseBankNotification(message: string) {
     reference.includes("-"),
   );
   return {
-    accountNumber: match[1],
+    accountNumber: match.accountNumber,
     amountVnd: parsedAmount.data,
     reference:
       compactReferences.size === 1 && separated.length <= 1
