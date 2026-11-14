@@ -1,6 +1,6 @@
 import type { Viewport } from "next";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/server/session";
+import { requireWorkspaceReader } from "@/lib/server/workspace-cache";
 import { AppError } from "@/lib/server/errors";
 import { getProfile } from "@/lib/server/repository";
 import { AppShell } from "@/components/app-shell";
@@ -22,9 +22,9 @@ export default async function PrivateLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let user;
+  let workspace;
   try {
-    user = await requireUser();
+    workspace = await requireWorkspaceReader();
   } catch (error) {
     if (error instanceof AppError && error.status === 423)
       redirect("/account/deletion");
@@ -32,9 +32,10 @@ export default async function PrivateLayout({
       redirect("/login?expired=1");
     throw error;
   }
+  const { uid, read } = workspace;
   const [profile, appearance, requestHeaders] = await Promise.all([
-    getProfile(user.uid),
-    getAppearance(user.uid),
+    read("profile", [], () => getProfile(uid)),
+    read("appearance", [], () => getAppearance(uid)),
     headers(),
   ]);
   return (

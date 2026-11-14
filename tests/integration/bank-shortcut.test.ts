@@ -143,6 +143,20 @@ describe("iPhone bank notification Shortcut", () => {
     const reference: string = teacher.detail.transferReference;
     expect(reference).toMatch(/^CC-\d{4}-1000000-[A-F0-9]{9}$/);
     const compact = reference.replaceAll("-", "");
+    const paymentHistory = async () =>
+      (await (await teacher.app.call(`${teacher.path}/payments`)).json()).items;
+    const summary = async () =>
+      await (await teacher.app.call("/api/summary")).json();
+    const sessions = async (billing: "paid" | "unpaid") =>
+      (
+        await (
+          await teacher.app.call(`/api/sessions?billing=${billing}`)
+        ).json()
+      ).items;
+    expect(await paymentHistory()).toEqual([]);
+    expect(await summary()).toMatchObject({ outstandingVnd: 30000 });
+    expect(await sessions("unpaid")).toHaveLength(1);
+    expect(await sessions("paid")).toEqual([]);
     expect(
       await (
         await send(techcombankMessage("DEMO SENDER transfer"), key)
@@ -154,6 +168,12 @@ describe("iPhone bank notification Shortcut", () => {
     expect(await (await send(techcombankMessage(compact), key)).json()).toEqual(
       { status: "recorded" },
     );
+    expect((await (await teacher.app.call(teacher.path)).json()).paidVnd).toBe(
+      30000,
+    );
+    expect(await summary()).toMatchObject({ outstandingVnd: 0 });
+    expect(await sessions("unpaid")).toEqual([]);
+    expect(await sessions("paid")).toHaveLength(1);
     const results = await Promise.all([
       send(techcombankMessage(compact), key),
       send(message(reference), key),
@@ -164,9 +184,7 @@ describe("iPhone bank notification Shortcut", () => {
         .map((result) => result.status)
         .sort(),
     ).toEqual(["duplicate", "duplicate"]);
-    expect(
-      (await (await teacher.app.call(`${teacher.path}/payments`)).json()).items,
-    ).toHaveLength(1);
+    expect(await paymentHistory()).toHaveLength(1);
   });
 
   it("upgrades an existing key and renews an expired session during payment delivery", async () => {

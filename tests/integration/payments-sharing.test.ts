@@ -2,6 +2,7 @@ import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { Timestamp } from "firebase-admin/firestore";
 import { beforeEach, describe, expect, it } from "vitest";
 import { admin } from "@/lib/firebase/admin";
+import { markWorkspaceChanged } from "@/lib/server/workspace-cache";
 import { vietnamToday } from "@/domain";
 import { addBusinessDays, type Statement } from "@/domain/statements";
 import { type SharePreview, type ShareResult } from "@/domain/sharing";
@@ -342,10 +343,14 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
       unbilledVnd: 200000,
     });
     // Server clock is real VN today; changing only dueDate must remove the overdue label today.
-    await root()
-      .collection("statements")
-      .doc(statementId)
-      .update({ dueDate: today });
+    // The direct fixture edit advances the same revision as a statement write.
+    const revision = randomUUID();
+    await admin().db.runTransaction(async (tx) => {
+      tx.update(root().collection("statements").doc(statementId), {
+        dueDate: today,
+      });
+      markWorkspaceChanged(tx, root(), revision, ["statements"]);
+    });
     expect(await (await a.call("/api/summary")).json()).toMatchObject({
       outstandingVnd: 1000000,
       overdueVnd: 0,

@@ -22,6 +22,7 @@ import { accountControlRef, assertAccountWritable } from "./account-access";
 import { operation, userRef } from "./repository";
 import { paymentDto } from "./payments-repository";
 import { statementDto } from "./statements-repository";
+import { markWorkspaceChanged } from "./workspace-cache";
 export const tokenHash = (token: string) =>
   createHash("sha256").update(shareTokenSchema.parse(token)).digest("hex");
 const publicHash = (value: PublicStatement) =>
@@ -148,6 +149,7 @@ export async function createShare(
     eventId = randomUUID();
   const now = Timestamp.now(),
     expiresAt = Timestamp.fromMillis(now.toMillis() + 30 * 86400000);
+  const revision = randomUUID();
   const result = await admin().db.runTransaction(async (tx) => {
     await assertAccountWritable(tx, uid);
     const previous = await tx.get(requestRef);
@@ -190,6 +192,7 @@ export async function createShare(
       version: statementVersionSchema.parse(statement.version + 1),
       updatedAt: now,
     });
+    markWorkspaceChanged(tx, root, revision, ["statements"]);
     tx.create(requestRef, {
       operation: "share-create",
       requestId,

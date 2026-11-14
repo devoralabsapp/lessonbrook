@@ -43,6 +43,10 @@ import {
   verifyUserSession,
 } from "@/lib/server/session";
 import { getUpcomingSchedule } from "@/lib/server/upcoming-schedule";
+import {
+  workspaceReader,
+  type WorkspaceRead,
+} from "@/lib/server/workspace-cache";
 import { exportPage, startExport } from "@/lib/server/data-export";
 import {
   archiveStudent,
@@ -83,16 +87,14 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
-async function mobileWorkspace(uid: string, scheduleReady?: Promise<unknown>) {
+async function mobileWorkspace(uid: string, read: WorkspaceRead) {
   const [summary, appearance, onboarding, { locale }, schedule] =
     await Promise.all([
-      getSummary(uid),
-      getAppearance(uid),
-      getOnboarding(uid),
+      read("summary", [], () => getSummary(uid)),
+      read("appearance", [], () => getAppearance(uid)),
+      read("onboarding", [], () => getOnboarding(uid)),
       getI18n(),
-      scheduleReady
-        ? scheduleReady.then(() => getUpcomingSchedule(uid))
-        : getUpcomingSchedule(uid),
+      read("schedule", [], () => getUpcomingSchedule(uid)),
     ]);
   return {
     summary,
@@ -120,47 +122,58 @@ async function handle(request: Request, context: Context) {
       ((request.method === "POST" && path.length === 1) ||
         (request.method === "PATCH" && path.length === 2));
     // These save transactions already read both account controls before writing.
-    const teacher = await (recordSave ? verifyUserSession() : requireUser());
+    const teacher = await (recordSave || request.method === "GET"
+      ? verifyUserSession()
+      : requireUser());
     const { uid, exp } = teacher;
     if (recordSave) savingRecordFor = uid;
     if (path.length > 3) throw new AppError(404, "Không tìm thấy chức năng.");
     if (request.method === "GET") {
       const query = Object.fromEntries(new URL(request.url).searchParams);
+      const read = await workspaceReader(uid);
       if (resource === "mobile" && id === "workspace" && path.length === 2) {
         z.object({}).strict().parse(query);
-        return json(await mobileWorkspace(uid));
+        return json(await mobileWorkspace(uid, read));
       }
       if (resource === "mobile" && id === "schedule" && path.length === 2) {
         z.object({}).strict().parse(query);
-        return json(await getUpcomingSchedule(uid));
+        return json(await read("schedule", [], () => getUpcomingSchedule(uid)));
       }
       if (resource === "appearance" && path.length === 1) {
         z.object({}).strict().parse(query);
-        return json(await getAppearance(uid));
+        return json(await read("appearance", [], () => getAppearance(uid)));
       }
       if (resource === "classes" && path.length <= 2)
         return json(
-          id ? await getClass(uid, id) : await listClasses(uid, query),
+          id
+            ? await read("class", [id], () => getClass(uid, id))
+            : await read("classes", [query], () => listClasses(uid, query)),
         );
       if (resource === "lessons" && path.length <= 2)
         return json(
-          id ? await getLesson(uid, id) : await listLessons(uid, query),
+          id
+            ? await read("lesson", [id], () => getLesson(uid, id))
+            : await read("lessons", [query], () => listLessons(uid, query)),
         );
       if (resource === "onboarding" && path.length === 1) {
         z.object({}).strict().parse(query);
-        return json(await getOnboarding(uid));
+        return json(await read("onboarding", [], () => getOnboarding(uid)));
       }
       if (resource === "exports" && path.length === 2)
         return json(await exportPage(uid, id, query, (await getI18n()).locale));
       if (path.length === 1 && resource === "profile")
-        return json(await getProfile(uid));
+        return json(await read("profile", [], () => getProfile(uid)));
       if (path.length === 1 && resource === "bank-shortcut")
         return json(await getBankShortcut(uid));
       if (path.length === 1 && resource === "summary")
-        return json(await getSummary(uid));
+        return json(await read("summary", [], () => getSummary(uid)));
       if (resource === "statements" && path.length === 3) {
         if (action === "payments")
-          return json(await listPayments(uid, id, query));
+          return json(
+            await read("payments", [id, query], () =>
+              listPayments(uid, id, query),
+            ),
+          );
         if (action === "public-preview")
           return json(await getSharePreview(uid, id));
         if (action === "share") return json(await getShareStatus(uid, id));
@@ -168,25 +181,40 @@ async function handle(request: Request, context: Context) {
           return json(await statementEmailOptions(teacher, id));
       }
       if (resource === "statements" && path.length === 2 && id === "eligible")
-        return json(await listEligibleSessions(uid, query));
+        return json(
+          await read("eligible", [query], () =>
+            listEligibleSessions(uid, query),
+          ),
+        );
       if (resource === "statements" && path.length <= 2) {
-        if (!id) return json(await listStatements(uid, query));
-        const statement = await getStatement(uid, id);
-        return json({
-          ...statement,
-          transferReference:
-            statement.status === "issued"
-              ? transferReferenceFor(statement)
-              : null,
-        });
+        if (!id)
+          return json(
+            await read("statements", [query], () => listStatements(uid, query)),
+          );
+        return json(
+          await read("statement", [id], async () => {
+            const statement = await getStatement(uid, id);
+            return {
+              ...statement,
+              transferReference:
+                statement.status === "issued"
+                  ? transferReferenceFor(statement)
+                  : null,
+            };
+          }),
+        );
       }
       if (path.length <= 2 && resource === "students")
         return json(
-          id ? await getStudent(uid, id) : await listStudents(uid, query),
+          id
+            ? await read("student", [id], () => getStudent(uid, id))
+            : await read("students", [query], () => listStudents(uid, query)),
         );
       if (path.length <= 2 && resource === "sessions")
         return json(
-          id ? await getSession(uid, id) : await listSessions(uid, query),
+          id
+            ? await read("session", [id], () => getSession(uid, id))
+            : await read("sessions", [query], () => listSessions(uid, query)),
         );
     } else {
       await checkMutation(request);
@@ -198,13 +226,11 @@ async function handle(request: Request, context: Context) {
           .object({ initialize: z.boolean() })
           .strict()
           .parse(await jsonBody(request));
-        const sync = async () => {
-          if (initialize) await initializeClassSchedules(uid);
-          return materializeClassLessons(uid);
-        };
-        return json(
-          syncMobile ? await mobileWorkspace(uid, sync()) : await sync(),
-        );
+        if (initialize) await initializeClassSchedules(uid);
+        const synced = await materializeClassLessons(uid);
+        if (syncMobile)
+          return json(await mobileWorkspace(uid, await workspaceReader(uid)));
+        return json(synced);
       }
       const requestId = requestIdSchema.parse(
         request.headers.get("idempotency-key"),

@@ -82,6 +82,16 @@ An optional iPhone Shortcut can forward incoming bank notices. Its scoped key un
 
 The notification entry point is `/api/bank-notifications`. Parsing lives in `src/domain/bank-notification.ts`. Shortcut authorization lives in `src/lib/server/bank-shortcut.ts`, and the payment record is committed by `src/lib/server/payments-repository.ts`. The parser accepts account-first notices and Techcombank notices that start with `+ VND`. It reads the credited amount separately from the balance and accepts the supported compact reference when separators have been removed. Notices without a unique reference return `missing_reference` when the account matches and leave the ledger unchanged.
 
+## Workspace read cache
+
+Authenticated workspace reads use a bounded, 45-second cache in Node process memory. Keys include the Firebase project and database, UID, reader, filters, cursor, Vietnam business date, and the relevant data revisions. Class lists also key by minute for next-slot ordering. A cold instance or expired entry reads Firestore and fills the cache. Concurrent requests for the same key in an instance share one origin read.
+
+After checking Firebase session revocation, the API reads the maintenance lock, account deletion control, and workspace revisions in one Firestore batch. Business transactions write revisions in `users/{uid}/preferences/workspace-cache` along with affected records. A committed revision changes the logical cache key immediately, even on a different instance. An older in-flight read can only fill its old key. Old entries expire from memory or are evicted by the size limit. An idempotent replay or failed transaction does not advance a revision.
+
+The read and write dependency maps are in `src/lib/server/workspace-cache.ts`. The shared `operation` transaction handles normal mutations including cash and Shortcut payments. Profile creation and guest theme changes, shared link creation, and scheduled lesson creation write revisions in their own transactions. Keep revision writes in the same transaction when adding a business mutation. Direct Admin edits outside the application can remain stale until the short TTL expires.
+
+Session verification, sharing authorization, bank Shortcut credentials, exports, and mutations use their existing direct reads. The demo is independent. Private HTTP responses still use `no-store` for browsers and CDNs. No additional caching service or client storage is required.
+
 ## Verification boundaries
 
 Keep Firestore Rules tests separate from backend isolation tests because Admin SDK bypasses Rules. The Emulator suite covers both and runs browser tests against a demo build. Hosted public smoke checks verify public routes and anonymous access controls. Cloud indexes, IAM, real Google OAuth, authenticated cloud flows and installation on real devices need separate validation. Prepaid packages and multi-staff permissions are outside the current scope.

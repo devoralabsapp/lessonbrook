@@ -38,6 +38,7 @@ import { chronologicalListPage, orderedListPage } from "./ordered-list-page";
 import { classOrderKey } from "@/domain/record-order";
 import { admin } from "@/lib/firebase/admin";
 import { assertAccountWritable } from "./account-access";
+import { markWorkspaceChanged } from "./workspace-cache";
 
 function nextLessonTimestamp(slots: WeeklySlot[], after: Date) {
   const next = nextWeeklyLesson(slots, after);
@@ -456,7 +457,8 @@ function scheduledLessonId(classId: string, date: string, time: string) {
 
 export async function initializeClassSchedules(uid: string, now = new Date()) {
   const startOfToday = vietnamLessonTime(vietnamToday(now), "00:00");
-  const classes = await userRef(uid)
+  const root = userRef(uid);
+  const classes = await root
     .collection("classes")
     .where("archivedAt", "==", null)
     .select("nextLessonAt", "weeklySchedule")
@@ -467,18 +469,21 @@ export async function initializeClassSchedules(uid: string, now = new Date()) {
       !doc.get("weeklySchedule")?.length
     )
       continue;
+    const revision = randomUUID();
     await admin().db.runTransaction(async (tx) => {
       await assertAccountWritable(tx, uid);
       const current = await tx.get(doc.ref);
       if (!current.exists) return;
       const item = classDto(current);
-      if (!item.archivedAt && item.nextLessonAt === undefined)
+      if (!item.archivedAt && item.nextLessonAt === undefined) {
         tx.update(doc.ref, {
           nextLessonAt: nextLessonTimestamp(
             item.weeklySchedule,
             new Date(Math.max(startOfToday - 1, Date.parse(item.updatedAt))),
           ),
         });
+        markWorkspaceChanged(tx, root, revision, ["classes"]);
+      }
     });
   }
 }
@@ -559,8 +564,10 @@ async function materializeOccurrence(
         (doc) =>
           doc.get("classId") === item.id && doc.get("startTime") === time,
       )
-    )
+    ) {
+      markWorkspaceChanged(tx, root, requestId, ["classes"]);
       return false;
+    }
     writeLesson(tx, root, {
       input: lessonInputSchema.parse({
         classId: item.id,
@@ -580,6 +587,7 @@ async function materializeOccurrence(
       requestId,
       update: false,
     });
+    markWorkspaceChanged(tx, root, requestId, ["classes", "lessons"]);
     return true;
   });
 }

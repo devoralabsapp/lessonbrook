@@ -52,6 +52,11 @@ import {
 } from "@/domain/session-completion";
 import { assertServiceAvailable } from "./maintenance";
 import {
+  markOperationChanged,
+  markWorkspaceChanged,
+  type WorkspaceOperation,
+} from "./workspace-cache";
+import {
   accountAccessRefs,
   accountControlRef,
   assertAccountAccess,
@@ -105,7 +110,7 @@ type OperationResult<T = never> = { id: string; record?: T };
 
 export async function operation<T = never>(
   uid: string,
-  name: string,
+  name: WorkspaceOperation,
   requestId: string,
   payload: unknown,
   action: (
@@ -127,6 +132,7 @@ export async function operation<T = never>(
     .collection("operationRequests")
     .doc(`${name}_${requestId}`);
   const now = nowIso();
+  const revision = randomUUID();
   return admin().db.runTransaction(async (tx) => {
     const [maintenance, control, previous, ...documents] = await tx.getAll(
       ...accountAccessRefs(uid),
@@ -143,6 +149,7 @@ export async function operation<T = never>(
       return { id: previous.get("resultId") as string };
     }
     const result = await action(tx, root, now, documents);
+    markOperationChanged(tx, root, revision, name);
     tx.create(requestRef, {
       operation: name,
       requestId,
@@ -171,16 +178,23 @@ export async function ensureProfile(
     schemaVersion: 1,
   });
   const now = nowIso();
+  const revision = randomUUID();
   return admin().db.runTransaction(async (tx) => {
     await assertServiceAvailable(tx);
     if ((await tx.get(accountControlRef(uid))).exists) return false;
     const existingProfile = await tx.get(ref);
     const appearanceRef = ref.collection("preferences").doc("appearance");
     const existingAppearance = theme ? await tx.get(appearanceRef) : undefined;
-    if (!existingProfile.exists)
+    if (!existingProfile.exists) {
       tx.create(ref, { ...profile, createdAt: now, updatedAt: now });
-    if (theme && existingAppearance?.get("theme") !== theme)
+    }
+    const themeChanged = !!theme && existingAppearance?.get("theme") !== theme;
+    if (themeChanged)
       tx.set(appearanceRef, { theme, schemaVersion: 1, updatedAt: now });
+    markWorkspaceChanged(tx, ref, revision, [
+      ...(!existingProfile.exists ? ["profile" as const] : []),
+      ...(themeChanged ? ["appearance" as const] : []),
+    ]);
     return true;
   });
 }

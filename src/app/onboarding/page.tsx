@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/server/session";
+import { requireWorkspaceReader } from "@/lib/server/workspace-cache";
 import { AppError } from "@/lib/server/errors";
 import { getOnboarding } from "@/lib/server/onboarding";
 import { AppShell } from "@/components/app-shell";
@@ -10,9 +10,9 @@ import { headers } from "next/headers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export default async function Page() {
-  let user;
+  let workspace;
   try {
-    user = await requireUser();
+    workspace = await requireWorkspaceReader();
   } catch (error) {
     if (error instanceof AppError && error.status === 423)
       redirect("/account/deletion");
@@ -20,9 +20,10 @@ export default async function Page() {
       redirect("/login?expired=1");
     throw error;
   }
+  const { uid, read } = workspace;
   const [initial, appearance, requestHeaders] = await Promise.all([
-    getOnboarding(user.uid),
-    getAppearance(user.uid),
+    read("onboarding", [], () => getOnboarding(uid)),
+    read("appearance", [], () => getAppearance(uid)),
     headers(),
   ]);
   return (
