@@ -60,8 +60,8 @@ Techcombank notifications can start with the credited amount. This example uses 
 ```text
 + VND 30,000
 Account: 12345678901234
-Balance: 50,000
-DEMO SENDER CC-2026-000001-4EA8C340B1 transfer
+Balance: VND 50,000
+CC20260000014EA8C340B1
 ```
 
 The account-first format is also supported.

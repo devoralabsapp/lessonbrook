@@ -9,7 +9,7 @@ const accountNumber = "12345678901234";
 const message = (memo: string, amount = "30,000", account = accountNumber) =>
   `Account ${account}\r\nAmount: + ${amount}\r\nBalance:\u00a0 30,000\r\n${memo}`;
 const techcombankMessage = (memo: string) =>
-  `+ VND 30,000\nAccount: ${accountNumber}\nBalance:\u00a0 50,000\n${memo}`;
+  `+ VND 30,000\nAccount: ${accountNumber}\nBalance: VND 50,000\n${memo}`;
 
 async function setup(withBankTransfer = false, previousNumber?: number) {
   const app = await client("en");
@@ -151,8 +151,11 @@ describe("iPhone bank notification Shortcut", () => {
     expect((await (await teacher.app.call(teacher.path)).json()).paidVnd).toBe(
       0,
     );
+    expect(await (await send(techcombankMessage(compact), key)).json()).toEqual(
+      { status: "recorded" },
+    );
     const results = await Promise.all([
-      send(techcombankMessage(`DEMO SENDER ${compact} transfer`), key),
+      send(techcombankMessage(compact), key),
       send(message(reference), key),
     ]);
     expect(results.map((result) => result.status)).toEqual([200, 200]);
@@ -160,7 +163,7 @@ describe("iPhone bank notification Shortcut", () => {
       (await Promise.all(results.map((result) => result.json())))
         .map((result) => result.status)
         .sort(),
-    ).toEqual(["duplicate", "recorded"]);
+    ).toEqual(["duplicate", "duplicate"]);
     expect(
       (await (await teacher.app.call(`${teacher.path}/payments`)).json()).items,
     ).toHaveLength(1);

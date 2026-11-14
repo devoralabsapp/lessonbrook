@@ -76,6 +76,17 @@ it("reads a Techcombank credit before the account and ignores the balance", () =
   });
 });
 
+it("reads the Shortcut JSON with a VND-prefixed balance and a compact reference", () => {
+  const { message } = JSON.parse(
+    String.raw`{"message":"+ VND 5,000\nAccount: 12345678901234\nBalance: VND 48,500\nCC2026000123A23D458E90"}`,
+  );
+  expect(parseBankNotification(message)).toEqual({
+    accountNumber: "12345678901234",
+    amountVnd: 5000,
+    reference: "CC2026000123A23D458E90",
+  });
+});
+
 it.each(["- VND 30,000", "+ USD 30,000", "+ VND 30,00"])(
   "rejects unsupported amount-first notices (%s)",
   (line) =>

@@ -18,7 +18,8 @@ export const bankNotificationSchema = z
 const amount = String.raw`(?:\d{1,3}(?:,\d{3})+|\d{1,3}(?:\.\d{3})+|\d+)`;
 const currency = String.raw`[ \t]*(?:VND|₫|đ)?[ \t]*`;
 const accountLine = String.raw`Account(?:[ \t]*:[ \t]*|[ \t]+)(?<accountNumber>\d{6,32})[ \t]*`;
-const balanceAndMemo = String.raw`[ \t]*Balance:[ \t]*-?[ \t]*${amount}${currency}(?:\n(?<memo>[\s\S]*))?$`;
+const balanceAmount = String.raw`(?:VND[ \t]+${amount}[ \t]*|${amount}${currency})`;
+const balanceAndMemo = String.raw`[ \t]*Balance:[ \t]*-?[ \t]*${balanceAmount}(?:\n(?<memo>[\s\S]*))?$`;
 const accountFirstNotice = new RegExp(
   String.raw`^${accountLine}\n[ \t]*Amount:[ \t]*\+[ \t]*(?<credit>${amount})${currency}\n${balanceAndMemo}`,
   "i",
