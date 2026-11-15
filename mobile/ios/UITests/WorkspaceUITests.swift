@@ -67,10 +67,14 @@ final class WorkspaceUITests: XCTestCase {
         if !selectAll.isHittable { app.swipeUp() }
         XCTAssertTrue(selectAll.waitForExistence(timeout: 10)); selectAll.tap()
         tapVisible(app.buttons["Save"], app: app)
+        XCTAssertTrue(selectAll.waitForNonExistence(timeout: 15))
         XCTAssertTrue(app.buttons["Create statement"].waitForExistence(timeout: 15))
-        let tuition = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Native QA Student")).firstMatch
-        if !tuition.isHittable { app.swipeUp() }
-        XCTAssertTrue(tuition.waitForExistence(timeout: 15)); tuition.tap()
+        tapVisible(app.buttons["All students"], app: app)
+        XCTAssertTrue(statementSearch.waitForExistence(timeout: 10))
+        statementSearch.tap(); statementSearch.typeText("Native QA")
+        XCTAssertTrue(learner.waitForExistence(timeout: 10)); learner.tap()
+        let tuition = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH %@", "· Native QA Student")).firstMatch
+        tapVisible(tuition, app: app)
         let cash = app.buttons["Paid by cash"]
         if !cash.isHittable { app.swipeUp() }
         XCTAssertTrue(cash.waitForExistence(timeout: 10)); cash.tap()
