@@ -64,57 +64,133 @@ struct WorkspaceField: View {
     }
 }
 
+struct WorkspaceChoiceTrigger: View {
+    @EnvironmentObject private var store: WorkspaceStore
+    let title: String
+    var compact = false
+    var leadingIcon: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let leadingIcon { Image(systemName: leadingIcon).accessibilityHidden(true) }
+                Text(title).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 2)
+                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold)).accessibilityHidden(true)
+            }
+            .font(store.palette.font(compact ? 13 : 16, .semibold))
+            .foregroundStyle(store.palette.foreground)
+            .modifier(WorkspaceControl(pill: compact))
+        }.buttonStyle(.plain)
+    }
+}
+
+struct WorkspaceOptionRow: View {
+    @EnvironmentObject private var store: WorkspaceStore
+    let title: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        let p = store.palette
+        let shape = RoundedRectangle(cornerRadius: max(0, p.fieldRadius - 4))
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Text(title).font(p.font(16, selected ? .bold : .medium)).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if selected { Image(systemName: "checkmark").font(.body.weight(.semibold)).accessibilityHidden(true) }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .frame(minHeight: 44)
+            .foregroundStyle(selected ? p.onAccent : p.foreground)
+            .background(selected ? p.accent : p.surface, in: shape)
+            .overlay(shape.strokeBorder(p.border.opacity(selected ? 1 : 0.38), lineWidth: selected ? max(1, p.outline) : 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+struct WorkspaceOptionPanel<Content: View>: View {
+    @EnvironmentObject private var store: WorkspaceStore
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    var search: Binding<String>? = nil
+    var searchLabel: String? = nil
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        let p = store.palette
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text(title).font(p.font(20, .heavy)).accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 0)
+                Button { dismiss() } label: { Image(systemName: "xmark").frame(width: 22, height: 22) }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                    .accessibilityLabel(store.t("Close"))
+            }
+            .padding(.bottom, 2)
+            if let search { WorkspaceField(searchLabel ?? store.t("Search"), text: search) }
+            Divider().overlay(p.border.opacity(0.48))
+            ScrollView {
+                LazyVStack(spacing: 6, content: content)
+                    .padding(.bottom, 3)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .padding(13)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .modifier(WorkspacePanel(palette: p, fill: p.surface))
+        .padding(14)
+        .foregroundStyle(p.foreground)
+        .background(p.background.ignoresSafeArea())
+        .presentationDragIndicator(.visible)
+        .accessibilityIdentifier("workspace-option-panel")
+    }
+}
+
 struct WorkspaceChoice<Value: Hashable>: View {
     @EnvironmentObject private var store: WorkspaceStore
+    @Environment(\.dynamicTypeSize) private var textSize
     let label: String
     @Binding var selection: Value
     let options: [(Value, String)]
     var compact = false
+    var leadingIcon: String? = nil
     @State private var open = false
     @State private var search = ""
+
+    private var value: String? { options.first { $0.0 == selection }?.1 }
+    private var searchable: Bool { options.count > 7 }
+    private var filtered: [(Value, String)] {
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        return options.filter { query.isEmpty || $0.1.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if !compact { Text(label).font(store.palette.font(15, .semibold)).lineLimit(2) }
-            Button { search = ""; open = true } label: {
-                HStack(spacing: 6) {
-                    Text(options.first { $0.0 == selection }?.1 ?? label).lineLimit(1).minimumScaleFactor(0.8)
-                    Spacer(minLength: 2)
-                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
-                }
-                .font(store.palette.font(compact ? 13 : 16))
-                .foregroundStyle(store.palette.foreground).modifier(WorkspaceControl(pill: compact))
-            }.buttonStyle(.plain).accessibilityLabel(label)
-                .accessibilityValue(options.first { $0.0 == selection }?.1 ?? "")
-                .sheet(isPresented: $open) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text(label).font(store.palette.font(20, .bold))
-                            Spacer()
-                            Button { open = false } label: { Image(systemName: "xmark").frame(width: 38, height: 38) }
-                                .buttonStyle(.plain).accessibilityLabel(store.t("Close"))
+            WorkspaceChoiceTrigger(title: value ?? label, compact: compact, leadingIcon: leadingIcon) {
+                search = ""
+                open = true
+            }
+            .accessibilityLabel(label)
+            .accessibilityValue(value ?? "")
+            .sheet(isPresented: $open) {
+                WorkspaceOptionPanel(title: label, search: searchable ? $search : nil) {
+                    let matches = filtered
+                    ForEach(matches, id: \.0) { option in
+                        WorkspaceOptionRow(title: option.1, selected: selection == option.0) {
+                            selection = option.0
+                            open = false
                         }
-                        if options.count > 7 { WorkspaceField(store.t("Search"), text: $search) }
-                        ScrollView {
-                            LazyVStack(spacing: 5) {
-                                ForEach(Array(options.enumerated()), id: \.offset) { _, option in
-                                    if search.isEmpty || option.1.range(of: search, options: [.caseInsensitive, .diacriticInsensitive]) != nil {
-                                        Button { selection = option.0; open = false } label: {
-                                            HStack {
-                                                Text(option.1).font(store.palette.font(16))
-                                                Spacer()
-                                                if selection == option.0 { Image(systemName: "checkmark") }
-                                            }.padding(12).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                                .foregroundStyle(selection == option.0 ? store.palette.onAccent : store.palette.foreground)
-                                                .background(selection == option.0 ? store.palette.accent : store.palette.surface,
-                                                            in: RoundedRectangle(cornerRadius: store.palette.fieldRadius))
-                                        }.buttonStyle(.plain)
-                                    }
-                                }
-                            }
-                        }
-                    }.padding(16).background(store.palette.background)
-                        .presentationDetents([.medium, .large])
+                    }
+                    if matches.isEmpty { Text(store.t("No matching options")).foregroundStyle(store.palette.secondaryInk).padding(10) }
                 }
+                .presentationDetents(searchable || textSize.isAccessibilitySize ? [.large] : [.height(CGFloat(106 + options.count * 50)), .large])
+            }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }

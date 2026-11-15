@@ -67,6 +67,15 @@
 "Archived" = "Đã lưu trữ";
 "Attendance" = "Điểm danh";
 "Automatically renews" = "Tự động gia hạn";
+"Collapsed" = "Đang thu gọn";
+"Connect Shortcut" = "Kết nối Phím tắt";
+"Connected" = "Đã kết nối";
+"Expanded" = "Đang mở rộng";
+"Manage Shortcut" = "Quản lý Phím tắt";
+"No matching options" = "Không có lựa chọn phù hợp";
+"No matching students" = "Không tìm thấy học viên phù hợp";
+"Replace Shortcut key" = "Đổi khóa Phím tắt";
+"Shortcut authorization key" = "Khóa xác thực Phím tắt";
 "Bank BIN (6 digits)" = "Mã BIN ngân hàng (6 chữ số)";
 "Bank transfer details" = "Thông tin chuyển khoản";
 "Cancel" = "Hủy";

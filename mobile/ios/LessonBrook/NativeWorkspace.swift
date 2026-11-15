@@ -99,6 +99,7 @@ struct WorkspacePalette {
     let mint: Color
     let dashboardInk: Color
     let recordAccent: Color
+    let calendarSelection: Color
     let retroRows: Bool
     let radius: CGFloat
     let outline: CGFloat
@@ -121,6 +122,7 @@ struct WorkspacePalette {
             yellow = Self.color(0xffffff); blue = Self.color(0xffffff); mint = Self.color(0xffffff)
             dashboardInk = Self.color(0x111111); fontDesign = .monospaced
             recordAccent = Self.color(0xe7e7e7)
+            calendarSelection = Self.color(0xe2ecf3)
         case "chapter-desk":
             background = Self.color(0xf4e9d5)
             surface = Self.color(0xfff5e2)
@@ -133,6 +135,7 @@ struct WorkspacePalette {
             yellow = Self.color(0xfff5e2); blue = Self.color(0xfff5e2); mint = Self.color(0xfff5e2)
             dashboardInk = Self.color(0x29271f); fontDesign = .serif
             recordAccent = Self.color(0xefdcac)
+            calendarSelection = Self.color(0xffd498)
         case "afterhours-fm":
             background = Self.color(0x101010)
             surface = Self.color(0x1d1d1d)
@@ -145,6 +148,7 @@ struct WorkspacePalette {
             yellow = Self.color(0xf7d449); blue = Self.color(0xdbabdf); mint = Self.color(0x71d6c8)
             dashboardInk = Self.color(0x211b18); fontDesign = .default
             recordAccent = Self.color(0x323019)
+            calendarSelection = Self.color(0xf7d449)
         case "margin-notes":
             background = Self.color(0xf0e9df)
             surface = Self.color(0xfffcf5)
@@ -157,6 +161,7 @@ struct WorkspacePalette {
             yellow = Self.color(0xf2d978); blue = Self.color(0xded8eb); mint = Self.color(0xc5d9cd)
             dashboardInk = Self.color(0x30262b); fontDesign = .serif
             recordAccent = Self.color(0xead5dd)
+            calendarSelection = Self.color(0xffcbdc)
         case "sticker-sprint":
             background = Self.color(0xfff8ec)
             surface = Self.color(0xfffaf1)
@@ -169,6 +174,7 @@ struct WorkspacePalette {
             yellow = Self.color(0xffd34e); blue = Self.color(0xded2f9); mint = Self.color(0xbdebd9)
             dashboardInk = Self.color(0x111111); fontDesign = .rounded
             recordAccent = Self.color(0xbdebd9)
+            calendarSelection = Self.color(0xded2ff)
         default:
             background = Self.color(0xfff6e6)
             surface = Self.color(0xfffdf7)
@@ -181,6 +187,7 @@ struct WorkspacePalette {
             yellow = Self.color(0xffd02c); blue = Self.color(0x79c8ff); mint = Self.color(0x83e5b0)
             dashboardInk = Self.color(0x211f1b); fontDesign = .rounded
             recordAccent = Self.color(0xffd02c)
+            calendarSelection = Self.color(0xffdf54)
         }
     }
 
@@ -415,17 +422,10 @@ struct NativeWelcome: View {
                         .font(.system(.headline, design: palette.fontDesign).bold())
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 12)
-                    Menu {
-                        Button("English") { changeLanguage("en") }
-                        Button("Tiếng Việt") { changeLanguage("vi") }
-                    } label: {
-                        Label(locale == "vi" ? "Tiếng Việt" : "English", systemImage: "globe")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .frame(minHeight: 44)
-                            .modifier(WorkspacePanel(palette: palette, fill: palette.surface))
-                    }
-                    .tint(palette.controlTint)
+                    WorkspaceChoice(label: t("Language"), selection: Binding(get: { locale }, set: changeLanguage),
+                                    options: [("en", "English"), ("vi", "Tiếng Việt")],
+                                    compact: true, leadingIcon: "globe")
+                        .frame(width: 132)
                 }
 
                 VStack(spacing: 10) {

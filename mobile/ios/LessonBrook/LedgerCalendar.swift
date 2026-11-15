@@ -5,6 +5,8 @@ struct LedgerMonth: View {
     let records: [LedgerRecord]
     @Binding var month: Date
     @EnvironmentObject private var store: WorkspaceStore
+    @Environment(\.displayScale) private var displayScale
+    @ScaledMetric(relativeTo: .caption) private var dayHeight = 94.0
     @State private var selected = LedgerDate.today
 
     private struct Event: Identifiable {
@@ -65,6 +67,7 @@ struct LedgerMonth: View {
 
     var body: some View {
         let schedule = events
+        let line = 1 / displayScale
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Button { move(-1) } label: { Image(systemName: "chevron.left").frame(width: 34, height: 38) }
@@ -81,12 +84,12 @@ struct LedgerMonth: View {
             if kind == .sessions {
                 HStack { ForEach(["planned", "completed", "cancelled"], id: \.self) { LedgerBadge(code: $0) } }
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 1), count: 7), spacing: 1) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: line), count: 7), spacing: line) {
                 ForEach(1...7, id: \.self) { index in
                     Text(weekday(index, locale: store.language)).font(.caption.bold())
                         .lineLimit(1).minimumScaleFactor(0.65)
                         .frame(maxWidth: .infinity).padding(.vertical, 6)
-                        .background(store.palette.surface)
+                        .background { Rectangle().fill(store.palette.background) }
                 }
                 ForEach(days, id: \.self) { date in
                     let day = LedgerDate.text(date)
@@ -97,9 +100,8 @@ struct LedgerMonth: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(date.formatted(.dateTime.day().locale(store.language)))
                                 .font(.caption.bold())
-                                .frame(minWidth: 22, minHeight: 20)
-                                .foregroundStyle(isSelected ? store.palette.onAccent : store.palette.foreground.opacity(inMonth ? 1 : 0.55))
-                                .background(isSelected ? store.palette.accent : .clear, in: Capsule())
+                                .lineLimit(1)
+                                .padding(.horizontal, 2)
                             ForEach(Array(entries.prefix(2))) { event in
                                 VStack(alignment: .leading, spacing: 0) {
                                     Text(event.time.isEmpty ? "—" : event.time).font(.system(size: 10).monospacedDigit().bold())
@@ -108,28 +110,32 @@ struct LedgerMonth: View {
                                 .lineLimit(1).minimumScaleFactor(0.85)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(2)
-                                .background(eventColor(event.status).opacity(0.35), in: RoundedRectangle(cornerRadius: 4))
+                                .foregroundStyle(store.palette.dashboardInk)
+                                .background(eventColor(event.status).opacity(0.42), in: RoundedRectangle(cornerRadius: 3))
+                                .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 3))
                             }
                             if entries.count > 2 { Text("+\(entries.count - 2)").font(.system(size: 9)) }
                         }
                         .padding(2)
-                        .frame(maxWidth: .infinity, minHeight: 94, alignment: .topLeading)
-                        .foregroundStyle(isSelected ? store.palette.dashboardInk : store.palette.foreground.opacity(inMonth ? 1 : 0.55))
-                        .background(isSelected ? Color.white : store.palette.surface)
-                        .overlay {
-                            if isSelected {
-                                Rectangle().strokeBorder(store.palette.controlTint, lineWidth: 2)
-                            }
-                        }
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .frame(height: dayHeight, alignment: .topLeading)
+                        .contentShape(Rectangle())
                     }
-                    .disabled(!inMonth).buttonStyle(.plain)
+                    .foregroundStyle(isSelected ? store.palette.dashboardInk : store.palette.foreground.opacity(inMonth ? 1 : 0.55))
+                    .buttonStyle(.plain)
+                    .disabled(!inMonth)
+                    .background {
+                        Rectangle().fill(isSelected ? store.palette.calendarSelection :
+                                            inMonth ? store.palette.surface : store.palette.background)
+                    }
                     .accessibilityLabel(date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(store.language))
                         + " · \(entries.count) " + store.t("events"))
                     .accessibilityIdentifier("calendar-day-\(day)")
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
-            .background(store.palette.border.opacity(0.5))
+            .padding(line)
+            .background { Rectangle().fill(store.palette.border) }
             Text(LedgerDate.date(selected)?.formatted(.dateTime.weekday(.wide).day().month(.wide).year().locale(store.language)) ?? selected)
                 .font(.headline)
             if let selected = schedule[selected], !selected.isEmpty {

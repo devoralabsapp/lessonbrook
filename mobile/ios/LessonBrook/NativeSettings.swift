@@ -236,57 +236,138 @@ struct LedgerExportDocument: FileDocument {
 }
 
 struct BankShortcutForm: View {
+    private struct Connection: Decodable {
+        let accountLast4: String
+        let renewable: Bool
+        let expiresAt: String?
+    }
+
     @EnvironmentObject private var store: WorkspaceStore
     let accountNumber: String
-    @State private var connection: LedgerRecord?
+    @State private var connection: Connection?
     @State private var key: String?
     @State private var error: String?
+    @State private var loaded = false
+    @State private var working = false
+    @State private var manage = false
     @State private var disconnect = false
 
     var body: some View {
-        if let connection {
-            WorkspaceKeyValue(store.t("Receiving account"), value: "••••" + connection.text("accountLast4"))
-            Text(connection.flag("renewable") ? store.t("Automatically renews") : store.t("Expires") + " " + connection.text("expiresAt"))
-                .font(.caption).foregroundStyle(.secondary)
-        }
-        if let key {
-            Text(store.t("Save this Shortcut authorization key now. It is shown once.")).font(.caption)
-            Text(key).font(.caption.monospaced()).textSelection(.enabled).privacySensitive()
-            WorkspaceActionRows {
-                ShareLink(item: key) { Text(store.t("Save Shortcut key")) }
-                Button(store.t("Hide key")) { self.key = nil }
-            }
-        }
-        WorkspaceActionRows {
-            Button(store.t(connection == nil ? "Connect Shortcut" : "Replace Shortcut key")) { Task { await connect() } }
-                .disabled(accountNumber.count < 6 || store.saving)
-            if connection != nil {
-                Button(store.t("Disconnect Shortcut"), role: .destructive) { disconnect = true }
-            }
-            Link(store.t("Shortcut setup"), destination: MobileSignIn.origin.appending(path: "help"))
-        }
-        if let error { Text(error).font(.footnote).foregroundStyle(.red) }
-        EmptyView().task { await load() }
-            .confirmationDialog(store.t("Disconnect Shortcut"), isPresented: $disconnect) {
-                Button(store.t("Disconnect"), role: .destructive) {
-                    Task {
-                        do {
-                            _ = try await store.write("/api/bank-shortcut/disconnect")
-                            key = nil
-                            await load()
-                        } catch { self.error = store.t(error.localizedDescription) }
+        let p = store.palette
+        VStack(alignment: .leading, spacing: 10) {
+            if let connection {
+                VStack(alignment: .leading, spacing: 5) {
+                    Label(store.t("Connected"), systemImage: "checkmark.circle.fill")
+                        .font(p.font(15, .bold))
+                    WorkspaceKeyValue(store.t("Receiving account"), value: "•••• " + connection.accountLast4)
+                    if connection.renewable {
+                        Text(store.t("Automatically renews")).font(p.font(13)).foregroundStyle(p.secondaryInk)
+                    } else if let expiresAt = connection.expiresAt {
+                        Text(store.t("Expires") + " · " + expiryLabel(expiresAt))
+                            .font(p.font(13)).foregroundStyle(p.secondaryInk)
                     }
                 }
+                .padding(10)
+                .background(p.background, in: RoundedRectangle(cornerRadius: p.fieldRadius))
+
+                Button { manage.toggle() } label: {
+                    HStack(spacing: 10) {
+                        Text(store.t("Manage Shortcut"))
+                        Spacer(minLength: 0)
+                        Image(systemName: manage ? "chevron.up" : "chevron.down").accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                .accessibilityValue(store.t(manage ? "Expanded" : "Collapsed"))
+                if manage {
+                    WorkspaceActionRows {
+                        Button(store.t("Replace Shortcut key")) { Task { await connect() } }
+                            .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                            .disabled(accountNumber.count < 6 || working || store.saving)
+                        setupLink
+                    }
+                    Button(store.t("Disconnect Shortcut"), role: .destructive) { disconnect = true }
+                        .font(p.font(14, .semibold)).foregroundStyle(.red)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .disabled(working || store.saving)
+                }
+            } else if loaded {
+                WorkspaceActionRows {
+                    Button(store.t("Connect Shortcut")) { Task { await connect() } }
+                        .buttonStyle(WorkspaceActionButton(palette: p))
+                        .disabled(accountNumber.count < 6 || working || store.saving)
+                    setupLink
+                }
+            } else if error == nil || working {
+                ProgressView().tint(p.controlTint)
+            } else {
+                Button(store.t("Try again")) { Task { await load() } }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
             }
+            if let error { Text(error).font(p.font(13)).foregroundStyle(.red) }
+        }
+        .task { await load() }
+        .sheet(isPresented: Binding(get: { key != nil }, set: { if !$0 { key = nil } })) {
+            if let key { keySheet(key) }
+        }
+        .confirmationDialog(store.t("Disconnect Shortcut"), isPresented: $disconnect) {
+            Button(store.t("Disconnect"), role: .destructive) { Task { await disconnectShortcut() } }
+        }
+    }
+
+    private var setupLink: some View {
+        Link(store.t("Shortcut setup"), destination: MobileSignIn.origin.appending(path: "help"))
+            .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
+    }
+
+    private func keySheet(_ key: String) -> some View {
+        let p = store.palette
+        return WorkspaceScroll(eager: true) {
+            WorkspaceSection(store.t("Shortcut authorization key")) {
+                Text(store.t("Save this Shortcut authorization key now. It is shown once."))
+                    .foregroundStyle(p.secondaryInk)
+                Text(key)
+                    .font(.system(.footnote, design: .monospaced))
+                    .textSelection(.enabled)
+                    .privacySensitive()
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(p.background, in: RoundedRectangle(cornerRadius: p.fieldRadius))
+                WorkspaceActionRows {
+                    ShareLink(item: key) { Label(store.t("Save Shortcut key"), systemImage: "square.and.arrow.up") }
+                        .buttonStyle(WorkspaceActionButton(palette: p))
+                    Button(store.t("Done")) { self.key = nil }
+                        .buttonStyle(WorkspaceOutlineButton(palette: p))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func expiryLabel(_ timestamp: String) -> String {
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = parser.date(from: timestamp) ?? ISO8601DateFormatter().date(from: timestamp)
+        var format = Date.FormatStyle.dateTime.day().month(.abbreviated).year().hour().minute().locale(store.language)
+        format.timeZone = LedgerDate.zone
+        return date?.formatted(format) ?? timestamp
     }
 
     private func load() async {
-        do { connection = try await store.read("/api/bank-shortcut") as LedgerRecord? }
-        catch { self.error = store.t(error.localizedDescription) }
+        error = nil
+        do {
+            connection = try await store.read("/api/bank-shortcut")
+            loaded = true
+        } catch { if !Task.isCancelled { self.error = store.t(error.localizedDescription) } }
     }
 
     private func connect() async {
+        guard !working else { return }
+        working = true
         error = nil
+        defer { working = false }
         do {
             var random = SystemRandomNumberGenerator()
             let secret = (0..<32).map { _ in String(format: "%02x", UInt8.random(in: .min ... .max, using: &random)) }.joined()
@@ -297,8 +378,23 @@ struct BankShortcutForm: View {
                 body["refreshToken"] = .string(refresh)
             }
             let result = try await store.write("/api/bank-shortcut", body: body)
+            connection = Connection(accountLast4: String(accountNumber.suffix(4)), renewable: body["refreshToken"] != nil, expiresAt: nil)
+            manage = false
             key = "Bearer " + result.id + "." + secret
             await load()
+        } catch { self.error = store.t(error.localizedDescription) }
+    }
+
+    private func disconnectShortcut() async {
+        guard !working else { return }
+        working = true
+        error = nil
+        defer { working = false }
+        do {
+            _ = try await store.write("/api/bank-shortcut/disconnect")
+            key = nil
+            connection = nil
+            manage = false
         } catch { self.error = store.t(error.localizedDescription) }
     }
 }

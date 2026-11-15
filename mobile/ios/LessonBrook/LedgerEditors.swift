@@ -177,36 +177,54 @@ struct ClassEditor: View {
 struct LearnerChecklist: View {
     @EnvironmentObject private var store: WorkspaceStore
     @Binding var selection: Set<String>
-    var roster: [LedgerRecord]? = nil
+    let roster: [LedgerRecord]?
+    @State private var originalSelection: Set<String>
     @State private var items: [LedgerRecord] = []
     @State private var query = ""
     @State private var loading = true
     @State private var error: String?
 
+    init(selection: Binding<Set<String>>, roster: [LedgerRecord]? = nil) {
+        _selection = selection
+        self.roster = roster
+        _originalSelection = State(initialValue: selection.wrappedValue)
+    }
+
     var body: some View {
-        if let error {
-            LedgerError(message: error) { Task { await load() } }
+        let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let matches = (roster ?? items).filter {
+            search.isEmpty || $0.name.range(of: search, options: [.diacriticInsensitive, .caseInsensitive]) != nil
         }
-        if roster == nil && loading { ProgressView() }
-        WorkspaceField(store.t("Search students"), text: $query)
-            .task(id: store.revision) { if roster == nil { await load() } }
-        let list = roster ?? items
-        ForEach(list.filter { query.isEmpty || $0.name.range(of: query, options: [.diacriticInsensitive, .caseInsensitive]) != nil }) { item in
-            Toggle(item.name, isOn: Binding(get: { selection.contains(item.id) }, set: { enabled in
-                if enabled { selection.insert(item.id) } else { selection.remove(item.id) }
-            }))
-            .disabled(!selection.contains(item.id) && selection.count >= 50)
+        VStack(alignment: .leading, spacing: 8) {
+            WorkspaceField(store.t("Search students"), text: $query)
+            if let error {
+                LedgerError(message: error) { Task { await load() } }
+            } else if roster == nil && loading && items.isEmpty {
+                ProgressView()
+            } else if matches.isEmpty {
+                Text(store.t("No matching students")).foregroundStyle(store.palette.secondaryInk)
+            }
+            ForEach(matches) { item in
+                Toggle(item.name, isOn: Binding(get: { selection.contains(item.id) }, set: { enabled in
+                    if enabled { selection.insert(item.id) } else { selection.remove(item.id) }
+                }))
+                .disabled(!selection.contains(item.id) && selection.count >= 50)
+            }
         }
+        .toggleStyle(WorkspaceCheckbox())
+        .task(id: store.revision) { if roster == nil { await load() } }
     }
 
     private func load() async {
+        loading = true
         error = nil
+        defer { if !Task.isCancelled { loading = false } }
         do {
-            let students = try await store.all("/api/students", query: ["order": "name", "archived": "true"])
-            items = students.filter { $0.string("archivedAt") == nil || selection.contains($0.id) }
-            loading = false
+            let students = try await store.learners(includeArchived: !originalSelection.isEmpty)
+            try Task.checkCancellation()
+            items = students.filter { $0.string("archivedAt") == nil || originalSelection.contains($0.id) }
         } catch {
-            if !Task.isCancelled { loading = false; self.error = store.t(error.localizedDescription) }
+            if !Task.isCancelled { self.error = store.t(error.localizedDescription) }
         }
     }
 }
@@ -221,18 +239,21 @@ struct LearnerPicker: View {
     @State private var presented = false
     @State private var query = ""
     @State private var error: String?
+    @State private var loading = true
+
+    private var matches: [LedgerRecord] {
+        let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return items.filter { search.isEmpty || $0.name.range(of: search, options: [.diacriticInsensitive, .caseInsensitive]) != nil }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(store.t("Students")).font(store.palette.font(15, .semibold))
-            Button { query = ""; presented = true } label: {
-                HStack {
-                    Text(items.first { $0.id == selected }?.name ?? (label.isEmpty ? store.t(allOption ? "All students" : "Choose a student") : label))
-                        .font(store.palette.font(16)).lineLimit(2)
-                    Spacer(minLength: 2)
-                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
-                }.foregroundStyle(store.palette.foreground).modifier(WorkspaceControl())
-            }.buttonStyle(.plain)
+            WorkspaceChoiceTrigger(title: items.first { $0.id == selected }?.name ??
+                (label.isEmpty ? store.t(allOption ? "All students" : "Choose a student") : label)) {
+                query = ""
+                presented = true
+            }
         }
         .task(id: selected) {
             if selected.isEmpty { label = ""; return }
@@ -240,40 +261,36 @@ struct LearnerPicker: View {
             if let record: LedgerRecord = try? await store.read("/api/students/" + selected) { label = record.name }
         }
         .sheet(isPresented: $presented) {
-            NavigationStack {
-                WorkspaceScroll {
-                    HStack {
-                        Text(store.t("Choose a student")).font(store.palette.font(21, .bold))
-                        Spacer()
-                        Button(store.t("Close")) { presented = false }.buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
-                    }
-                    WorkspaceField(store.t("Search students"), text: $query)
-                    if allOption {
-                        Button(store.t("All students")) { selected = ""; label = ""; presented = false }
-                    }
-                    if let error { LedgerError(message: error) { Task { await load() } } }
-                    ForEach(items.filter { query.isEmpty || $0.name.range(of: query, options: [.diacriticInsensitive, .caseInsensitive]) != nil }) { item in
-                        Button {
-                            selected = item.id
-                            label = item.name
-                            presented = false
-                        } label: {
-                            HStack {
-                                Text(item.name)
-                                Spacer()
-                                if item.id == selected { Image(systemName: "checkmark") }
-                            }
-                        }
+            WorkspaceOptionPanel(title: store.t("Choose a student"), search: $query, searchLabel: store.t("Search students")) {
+                if allOption {
+                    WorkspaceOptionRow(title: store.t("All students"), selected: selected.isEmpty) {
+                        selected = ""; label = ""; presented = false
                     }
                 }
-                .toolbar(.hidden, for: .navigationBar)
-                .task(id: store.revision) { await load() }
+                if let error {
+                    LedgerError(message: error) { Task { await load() } }
+                } else if loading && items.isEmpty {
+                    ProgressView().padding(10)
+                } else if matches.isEmpty {
+                    Text(store.t("No matching students")).foregroundStyle(store.palette.secondaryInk).padding(10)
+                }
+                ForEach(matches) { item in
+                    WorkspaceOptionRow(title: item.name, selected: item.id == selected) {
+                        selected = item.id
+                        label = item.name
+                        presented = false
+                    }
+                }
             }
+            .presentationDetents([.large])
+            .task(id: store.revision) { await load() }
         }
     }
 
     private func load() async {
+        loading = true
         error = nil
+        defer { if !Task.isCancelled { loading = false } }
         do { items = try await store.learners(includeArchived: includeArchived) }
         catch { if !Task.isCancelled { self.error = store.t(error.localizedDescription) } }
     }

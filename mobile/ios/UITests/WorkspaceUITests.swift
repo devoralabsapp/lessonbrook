@@ -25,11 +25,13 @@ final class WorkspaceUITests: XCTestCase {
         email.tap()
         email.typeText("qa@example.test")
         tapVisible(app.buttons["Save"], app: app)
+        XCTAssertTrue(name.waitForNonExistence(timeout: 15))
         XCTAssertTrue(add.waitForExistence(timeout: 20))
         let search = app.textFields["Search students by name"]
         search.tap()
-        search.typeText("Native QA")
-        XCTAssertTrue(app.staticTexts["Native QA Student"].waitForExistence(timeout: 20))
+        search.typeText("Native QA\n")
+        let created = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Native QA Student")).firstMatch
+        XCTAssertTrue(created.waitForExistence(timeout: 20))
         app.buttons["workspace-tab-classes"].tap()
         XCTAssertTrue(app.buttons["Month calendar"].waitForExistence(timeout: 20))
         app.buttons["Month calendar"].tap()
@@ -168,7 +170,16 @@ final class WorkspaceUITests: XCTestCase {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")
         formatter.dateFormat = "yyyy-MM-dd"
-        let today = app.buttons["calendar-day-" + formatter.string(from: Date())]
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = formatter.timeZone
+        let date = Date()
+        let dayOfWeek = calendar.component(.weekday, from: date)
+        let day = calendar.component(.day, from: date)
+        let monthLength = calendar.range(of: .day, in: .month, for: date)!.count
+        let offset = dayOfWeek != 1 && day < monthLength ? 1 : -1
+        let neighborDate = calendar.date(byAdding: .day, value: offset, to: date)!
+        let today = app.buttons["calendar-day-" + formatter.string(from: date)]
+        let neighbor = app.buttons["calendar-day-" + formatter.string(from: neighborDate)]
         for tab in ["students", "classes", "lessons", "statements"] {
             app.buttons["workspace-tab-" + tab].tap()
             let scroll = app.scrollViews.firstMatch
@@ -197,8 +208,63 @@ final class WorkspaceUITests: XCTestCase {
                 shot.name = "Highlighted current day in " + tab
                 shot.lifetime = .keepAlways
                 add(shot)
+                if day != 1 || offset > 0, dayOfWeek != 2 || offset > 0 {
+                    XCTAssertEqual(today.frame.width, neighbor.frame.width, accuracy: 1)
+                    XCTAssertEqual(today.frame.height, neighbor.frame.height, accuracy: 1)
+                    XCTAssertEqual(today.frame.minY, neighbor.frame.minY, accuracy: 1)
+                    let gap = offset > 0 ? neighbor.frame.minX - today.frame.maxX : today.frame.minX - neighbor.frame.maxX
+                    XCTAssertLessThanOrEqual(abs(gap), 1)
+                    neighbor.tap()
+                    XCTAssertTrue(neighbor.isSelected)
+                    XCTAssertFalse(today.isSelected)
+                }
             }
         }
+    }
+
+    @MainActor
+    func testClassAndCustomGroupCanSelectActiveStudents() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-workspace.locale", "en"]
+        app.launch()
+        XCTAssertTrue(app.buttons["View demo"].waitForExistence(timeout: 20))
+        app.buttons["View demo"].tap()
+        let classes = app.buttons["workspace-tab-classes"]
+        XCTAssertTrue(classes.waitForExistence(timeout: 20))
+        classes.tap()
+
+        func findStudent(_ name: String) -> XCUIElement {
+            let search = app.textFields["Search students"]
+            XCTAssertTrue(search.waitForExistence(timeout: 10))
+            let student = app.buttons[name]
+            for _ in 0..<4 where !student.isHittable { app.scrollViews.firstMatch.swipeUp() }
+            XCTAssertTrue(student.waitForExistence(timeout: 15))
+            XCTAssertTrue(student.isHittable)
+            return student
+        }
+
+        app.buttons["Add class"].tap()
+        let addMember = findStudent("Alex Rivera")
+        addMember.tap()
+        XCTAssertEqual(addMember.value as? String, "Selected")
+        app.scrollViews.firstMatch.swipeDown()
+        app.buttons["Cancel"].firstMatch.tap()
+        app.buttons["Discard changes"].tap()
+
+        tapVisible(app.buttons["Edit"].firstMatch, app: app)
+        let editMember = findStudent("Alex Rivera")
+        XCTAssertTrue(editMember.isEnabled)
+        app.scrollViews.firstMatch.swipeDown()
+        app.buttons["Cancel"].firstMatch.tap()
+
+        app.buttons["workspace-tab-lessons"].tap()
+        app.buttons["Record lesson"].tap()
+        app.buttons["Teach"].tap()
+        XCTAssertTrue(app.buttons["One student"].isSelected)
+        app.buttons["Custom student group"].tap()
+        let participant = findStudent("Alex Rivera")
+        participant.tap()
+        XCTAssertEqual(participant.value as? String, "Selected")
     }
 
     @MainActor
@@ -221,13 +287,26 @@ final class WorkspaceUITests: XCTestCase {
             let save = app.buttons["Lưu giao diện"]
             XCTAssertTrue(save.waitForExistence(timeout: 10))
             save.tap()
+            XCTAssertTrue(save.waitForNonExistence(timeout: 15))
             XCTAssertTrue(palette.waitForExistence(timeout: 10))
             app.buttons["workspace-tab-students"].tap()
+            let status = app.buttons["Trạng thái"]
+            XCTAssertTrue(status.waitForExistence(timeout: 10))
             XCTAssertEqual(app.webViews.count, 0)
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "Native Vietnamese " + theme
             screenshot.lifetime = .keepAlways
             add(screenshot)
+            status.tap()
+            let active = app.buttons["Đang hoạt động"]
+            XCTAssertTrue(active.waitForExistence(timeout: 10))
+            XCTAssertTrue(active.isSelected)
+            XCTAssertTrue(app.buttons["Đã lưu trữ"].exists)
+            let options = XCTAttachment(screenshot: app.screenshot())
+            options.name = "Native dropdown " + theme
+            options.lifetime = .keepAlways
+            add(options)
+            active.tap()
         }
     }
 }
