@@ -12,12 +12,15 @@
 		52F0D7A338DE29CE323B739C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3B66AEB7C66001FFA6F37D7A /* Assets.xcassets */; };
 		577E63C21C284C3B40D421F4 /* NativeStatements.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAC489D9B80F57D8333C838 /* NativeStatements.swift */; };
 		64283AF8B41484E097CADA79 /* LedgerCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B1EE176E02EC38164158F /* LedgerCalendar.swift */; };
+		70CD2F9378FCC0B04807AB67 /* Nunito-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5DD823472039693C69D31D4F /* Nunito-Variable.ttf */; };
 		73EF40BD4426F497B1FBD026 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE16A7B650742CE6EC2ACD19 /* AppDelegate.swift */; };
 		8271DDC1C444218E601B76B2 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1A08BCE1EC91432DAC73B79F /* Localizable.strings */; };
 		83E831F661170A4D0846CE18 /* LedgerDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0704A62A7A94007C059AB5 /* LedgerDetail.swift */; };
 		99259575DFBBCF3E26BB719D /* NativeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C5AAB90E2BFD9110714666 /* NativeSettings.swift */; };
+		A10B5DD336EFD6A36AAAFFB1 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 970D779808B476FBC691E564 /* OFL.txt */; };
 		B858009A5AE59F0AA3033B65 /* NativeWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50C38D19580B1FAEFE3E7F3 /* NativeWorkspace.swift */; };
 		C1FECC370D2C20E72B3522EC /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 864FF7E806B3CDA7D61ED921 /* FirebaseCore */; };
+		C9617AE685DF0E2621A7655D /* WorkspaceDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A059BF468E4B7B2A1DF108 /* WorkspaceDesign.swift */; };
 		D44B89EC1E4FC77158BA1FCD /* MobileSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D711185E1F90EFE3122B35A /* MobileSignIn.swift */; };
 		D4658394922AF42865097CD4 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 2296D826A4574052198F742F /* GoogleSignIn */; };
 		DA1E651C765EB3A107FFF295 /* LedgerEditors.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8DC62F1E131138FBDC6F4A5 /* LedgerEditors.swift */; };
@@ -56,9 +59,12 @@
 		3B66AEB7C66001FFA6F37D7A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		487160D86AABBA71FEEC522D /* LedgerDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerDirectory.swift; sourceTree = "<group>"; };
 		4D0479E69AD8AB2B735E854A /* WorkspaceTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WorkspaceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5DD823472039693C69D31D4F /* Nunito-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Variable.ttf"; sourceTree = "<group>"; };
 		95B224551A3643DE2B151CD4 /* WorkspaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTests.swift; sourceTree = "<group>"; };
+		970D779808B476FBC691E564 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		977B1EE176E02EC38164158F /* LedgerCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerCalendar.swift; sourceTree = "<group>"; };
 		9944FA4ECE3C801ED4750694 /* NativeGoogleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGoogleSignIn.swift; sourceTree = "<group>"; };
+		A5A059BF468E4B7B2A1DF108 /* WorkspaceDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDesign.swift; sourceTree = "<group>"; };
 		C6A9AC6F8EDC6A6F47F4B4FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D5FE1BD4EB8BF8146DD644E3 /* LessonBrook.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LessonBrook.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA0704A62A7A94007C059AB5 /* LedgerDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerDetail.swift; sourceTree = "<group>"; };
@@ -118,7 +124,9 @@
 				00C5AAB90E2BFD9110714666 /* NativeSettings.swift */,
 				DCAC489D9B80F57D8333C838 /* NativeStatements.swift */,
 				E50C38D19580B1FAEFE3E7F3 /* NativeWorkspace.swift */,
+				A5A059BF468E4B7B2A1DF108 /* WorkspaceDesign.swift */,
 				1B52D512566820A4FA3F494A /* WorkspaceStore.swift */,
+				7668E306C7F3AC09E927FFAD /* Fonts */,
 			);
 			path = LessonBrook;
 			sourceTree = "<group>";
@@ -131,6 +139,15 @@
 				069CE422919DF978DF3260DE /* WorkspaceUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7668E306C7F3AC09E927FFAD /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				5DD823472039693C69D31D4F /* Nunito-Variable.ttf */,
+				970D779808B476FBC691E564 /* OFL.txt */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 		83BBA599CDA86A041E6054A3 /* UITests */ = {
@@ -259,6 +276,8 @@
 			files = (
 				52F0D7A338DE29CE323B739C /* Assets.xcassets in Resources */,
 				8271DDC1C444218E601B76B2 /* Localizable.strings in Resources */,
+				70CD2F9378FCC0B04807AB67 /* Nunito-Variable.ttf in Resources */,
+				A10B5DD336EFD6A36AAAFFB1 /* OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -310,6 +329,7 @@
 				99259575DFBBCF3E26BB719D /* NativeSettings.swift in Sources */,
 				577E63C21C284C3B40D421F4 /* NativeStatements.swift in Sources */,
 				B858009A5AE59F0AA3033B65 /* NativeWorkspace.swift in Sources */,
+				C9617AE685DF0E2621A7655D /* WorkspaceDesign.swift in Sources */,
 				02BBC24A4C8111005BAB3535 /* WorkspaceStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -389,7 +409,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -408,7 +428,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.5.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -526,7 +546,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -539,7 +559,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.5.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

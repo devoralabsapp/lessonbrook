@@ -90,35 +90,36 @@ struct WorkspaceTabs: View {
     @EnvironmentObject private var store: WorkspaceStore
     @State private var selection = WorkspaceTab.dashboard
     @State private var paths: [WorkspaceTab: [WorkspaceRoute]] = [:]
+    @State private var appearance = false
+    @State private var discardNavigation = false
+    @State private var pendingBack: WorkspaceTab?
     @Environment(\.openURL) private var openURL
     private let logger = Logger(subsystem: "tech.devoralabs.lessonbrook", category: "performance")
 
     var body: some View {
         TabView(selection: $selection) {
             ForEach(WorkspaceTab.allCases, id: \.self) { tab in
+                VStack(spacing: 0) {
+                header(tab)
                 NavigationStack(path: Binding(get: { paths[tab] ?? [] }, set: { paths[tab] = $0 })) {
                     screen(tab)
-                        .navigationTitle(store.t(tab.label))
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbarBackground(store.palette.surface, for: .navigationBar)
-                        .toolbarBackground(.visible, for: .navigationBar)
-                        .toolbar {
-                            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                                Button { push(.appearance, in: tab) } label: {
-                                    Image(systemName: "paintpalette")
-                                }.accessibilityLabel(store.t("Choose a theme"))
-                                Button { push(.settings, in: tab) } label: {
-                                    Image(systemName: "gearshape")
-                                }.accessibilityLabel(store.t("Account settings"))
-                            }
-                        }
+                        .toolbar(.hidden, for: .navigationBar)
                         .navigationDestination(for: WorkspaceRoute.self, destination: destination)
                 }
                 .toolbar(.hidden, for: .tabBar)
+                }
                 .tag(tab)
             }
         }
+        .sheet(isPresented: $appearance) { NativeAppearance() }
         .tint(store.palette.controlTint)
+        .font(store.palette.font())
+        .buttonStyle(WorkspaceOutlineButton(palette: store.palette))
+        .toggleStyle(WorkspaceCheckbox())
+        .confirmationDialog(store.t("Discard unsaved changes?"), isPresented: $discardNavigation, titleVisibility: .visible) {
+            Button(store.t("Discard changes"), role: .destructive) { if let tab = pendingBack { goBack(tab) } }
+            Button(store.t("Keep editing"), role: .cancel) { pendingBack = nil }
+        }
         .onChange(of: selection) { tab in
             if tab == .dashboard { Task { await store.refreshDashboard() } }
         }
@@ -129,6 +130,61 @@ struct WorkspaceTabs: View {
                 await store.refreshDashboard()
             }
         }
+    }
+
+    private func header(_ tab: WorkspaceTab) -> some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Text(store.t(headerTitle(tab))).font(store.palette.font(17, .bold))
+                    .lineLimit(1).frame(maxWidth: .infinity).padding(.horizontal, 100)
+                HStack {
+                    if tab != .dashboard || !(paths[tab] ?? []).isEmpty {
+                        Button {
+                            if store.hasUnsavedEdits { pendingBack = tab; discardNavigation = true }
+                            else { goBack(tab) }
+                        } label: { Image(systemName: "chevron.left").frame(width: 18, height: 20) }
+                            .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
+                            .accessibilityLabel(store.t("Back")).disabled(store.saving)
+                    }
+                    Spacer()
+                    HStack(spacing: 6) {
+                        Button { appearance = true } label: { Image(systemName: "paintpalette").frame(width: 20, height: 20) }
+                            .accessibilityLabel(store.t("Choose a theme"))
+                        Button { push(.settings, in: tab) } label: { Image(systemName: "gearshape").frame(width: 20, height: 20) }
+                            .accessibilityLabel(store.t("Account settings"))
+                    }.buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true)).disabled(store.saving)
+                }
+            }.frame(height: 52).padding(.horizontal, 12)
+            Rectangle().fill(store.palette.border.opacity(0.15)).frame(height: 0.5)
+            if store.demo && tab != .dashboard {
+                HStack {
+                    Text(store.t("Demo teaching ledger")).font(store.palette.font(13, .semibold))
+                    Spacer()
+                    Button(store.t("Sign in")) { Task { await store.beginSignIn(open: openURL) } }
+                        .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
+                }.padding(.horizontal, 12).padding(.vertical, 8)
+                Divider().overlay(store.palette.border)
+            }
+        }.foregroundStyle(store.palette.foreground).background(store.palette.background)
+    }
+    private func headerTitle(_ tab: WorkspaceTab) -> String {
+        guard let route = paths[tab]?.last else { return tab.label }
+        switch route {
+        case .student: return "Student"
+        case .teachingClass: return "Class"
+        case .statement: return "Statements"
+        case .session, .lesson: return "Lessons"
+        case .settings: return "Account settings"
+        case .appearance: return "Appearance"
+        case .schedule: return "Upcoming lessons"
+        case .onboarding: return "Get started"
+        default: return tab.label
+        }
+    }
+    private func goBack(_ tab: WorkspaceTab) {
+        if !(paths[tab] ?? []).isEmpty { paths[tab]?.removeLast() }
+        else { selection = .dashboard }
+        pendingBack = nil; store.hasUnsavedEdits = false
     }
 
     private var tabs: some View {
@@ -143,12 +199,12 @@ struct WorkspaceTabs: View {
                     }
                 } label: {
                     VStack(spacing: 3) {
-                        Image(systemName: tab.icon).font(.body)
-                        Text(store.t(tab.label)).font(.caption2.weight(active ? .bold : .medium))
+                        Image(systemName: tab.icon).font(.system(size: 20))
+                        Text(store.t(tab.label)).font(store.palette.font(13, active ? .bold : .semibold))
                             .lineLimit(1).minimumScaleFactor(0.7)
                     }
                     .foregroundStyle(active ? store.palette.onAccent : store.palette.foreground)
-                    .frame(maxWidth: .infinity, minHeight: 46)
+                    .frame(maxWidth: .infinity, minHeight: 49)
                     .background(active ? store.palette.accent : .clear, in: RoundedRectangle(cornerRadius: 11))
                 }
                 .buttonStyle(.plain)

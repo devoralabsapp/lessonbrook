@@ -38,24 +38,26 @@ struct StatementEditor: View {
     }
 
     var body: some View {
-        NavigationStack {
             LedgerEditorForm(title: record == nil ? "Create statement" : "Edit statement",
                              valid: loadedKey == key && !loading && !selected.isEmpty,
                              draftKey: [key, selected.sorted().joined(), LedgerDate.text(due), String(includeBank)].joined(separator: "\u{0}"), save: save) {
-                Section {
+                WorkspaceSection {
                     LearnerPicker(selected: $studentID, includeArchived: true)
                         .disabled(record?.text("status") == "issued")
-                    Picker(store.t("Date range"), selection: $period) {
-                        ForEach([LedgerPeriod.week, .month, .custom], id: \.self) { Text(store.t($0.rawValue)).tag($0) }
+                    HStack(alignment: .top, spacing: 12) {
+                        WorkspaceChoice(label: store.t("Date range"), selection: $period,
+                            options: [LedgerPeriod.week, .month, .custom].map { ($0, store.t($0.rawValue)) })
+                        WorkspaceDatePicker(store.t("Due date"), selection: $due)
                     }
                     if period == .custom {
-                        DatePicker(store.t("From date"), selection: $from, displayedComponents: .date)
-                        DatePicker(store.t("To date"), selection: $to, displayedComponents: .date)
+                        HStack(alignment: .top, spacing: 12) {
+                            WorkspaceDatePicker(store.t("From date"), selection: $from)
+                            WorkspaceDatePicker(store.t("To date"), selection: $to)
+                        }
                     }
-                    DatePicker(store.t("Due date"), selection: $due, displayedComponents: .date)
                     if record?.text("status") != "issued" { Toggle(store.t("Include bank transfer details"), isOn: $includeBank) }
                 }
-                Section(store.t("Eligible lessons")) {
+                WorkspaceSection(store.t("Eligible lessons")) {
                     if loading { ProgressView() }
                     else if let error { LedgerError(message: error) { Task { await load() } } }
                     else if eligible.isEmpty { Text(store.t("Choose a student and date range to see lessons.")) }
@@ -75,13 +77,12 @@ struct StatementEditor: View {
                                 }
                             }.disabled(!selected.contains(session.id) && selected.count >= 100)
                         }
-                        LabeledContent(store.t("Total tuition"),
+                        WorkspaceKeyValue(store.t("Total tuition"),
                                        value: store.money(eligible.filter { selected.contains($0.id) }.reduce(0) { $0 + $1.int("amountVnd") }))
                     }
                 }
             }
             .task(id: key) { await load() }
-        }
     }
 
     private var key: String { ledgerPath("/api/statements/eligible", query) }
@@ -158,14 +159,21 @@ struct NativeStatementDetail: View {
     }
 
     var body: some View {
-        List {
+        WorkspaceScroll {
             if let record {
+                HStack {
+                    Text(record.string("number") ?? store.t("Draft")).font(store.palette.font(25, .heavy))
+                    Spacer()
+                    if record.text("status") == "draft" || (issued && record.int("activePaymentCount") == 0) {
+                        Button(store.t("Edit statement")) { edit = true }.buttonStyle(WorkspaceOutlineButton(palette: store.palette))
+                    }
+                }
                 statement(record)
                 if issued, remaining > 0 { transfer(record) }
                 if issued || record.text("status") == "void" { history }
                 if issued, remaining > 0 { sharing }
                 if record.flag("canCancel") {
-                    Section {
+                    WorkspaceSection {
                         Button(store.t("Cancel statement"), role: .destructive) { reason = ""; cancel = true }
                             .disabled(store.saving)
                     }
@@ -221,21 +229,22 @@ struct NativeStatementDetail: View {
     }
 
     private func statement(_ record: LedgerRecord) -> some View {
-        Section(store.t("Tuition statement")) {
+        WorkspaceSection(fill: store.palette.retroRows ? store.palette.yellow : store.palette.recordAccent) {
             HStack {
-                Text(record.string("number") ?? store.t("Draft")).font(.title3.bold())
+                Text(store.t("Tuition statement").uppercased()).font(store.palette.font(12, .semibold)).tracking(1.5)
                 Spacer()
                 LedgerBadge(code: issued ? (remaining == 0 ? "paid" : "unpaid") : record.text("status"))
             }
-            Text(record.object("recipientSnapshot")?.name ?? "")
+            Text(record.object("teacherSnapshot")?.name ?? "").font(store.palette.font(24, .heavy))
+            Text(store.t("Student") + ": " + (record.object("recipientSnapshot")?.name ?? "")).font(store.palette.font(16, .bold))
             Text(record.text("periodStart") + " – " + record.text("periodEnd")).foregroundStyle(.secondary)
-            LabeledContent(store.t("Due date"), value: record.text("dueDate"))
+            WorkspaceKeyValue(store.t("Due date"), value: record.text("dueDate"))
             ForEach(Array(record.objects("items").enumerated()), id: \.offset) { _, item in
-                LabeledContent(item.text("sessionDate"), value: store.money(item.int("amountVnd")))
+                WorkspaceKeyValue(item.text("sessionDate"), value: store.money(item.int("amountVnd")))
             }
-            LabeledContent(store.t("Total tuition"), value: store.money(record.int("totalVnd")))
-            LabeledContent(store.t("Paid"), value: store.money(record.int("paidVnd")))
-            LabeledContent(store.t("Remaining balance"), value: store.money(remaining))
+            WorkspaceKeyValue(store.t("Total tuition"), value: store.money(record.int("totalVnd")))
+            WorkspaceKeyValue(store.t("Paid"), value: store.money(record.int("paidVnd")))
+            WorkspaceKeyValue(store.t("Remaining balance"), value: store.money(remaining))
             if issued && remaining > 0 { Button(store.t("Paid by cash")) { cash = true } }
             if record.text("status") == "draft" {
                 Button(store.t("Issue statement")) {
@@ -247,25 +256,25 @@ struct NativeStatementDetail: View {
 
     @ViewBuilder private func transfer(_ record: LedgerRecord) -> some View {
         if let bank = record.object("bankTransferSnapshot"), let reference = record.string("transferReference") {
-            Section(store.t("Bank transfer details")) {
+            WorkspaceSection(store.t("Bank transfer details")) {
                 if let qr = VietQRImage.image(bank: bank, amount: remaining, reference: reference) {
                     Image(decorative: qr, scale: 1).interpolation(.none).resizable().scaledToFit()
                         .frame(maxWidth: 190, maxHeight: 190).padding(12).background(.white)
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("VietQR")
                 }
-                LabeledContent(store.t("Bank"), value: bank.text("bankName"))
-                LabeledContent(store.t("Account number"), value: bank.text("accountNumber")).textSelection(.enabled)
-                LabeledContent(store.t("Account holder"), value: bank.text("accountName"))
-                LabeledContent(store.t("Transfer reference"), value: reference).textSelection(.enabled)
+                WorkspaceKeyValue(store.t("Bank"), value: bank.text("bankName"))
+                WorkspaceKeyValue(store.t("Account number"), value: bank.text("accountNumber")).textSelection(.enabled)
+                WorkspaceKeyValue(store.t("Account holder"), value: bank.text("accountName"))
+                WorkspaceKeyValue(store.t("Transfer reference"), value: reference).textSelection(.enabled)
             }
         } else if let legacy = record.string("bankSnapshot"), !legacy.isEmpty {
-            Section(store.t("Bank transfer details")) { Text(legacy) }
+            WorkspaceSection(store.t("Bank transfer details")) { Text(legacy) }
         }
     }
 
     private var history: some View {
-        Section(store.t("Payment history")) {
+        WorkspaceSection(store.t("Payment history")) {
             if payments.isEmpty { Text(store.t("No payments yet.")).foregroundStyle(.secondary) }
             ForEach(payments) { item in
                 VStack(alignment: .leading, spacing: 5) {
@@ -293,7 +302,7 @@ struct NativeStatementDetail: View {
     }
 
     private var sharing: some View {
-        Section(store.t("Share statement")) {
+        WorkspaceSection(store.t("Share statement")) {
             if store.demo {
                 Button(store.t("Preview statement")) { demoPreview = true }
             } else {
@@ -389,15 +398,13 @@ struct PaymentEditor: View {
     }
 
     var body: some View {
-        NavigationStack {
             LedgerEditorForm(title: record == nil ? "Paid by cash" : "Edit payment",
                              valid: (Int(amount).map { $0 > 0 && $0 <= maximum } ?? false),
                              draftKey: [amount, LedgerDate.text(date), note].joined(separator: "\u{0}"), save: save) {
-                TextField(store.t("Amount received (VND)"), text: $amount).keyboardType(.numberPad)
-                DatePicker(store.t("Date received"), selection: $date, in: ...Date.now, displayedComponents: .date)
-                TextField(store.t("Private notes"), text: $note, axis: .vertical).lineLimit(2...5)
+                WorkspaceField(store.t("Amount received (VND)"), text: $amount).keyboardType(.numberPad)
+                WorkspaceDatePicker(store.t("Date received"), selection: $date, in: ...Date.now, displayedComponents: .date)
+                WorkspaceField(store.t("Private notes"), text: $note, axis: .vertical).lineLimit(2...5)
             }
-        }
     }
 
     private func save() async throws {
@@ -415,26 +422,31 @@ struct PaymentEditor: View {
 
 struct NativeStatementPreview: View {
     @EnvironmentObject private var store: WorkspaceStore
+    @Environment(\.dismiss) private var dismiss
     let record: LedgerRecord
     var body: some View {
-        NavigationStack {
-            List {
-                Section(store.t("Tuition statement")) {
-                    Text(record.text("number")).font(.title3.bold())
-                    Text(record.object("teacherSnapshot")?.name ?? "")
-                    Text(record.object("recipientSnapshot")?.name ?? "")
-                    ForEach(Array(record.objects("items").enumerated()), id: \.offset) { _, item in
-                        LabeledContent(item.text("sessionDate"), value: store.money(item.int("amountVnd")))
-                    }
+        let light = WorkspacePalette("playful-retro")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text(store.t("Tuition statement").uppercased()).font(light.font(12, .semibold)).tracking(1.5)
+                    Spacer()
+                    Button(store.t("Close")) { dismiss() }.buttonStyle(WorkspaceOutlineButton(palette: light, compact: true))
                 }
-                Section {
-                    LabeledContent(store.t("Total tuition"), value: store.money(record.int("totalVnd")))
-                    LabeledContent(store.t("Remaining balance"), value: store.money(record.int("totalVnd") - record.int("paidVnd")))
+                Text(record.text("number")).font(light.font(24, .heavy))
+                Text(record.object("teacherSnapshot")?.name ?? "").font(light.font(22, .bold))
+                Text(record.object("recipientSnapshot")?.name ?? "").font(light.font(17, .semibold))
+                Text(record.text("periodStart") + " – " + record.text("periodEnd")).font(light.font(14))
+                Divider()
+                ForEach(Array(record.objects("items").enumerated()), id: \.offset) { _, item in
+                    HStack { Text(item.text("sessionDate")); Spacer(); Text(store.money(item.int("amountVnd"))) }
                 }
-            }
-            .navigationTitle(store.t("Preview statement"))
-            .preferredColorScheme(.light)
-        }
+                Divider()
+                HStack { Text(store.t("Total tuition")); Spacer(); Text(store.money(record.int("totalVnd"))).bold() }
+                HStack { Text(store.t("Remaining balance")); Spacer(); Text(store.money(record.int("totalVnd") - record.int("paidVnd"))).bold() }
+            }.font(light.font(15)).padding(18).foregroundStyle(light.foreground)
+                .modifier(WorkspacePanel(palette: light, fill: light.surface)).padding(12)
+        }.background(light.background).preferredColorScheme(.light)
     }
 }
 

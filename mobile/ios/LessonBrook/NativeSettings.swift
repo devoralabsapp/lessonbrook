@@ -70,9 +70,9 @@ struct NativeSettings: View {
     @State private var exporting = false
 
     var body: some View {
-        Form {
-            Section(store.t("Teacher profile")) {
-                TextField(store.t("Display name"), text: $displayName)
+        WorkspaceScroll {
+            WorkspaceSection(store.t("Teacher profile")) {
+                WorkspaceField(store.t("Display name"), text: $displayName)
                 if let email = profile?.string("email") { Text(email).foregroundStyle(.secondary) }
                 Button(store.t("Save profile")) {
                     Task {
@@ -83,16 +83,12 @@ struct NativeSettings: View {
                     }
                 }.disabled(store.saving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            Section(store.t("Bank transfer details")) {
-                Picker(store.t("Bank"), selection: $bankBin) {
-                    Text(store.t("Choose a bank")).tag("")
-                    if !bankBin.isEmpty && !Self.banks.contains(where: { $0.0 == bankBin }) {
-                        Text(bankBin).tag(bankBin)
-                    }
-                    ForEach(Self.banks, id: \.0) { Text($0.1).tag($0.0) }
-                }
-                TextField(store.t("Account number"), text: $account).keyboardType(.numberPad)
-                TextField(store.t("Account holder"), text: $accountName)
+            WorkspaceSection(store.t("Bank transfer details")) {
+                WorkspaceChoice(label: store.t("Bank"), selection: $bankBin,
+                    options: [("", store.t("Choose a bank"))] + Self.banks +
+                        (!bankBin.isEmpty && !Self.banks.contains(where: { $0.0 == bankBin }) ? [(bankBin, bankBin)] : []))
+                WorkspaceField(store.t("Account number"), text: $account).keyboardType(.numberPad)
+                WorkspaceField(store.t("Account holder"), text: $accountName)
                 Button(store.t("Save bank details")) {
                     Task {
                         await perform {
@@ -113,22 +109,19 @@ struct NativeSettings: View {
                 }.disabled(store.saving || profile?.object("bankTransfer") == nil)
             }
             if !store.demo {
-                Section(store.t("Payment notifications")) { BankShortcutForm(accountNumber: account) }
+                WorkspaceSection(store.t("Payment notifications")) { BankShortcutForm(accountNumber: account) }
             }
-            Section(store.t("Preferences")) {
-                NavigationLink(value: WorkspaceRoute.appearance) { Label(store.t("Appearance"), systemImage: "paintpalette") }
-                Picker(store.t("Language"), selection: Binding(get: { store.locale }, set: store.setLanguage)) {
-                    Text("English").tag("en")
-                    Text("Tiếng Việt").tag("vi")
-                }
+            WorkspaceSection(store.t("Preferences")) {
+                WorkspaceChoice(label: store.t("Language"), selection: Binding(get: { store.locale }, set: store.setLanguage),
+                                options: [("en", "English"), ("vi", "Tiếng Việt")])
             }
-            Section(store.t("Your data")) {
+            WorkspaceSection(store.t("Your data")) {
                 Button(store.t(exporting ? "Preparing export…" : "Export all data")) { Task { await exportData() } }
                     .disabled(exporting || store.saving)
                 Link(store.t("Help & support"), destination: MobileSignIn.origin.appending(path: "help"))
                 Link(store.t("Data & privacy"), destination: MobileSignIn.origin.appending(path: "privacy"))
             }
-            Section {
+            WorkspaceSection {
                 if store.demo {
                     Button(store.t("Sign in")) { Task { await store.beginSignIn(open: openURL) } }
                     Button(store.t("Exit demo")) { Task { await store.signOut() } }
@@ -150,10 +143,10 @@ struct NativeSettings: View {
         }
         .sheet(isPresented: $deleting) {
             NavigationStack {
-                Form {
-                    Section {
+                WorkspaceScroll {
+                    WorkspaceSection {
                         Text(store.t("This permanently deletes your account, lessons, statements and payment history."))
-                        TextField("DELETE ACCOUNT", text: $confirmation).textInputAutocapitalization(.characters)
+                        WorkspaceField("DELETE ACCOUNT", text: $confirmation).textInputAutocapitalization(.characters)
                         Button(store.t("Confirm with Google and delete"), role: .destructive) {
                             Task {
                                 do { try await store.startDeletion(confirmation); deleting = false }
@@ -247,7 +240,7 @@ struct BankShortcutForm: View {
 
     var body: some View {
         if let connection {
-            LabeledContent(store.t("Receiving account"), value: "••••" + connection.text("accountLast4"))
+            WorkspaceKeyValue(store.t("Receiving account"), value: "••••" + connection.text("accountLast4"))
             Text(connection.flag("renewable") ? store.t("Automatically renews") : store.t("Expires") + " " + connection.text("expiresAt"))
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -314,13 +307,19 @@ struct NativeAppearance: View {
     var body: some View {
         let palette = WorkspacePalette(preview ?? store.theme)
         ScrollView {
-            VStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text(store.t("Appearance")).font(palette.font(24, .heavy))
+                    Spacer()
+                    Button(store.t("Close")) { dismiss() }.buttonStyle(WorkspaceOutlineButton(palette: palette, compact: true))
+                }
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(themes, id: \.0) { theme in
                     let colors = WorkspacePalette(theme.0)
                     Button { preview = theme.0; store.previewTheme = theme.0 } label: {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(theme.1).font(.headline)
+                                Text(theme.1).font(palette.font(14, .bold)).fixedSize(horizontal: false, vertical: true)
                                 Spacer()
                                 if (preview ?? store.theme) == theme.0 { Image(systemName: "checkmark") }
                             }
@@ -334,6 +333,7 @@ struct NativeAppearance: View {
                         .foregroundStyle(palette.foreground)
                         .modifier(WorkspacePanel(palette: palette, fill: palette.surface))
                     }.buttonStyle(.plain)
+                }
                 }
                 if let error { Text(error).foregroundStyle(.red) }
                 Button(store.t("Save appearance")) {
@@ -356,9 +356,9 @@ struct NativeOnboarding: View {
     @State private var name = ""
     @State private var error: String?
     var body: some View {
-        Form {
-            Section(store.t("Teacher profile")) {
-                TextField(store.t("Display name"), text: $name)
+        WorkspaceScroll {
+            WorkspaceSection(store.t("Teacher profile")) {
+                WorkspaceField(store.t("Display name"), text: $name)
                 Button(store.t("Save profile")) {
                     Task {
                         do {
@@ -368,7 +368,7 @@ struct NativeOnboarding: View {
                     }
                 }.disabled(store.saving || name.isEmpty)
             }
-            Section {
+            WorkspaceSection {
                 NavigationLink(value: WorkspaceRoute.studentHistory(.students, "")) { Text(store.t("Students")) }
                 NavigationLink(value: WorkspaceRoute.recordLesson()) { Text(store.t("Record lesson")) }
             }

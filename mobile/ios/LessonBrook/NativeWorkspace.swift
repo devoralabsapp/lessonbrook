@@ -539,14 +539,14 @@ struct WorkspaceActionButton: ButtonStyle {
     let palette: WorkspacePalette
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(.subheadline, design: palette.fontDesign).bold())
+        let shape = RoundedRectangle(cornerRadius: palette.retroRows ? 99 : palette.fieldRadius)
+        configuration.label.font(palette.font(15, .heavy))
             .foregroundStyle(palette.onAccent)
-            .padding(.horizontal, 12).padding(.vertical, 9)
-            .frame(minHeight: 42)
-            .background(palette.accent, in: RoundedRectangle(cornerRadius: min(16, palette.radius)))
-            .overlay(RoundedRectangle(cornerRadius: min(16, palette.radius)).stroke(palette.border, lineWidth: palette.outline))
+            .padding(.horizontal, 12).padding(.vertical, 9).frame(minHeight: 44)
+            .background(palette.accent, in: shape)
+            .overlay(shape.stroke(palette.border, lineWidth: palette.outline))
+            .background(shape.fill(palette.border).offset(x: palette.shadowOffset, y: palette.shadowOffset))
             .opacity(enabled ? 1 : 0.45)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .offset(x: configuration.isPressed ? 2 : 0, y: configuration.isPressed ? 2 : 0)
     }
 }

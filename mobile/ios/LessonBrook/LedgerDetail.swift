@@ -11,8 +11,13 @@ struct LedgerRecordDetail: View {
     @State private var statement = false
 
     var body: some View {
-        List {
+        WorkspaceScroll {
             if let record {
+                HStack {
+                    Text(store.t(detailTitle)).font(store.palette.font(25, .heavy))
+                    Spacer()
+                    if editable(record) { Button(store.t("Edit")) { editing = true }.buttonStyle(WorkspaceOutlineButton(palette: store.palette)) }
+                }
                 switch kind {
                 case .students: student(record)
                 case .classes: teachingClass(record)
@@ -20,7 +25,7 @@ struct LedgerRecordDetail: View {
                 case .statements: EmptyView()
                 }
                 if !record.text("privateNote").isEmpty {
-                    Section(store.t("Private notes")) { Text(record.text("privateNote")) }
+                    WorkspaceSection(store.t("Private notes")) { Text(record.text("privateNote")) }
                 }
             } else if error == nil { ProgressView() }
             if let error { LedgerError(message: error) { Task { await load() } } }
@@ -42,7 +47,7 @@ struct LedgerRecordDetail: View {
                 case .students: StudentEditor(record: record)
                 case .classes: ClassEditor(record: record)
                 case .sessions, .lessons:
-                    NavigationStack { LessonEditor(record: record, editingGroup: kind == .lessons) }
+                    LessonEditor(record: record, editingGroup: kind == .lessons)
                 case .statements: EmptyView()
                 }
             }
@@ -75,14 +80,14 @@ struct LedgerRecordDetail: View {
     }
 
     @ViewBuilder private func student(_ record: LedgerRecord) -> some View {
-        Section {
+        WorkspaceSection {
             Text(record.name).font(.title2.bold())
             if record.string("archivedAt") != nil { Text(store.t("Archived")).foregroundStyle(.secondary) }
             row("Contact name", record.text("contactName"))
             row("Phone number", record.text("phone"))
             row("Email", record.text("email"))
         }
-        Section {
+        WorkspaceSection {
             NavigationLink(value: WorkspaceRoute.studentHistory(.sessions, id)) { Text(store.t("Lessons")) }
             NavigationLink(value: WorkspaceRoute.studentHistory(.statements, id)) { Text(store.t("Statements")) }
             Button(store.t("Create statement")) { statement = true }
@@ -94,23 +99,23 @@ struct LedgerRecordDetail: View {
     }
 
     @ViewBuilder private func teachingClass(_ record: LedgerRecord) -> some View {
-        Section {
+        WorkspaceSection {
             Text(record.name).font(.title2.bold())
             row("Price per lesson (VND)", store.money(record.int("rateVnd")))
             if record.string("archivedAt") != nil { Text(store.t("Archived")).foregroundStyle(.secondary) }
         }
-        Section(store.t("Weekly schedule")) {
+        WorkspaceSection(store.t("Weekly schedule")) {
             ForEach(Array(record.objects("weeklySchedule").enumerated()), id: \.offset) { _, slot in
-                LabeledContent(weekday(slot.int("weekday"), locale: store.language), value: slot.text("time"))
+                WorkspaceKeyValue(weekday(slot.int("weekday"), locale: store.language), value: slot.text("time"))
             }
             if record.objects("weeklySchedule").isEmpty { Text(store.t("No scheduled times.")) }
         }
-        Section(store.t("Students")) {
+        WorkspaceSection(store.t("Students")) {
             ForEach(record.objects("students")) { student in
                 NavigationLink(value: WorkspaceRoute.student(student.id)) { Text(student.name) }
             }
         }
-        Section {
+        WorkspaceSection {
             NavigationLink(value: WorkspaceRoute.classHistory(id)) { Text(store.t("Lessons")) }
             if record.string("archivedAt") == nil {
                 NavigationLink(value: WorkspaceRoute.recordLesson(classID: id)) { Text(store.t("Record lesson")) }
@@ -120,7 +125,7 @@ struct LedgerRecordDetail: View {
     }
 
     @ViewBuilder private func lesson(_ record: LedgerRecord) -> some View {
-        Section {
+        WorkspaceSection {
             Text(record.string("className") ?? record.string("studentName") ?? store.t("Group lesson")).font(.title2.bold())
             row("Lesson date", record.text("sessionDate"))
             row("Start time", record.text("startTime"))
@@ -131,7 +136,7 @@ struct LedgerRecordDetail: View {
                 if let payment = record.string("paymentStatus") { LedgerBadge(code: payment) }
             }
         }
-        Section {
+        WorkspaceSection {
             if let classID = record.string("classId") {
                 NavigationLink(value: WorkspaceRoute.teachingClass(classID)) { Text(store.t("Class")) }
             }
@@ -149,7 +154,7 @@ struct LedgerRecordDetail: View {
             }
         }
         if kind == .lessons {
-            Section(store.t("Attendance")) {
+            WorkspaceSection(store.t("Attendance")) {
                 ForEach(record.objects("sessions")) { session in
                     NavigationLink(value: WorkspaceRoute.session(session.id)) {
                         HStack {
@@ -164,7 +169,7 @@ struct LedgerRecordDetail: View {
     }
 
     @ViewBuilder private func row(_ name: String, _ value: String) -> some View {
-        if !value.isEmpty { LabeledContent(store.t(name), value: value) }
+        if !value.isEmpty { WorkspaceKeyValue(store.t(name), value: value) }
     }
 
     private func load() async {

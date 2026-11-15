@@ -42,6 +42,8 @@
         <key>UIApplicationSupportsMultipleScenes</key>
         <false/>
     </dict>
+    <key>UIAppFonts</key>
+    <array><string>Nunito-Variable.ttf</string></array>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>

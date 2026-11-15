@@ -21,12 +21,12 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(name.waitForExistence(timeout: 10))
         name.tap()
         name.typeText("Native QA Student")
-        let email = app.textFields["Email"]
+        let email = app.textFields["Statement email"]
         email.tap()
         email.typeText("qa@example.test")
-        app.buttons["Save"].tap()
+        tapVisible(app.buttons["Save"], app: app)
         XCTAssertTrue(add.waitForExistence(timeout: 20))
-        let search = app.textFields["Search students"]
+        let search = app.textFields["Search students by name"]
         search.tap()
         search.typeText("Native QA")
         XCTAssertTrue(app.staticTexts["Native QA Student"].waitForExistence(timeout: 20))
@@ -44,27 +44,27 @@ final class WorkspaceUITests: XCTestCase {
         let choose = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Choose a student")).firstMatch
         XCTAssertTrue(choose.waitForExistence(timeout: 10))
         choose.tap()
-        let learnerSearch = app.searchFields.firstMatch
+        let learnerSearch = app.textFields["Search students"]
         XCTAssertTrue(learnerSearch.waitForExistence(timeout: 10))
         learnerSearch.tap(); learnerSearch.typeText("Native QA")
         let learner = app.buttons["Native QA Student"]
         XCTAssertTrue(learner.waitForExistence(timeout: 10)); learner.tap()
         let price = app.textFields["Lesson price (VND)"]
         XCTAssertTrue(price.waitForExistence(timeout: 10)); price.tap(); price.typeText("30000")
-        app.buttons["Save"].tap()
+        tapVisible(app.buttons["Save"], app: app)
         XCTAssertTrue(app.buttons["Record lesson"].waitForExistence(timeout: 15))
         app.buttons["workspace-tab-statements"].tap()
         XCTAssertTrue(app.buttons["Create statement"].waitForExistence(timeout: 15))
         app.buttons["Create statement"].tap()
         XCTAssertTrue(choose.waitForExistence(timeout: 10)); choose.tap()
-        let statementSearch = app.searchFields.firstMatch
+        let statementSearch = app.textFields["Search students"]
         XCTAssertTrue(statementSearch.waitForExistence(timeout: 10))
         statementSearch.tap(); statementSearch.typeText("Native QA")
         XCTAssertTrue(learner.waitForExistence(timeout: 10)); learner.tap()
         let selectAll = app.buttons["Select all lessons"]
         if !selectAll.isHittable { app.swipeUp() }
         XCTAssertTrue(selectAll.waitForExistence(timeout: 10)); selectAll.tap()
-        app.buttons["Save"].tap()
+        tapVisible(app.buttons["Save"], app: app)
         XCTAssertTrue(app.buttons["Create statement"].waitForExistence(timeout: 15))
         let tuition = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Native QA Student")).firstMatch
         if !tuition.isHittable { app.swipeUp() }
@@ -73,7 +73,7 @@ final class WorkspaceUITests: XCTestCase {
         if !cash.isHittable { app.swipeUp() }
         XCTAssertTrue(cash.waitForExistence(timeout: 10)); cash.tap()
         XCTAssertTrue(app.textFields["Amount received (VND)"].waitForExistence(timeout: 10))
-        app.buttons["Save"].tap()
+        tapVisible(app.buttons["Save"], app: app)
         XCTAssertTrue(app.textFields["Amount received (VND)"].waitForNonExistence(timeout: 15))
         app.swipeUp()
         app.swipeUp()
@@ -91,6 +91,54 @@ final class WorkspaceUITests: XCTestCase {
             return ProcessInfo.processInfo.systemUptime - started
         }
         print("NATIVE_TAB_XCUITEST_SECONDS \(timings)")
+    }
+
+    @MainActor
+    private func tapVisible(_ button: XCUIElement, app: XCUIApplication) {
+        for _ in 0..<6 {
+            if button.isHittable { button.tap(); return }
+            app.swipeUp()
+        }
+        XCTAssertTrue(button.isHittable)
+        button.tap()
+    }
+
+    @MainActor
+    func testRestoredWorkspaceLayoutAndDirectActions() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-workspace.locale", "en"]
+        app.launch()
+        XCTAssertTrue(app.buttons["View demo"].waitForExistence(timeout: 20))
+        app.buttons["View demo"].tap()
+        XCTAssertTrue(app.buttons["workspace-tab-students"].waitForExistence(timeout: 20))
+        for tab in ["students", "classes", "lessons", "statements"] {
+            app.buttons["workspace-tab-" + tab].tap()
+            let label = tab == "students" ? "Student list" : tab == "classes" ? "Class list" : tab == "lessons" ? "Lesson list" : "Statement list"
+            XCTAssertTrue(app.staticTexts[label].waitForExistence(timeout: 15))
+            XCTAssertTrue(app.buttons["List"].exists)
+            XCTAssertTrue(app.buttons["Notes"].exists)
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = "Restored English " + tab
+            shot.lifetime = .keepAlways
+            add(shot)
+            if tab == "students" || tab == "classes" {
+                tapVisible(app.buttons["Edit"].firstMatch, app: app)
+                XCTAssertTrue(app.textFields[tab == "students" ? "Student name" : "Class name"].waitForExistence(timeout: 15))
+                let form = XCTAttachment(screenshot: app.screenshot())
+                form.name = "Restored " + tab + " editor"
+                form.lifetime = .keepAlways; add(form)
+                app.buttons["Cancel"].firstMatch.tap()
+            }
+            XCTAssertEqual(app.webViews.count, 0)
+        }
+        XCTAssertTrue(app.buttons["Statement status"].exists)
+        XCTAssertTrue(app.buttons["Statement date"].exists)
+        app.buttons["workspace-tab-lessons"].tap()
+        XCTAssertTrue(app.buttons["Search by"].exists)
+        XCTAssertTrue(app.buttons["Today"].exists)
+        XCTAssertTrue(app.buttons["This month"].exists)
+        XCTAssertTrue(app.buttons["Clear filters"].exists)
+        XCTAssertTrue(app.buttons["Select"].exists)
     }
 
     @MainActor

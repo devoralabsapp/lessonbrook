@@ -171,7 +171,7 @@ struct NativeSchedule: View {
     @State private var data: WorkspaceSnapshot.Schedule?
     @State private var error: String?
     var body: some View {
-        List {
+        WorkspaceScroll {
             if let error { LedgerError(message: error) { Task { await load() } } }
             if let data {
                 ForEach(data.upcoming) { lesson in

@@ -67,6 +67,9 @@ struct LedgerDirectory: View {
     @State private var student = ""
     @State private var selectedClass = ""
     @State private var classes: [LedgerRecord] = []
+    @State private var searchBy = "student"
+    @State private var recordEditing: LedgerRecord?
+    @State private var archiveRecord: LedgerRecord?
     @State private var items: [LedgerRecord] = []
     @State private var cursor: String?
     @State private var ready = false
@@ -98,12 +101,12 @@ struct LedgerDirectory: View {
             query["from"] = dates.0
             query["to"] = dates.1
             query["status"] = status
-            if !student.isEmpty { query["studentId"] = student }
+            if !student.isEmpty && (kind == .statements || searchBy == "student") { query["studentId"] = student }
             if kind == .sessions {
                 query["order"] = "chronological"
                 query["type"] = type
                 query["billing"] = billing
-                if !selectedClass.isEmpty { query["classId"] = selectedClass }
+                if !selectedClass.isEmpty && searchBy == "class" { query["classId"] = selectedClass }
             }
         case .lessons:
             query["order"] = "chronological"
@@ -111,133 +114,182 @@ struct LedgerDirectory: View {
         return query
     }
 
+    private var directoryTitle: String {
+        switch kind {
+        case .students: return "Student list"
+        case .classes: return "Class list"
+        case .statements: return "Statement list"
+        default: return "Lesson list"
+        }
+    }
+    private var pageTitle: String { kind == .statements ? "Tuition statements" : kind == .sessions ? "Lesson ledger" : kind.title }
+    private var description: String {
+        switch kind {
+        case .students: return "Manage student details and contact information."
+        case .classes: return "Organise students into classes, record one lesson and track each person's tuition separately."
+        case .statements: return "Reconcile each lesson and finalise the amount to collect."
+        default: return "Record each lesson and track tuition accurately."
+        }
+    }
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 12) {
-                controls
-                if kind == .sessions && selecting && layout != .calendar { selectionControls }
-                if let error { LedgerError(message: error) { Task { await load(refresh: true) } } }
-                if !ready {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 64)
-                } else if layout == .calendar {
-                    LedgerMonth(kind: kind, records: items, month: $month)
-                } else if items.isEmpty {
-                    Text(store.t("No records found.")).foregroundStyle(.secondary).padding(12)
-                } else {
-                    let columns = layout == .notes && (kind == .students || kind == .classes) ? 2 : 1
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
-                                             count: columns), spacing: 10) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            row(item, index: index)
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(store.t("Lesson & tuition ledger").uppercased()).font(store.palette.font(11, .semibold)).tracking(1.8)
+                    Text(store.t(pageTitle)).font(store.palette.font(25, .heavy)).accessibilityAddTraits(.isHeader)
+                    Text(store.t(description)).font(store.palette.font(15)).foregroundStyle(store.palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        if kind == .sessions {
+                            NavigationLink(value: WorkspaceRoute.schedule) { Label(store.t("Upcoming lessons"), systemImage: "calendar") }
+                                .buttonStyle(WorkspaceOutlineButton(palette: store.palette))
+                        }
+                        Button { editing = true } label: {
+                            if kind == .statements { Text(store.t(kind.addTitle)) }
+                            else { Label(store.t(kind.addTitle), systemImage: "plus") }
+                        }.buttonStyle(WorkspaceActionButton(palette: store.palette))
+                    }.padding(.top, 4)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    controls
+                    Divider().overlay(store.palette.border)
+                    if kind == .students || kind == .classes {
+                        WorkspaceField(store.t(kind == .students ? "Search students by name" : "Search classes by name"), text: $search,
+                                       placeholder: store.t("With or without accents")).padding(12)
+                    } else if kind == .sessions || kind == .statements { filters.padding(12) }
+                    Divider().overlay(store.palette.border)
+                    if kind == .sessions && selecting && layout != .calendar { selectionControls.padding(12) }
+                    if let error { LedgerError(message: error) { Task { await load(refresh: true) } } }
+                    if !ready { ProgressView().frame(maxWidth: .infinity, minHeight: 64) }
+                    else if layout == .calendar { LedgerMonth(kind: kind, records: items, month: $month).padding(10) }
+                    else if items.isEmpty { Text(store.t("No records found.")).padding(16) }
+                    else {
+                        let columns = layout == .notes && (kind == .students || kind == .classes) ? 2 : 1
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top), count: columns), spacing: layout == .notes ? 16 : 0) {
+                            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in row(item, index: index) }
+                        }.padding(.horizontal, layout == .notes ? 6 : 0).padding(.vertical, layout == .notes ? 20 : 0)
+                        if cursor != nil {
+                            Button(store.t("Load more")) { Task { await more() } }
+                                .buttonStyle(WorkspaceOutlineButton(palette: store.palette)).disabled(loadingMore)
+                                .frame(maxWidth: .infinity).padding(12)
                         }
                     }
-                    if cursor != nil {
-                        Button(store.t("Load more")) { Task { await more() } }
-                            .buttonStyle(.bordered).disabled(loadingMore)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-            }
-            .padding(12)
+                }.modifier(WorkspacePanel(palette: store.palette, fill: store.palette.surface))
+            }.padding(12).padding(.bottom, 4)
         }
-        .background(store.palette.background)
-        .foregroundStyle(store.palette.foreground)
+        .background(store.palette.background).foregroundStyle(store.palette.foreground)
+        .font(store.palette.font())
         .refreshable { await load(refresh: true) }
         .task(id: ledgerPath(kind.endpoint, query) + "#\(layout.rawValue)#\(store.revision)") { await load() }
         .sheet(isPresented: $editing) { addEditor }
-    }
-
-    private var controls: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack {
-                Text(store.t(kind.title)).font(.system(.title2, design: store.palette.fontDesign).bold())
-                Spacer()
-                Button { editing = true } label: { Label(store.t(kind.addTitle), systemImage: "plus") }
-                    .buttonStyle(WorkspaceActionButton(palette: store.palette))
+        .sheet(item: $recordEditing) { item in
+            switch kind {
+            case .students: StudentEditor(record: item)
+            case .classes: ClassEditor(record: item)
+            default: LessonEditor(record: item, editingGroup: kind == .lessons)
             }
-            Picker(store.t("View"), selection: $layout) {
-                ForEach(kind.hasCalendar ? Layout.allCases : [.notes, .list], id: \.self) {
-                    Text(store.t($0.rawValue)).tag($0)
+        }
+        .confirmationDialog(store.t("Archive"), isPresented: Binding(get: { archiveRecord != nil }, set: { if !$0 { archiveRecord = nil } })) {
+            if let item = archiveRecord {
+                Button(store.t(item.string("archivedAt") == nil ? "Archive" : "Restore")) {
+                    Task {
+                        do { _ = try await store.write(kind.endpoint + "/" + item.id + "/archive", body: ["archived": .flag(item.string("archivedAt") == nil)]) }
+                        catch { self.error = store.t(error.localizedDescription) }
+                        archiveRecord = nil
+                    }
                 }
             }
-            .pickerStyle(.segmented)
-            if kind == .students || kind == .classes {
-                TextField(store.t(kind == .students ? "Search students" : "Search classes"), text: $search)
-                    .textFieldStyle(.roundedBorder)
-                Toggle(store.t("Show archived"), isOn: $archived)
-                    .font(.subheadline)
+        }
+    }
+    private var controls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(store.t(directoryTitle)).font(store.palette.font(15, .heavy))
+            if kind != .statements {
+                Text(store.t(kind == .classes ? "Select a name to open the class" : kind == .students ? "Select a name to open the student's ledger" : "Each lesson keeps its own price"))
+                    .font(store.palette.font(13)).foregroundStyle(store.palette.secondaryInk)
             }
-            if kind == .sessions || kind == .statements {
-                DisclosureGroup(store.t("Filters")) { filters }
-                    .padding(.vertical, 2)
+            HStack(spacing: 8) {
+                ForEach(kind.hasCalendar ? [Layout.list, .notes, .calendar] : [.list, .notes], id: \.self) { option in
+                    Button { layout = option; if option == .calendar { selecting = false; selected.removeAll() } } label: {
+                        Image(systemName: option == .list ? "list.bullet" : option == .notes ? "note" : "calendar")
+                            .frame(width: 18, height: 20)
+                    }
+                    .buttonStyle(WorkspaceViewButton(palette: store.palette, active: layout == option))
+                    .accessibilityLabel(store.t(option.rawValue)).accessibilityAddTraits(layout == option ? .isSelected : [])
+                }
+                if kind == .students || kind == .classes {
+                    WorkspaceChoice(label: store.t("Status"), selection: $archived,
+                        options: [(false, store.t("Active")), (true, store.t("Archived"))], compact: true).frame(width: 110)
+                }
+                Spacer(minLength: 0)
             }
-            if kind == .sessions {
-                HStack {
-                    NavigationLink(value: WorkspaceRoute.schedule) { Text(store.t("Upcoming lessons")) }
-                    Spacer()
-                    if layout != .calendar {
-                        Button(store.t(selecting ? "Done selecting" : "Select")) {
-                            selecting.toggle()
-                            selected.removeAll()
+        }.padding(12)
+    }
+    private var startBinding: Binding<Date> { Binding(get: { dateBounds.0 }, set: {
+        let end = dateBounds.1; from = $0; to = end; period = .custom
+    }) }
+    private var endBinding: Binding<Date> { Binding(get: { dateBounds.1 }, set: {
+        let start = dateBounds.0; from = start; to = $0; period = .custom
+    }) }
+    private var dateBounds: (Date, Date) {
+        if period == .custom { return (from, to) }
+        let dates = period.dates
+        return (LedgerDate.date(dates.0 ?? "") ?? .now, LedgerDate.date(dates.1 ?? "") ?? .now)
+    }
+    private var filters: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if kind == .statements {
+                if relation["studentId"] == nil { LearnerPicker(selected: $student, includeArchived: true, allOption: true) }
+                HStack(alignment: .top, spacing: 10) {
+                    WorkspaceChoice(label: store.t("Statement status"), selection: $status, options: statusOptions)
+                    WorkspaceChoice(label: store.t("Statement date"), selection: $period,
+                                    options: LedgerPeriod.allCases.map { ($0, store.t($0.rawValue)) })
+                }
+                if period == .custom { dateFields }
+            } else {
+                if layout != .calendar { dateFields }
+                if relation["studentId"] == nil && relation["classId"] == nil {
+                    HStack(alignment: .top, spacing: 10) {
+                        WorkspaceChoice(label: store.t("Search by"), selection: $searchBy,
+                            options: [("student", store.t("Search by student")), ("class", store.t("Search by group/class"))])
+                        if searchBy == "student" { LearnerPicker(selected: $student, includeArchived: true, allOption: true) }
+                        else {
+                            WorkspaceChoice(label: store.t("Group or class"), selection: $selectedClass,
+                                options: [("", store.t("All groups and classes"))] + classes.map { ($0.id, $0.name) })
                         }
                     }
-                }.font(.subheadline.weight(.semibold))
+                }
+                HStack(alignment: .top, spacing: 10) {
+                    WorkspaceChoice(label: store.t("Lesson status"), selection: $status, options: statusOptions)
+                    WorkspaceChoice(label: store.t("Tuition"), selection: $billing,
+                        options: [("all", store.t("All"))] + ["paid", "unpaid", "free"].map { ($0, store.t(ledgerStatus($0))) })
+                }
+                WorkspaceChoice(label: store.t("Lesson type"), selection: $type,
+                    options: [("all", store.t("All")), ("individual", store.t("One student")), ("group", store.t("Custom student group")), ("class", store.t("A class"))])
+                HStack(spacing: 4) {
+                    Button(store.t("Today")) { period = .today }
+                    Button(store.t("This month")) { period = .month }
+                    Button(store.t("Clear filters")) { period = .all; status = "all"; billing = "all"; type = "all"; student = ""; selectedClass = "" }
+                    if layout != .calendar {
+                        Button(store.t(selecting ? "Done selecting" : "Select")) { selecting.toggle(); selected.removeAll() }
+                    }
+                }.font(store.palette.font(12, .bold)).buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
             }
         }
-        .padding(12)
-        .modifier(WorkspacePanel(palette: store.palette, fill: store.palette.surface))
-    }
-
-    private var filters: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            if layout != .calendar {
-                Picker(store.t("Date range"), selection: $period) {
-                    ForEach(LedgerPeriod.allCases, id: \.self) { Text(store.t($0.rawValue)).tag($0) }
-                }
-                if period == .custom {
-                    DatePicker(store.t("From date"), selection: $from, displayedComponents: .date)
-                    DatePicker(store.t("To date"), selection: $to, displayedComponents: .date)
-                }
-            }
-            if relation["studentId"] == nil {
-                LearnerPicker(selected: $student, includeArchived: true, allOption: true)
-            }
-            if kind == .sessions && relation["classId"] == nil {
-                Picker(store.t("Classes"), selection: $selectedClass) {
-                    Text(store.t("All classes")).tag("")
-                    ForEach(classes) { Text($0.name).tag($0.id) }
-                }
-            }
-            Picker(store.t("Status"), selection: $status) {
-                Text(store.t("All")).tag("all")
-                let values = kind == .sessions ? ["planned", "completed", "cancelled"] : ["unpaid", "paid", "overdue", "draft", "void"]
-                ForEach(values, id: \.self) { Text(store.t(ledgerStatus($0))).tag($0) }
-            }
+        .task(id: store.revision) {
             if kind == .sessions {
-                Picker(store.t("Lesson type"), selection: $type) {
-                    Text(store.t("All")).tag("all")
-                    Text(store.t("One student")).tag("individual")
-                    Text(store.t("Custom student group")).tag("group")
-                    Text(store.t("A class")).tag("class")
-                }
-                Picker(store.t("Tuition"), selection: $billing) {
-                    Text(store.t("All")).tag("all")
-                    ForEach(["paid", "unpaid", "free"], id: \.self) { Text(store.t(ledgerStatus($0))).tag($0) }
-                }
-            }
-            Button(store.t("Clear filters")) {
-                period = .all; status = "all"; billing = "all"; type = "all"; student = ""; selectedClass = ""
+                do { classes = try await store.all("/api/classes", query: ["order": "schedule", "archived": "all"]) }
+                catch { if !Task.isCancelled { self.error = store.t(error.localizedDescription) } }
             }
         }
-        .task {
-            do {
-                if kind == .sessions && relation["classId"] == nil {
-                    classes = try await store.all("/api/classes", query: ["order": "schedule", "archived": "all"])
-                }
-            } catch {
-                if !Task.isCancelled { self.error = store.t(error.localizedDescription) }
-            }
+    }
+    private var dateFields: some View {
+        HStack(alignment: .top, spacing: 10) {
+            WorkspaceDatePicker(store.t("From date"), selection: startBinding, placeholder: period == .all ? "dd/mm/yyyy" : nil)
+            WorkspaceDatePicker(store.t("To date"), selection: endBinding, placeholder: period == .all ? "dd/mm/yyyy" : nil)
         }
+    }
+    private var statusOptions: [(String, String)] {
+        [("all", store.t("All"))] + (kind == .sessions ? ["planned", "completed", "cancelled"] : ["unpaid", "paid", "overdue", "draft", "void"]).map { ($0, store.t(ledgerStatus($0))) }
     }
 
     private var selectionControls: some View {
@@ -269,20 +321,18 @@ struct LedgerDirectory: View {
     }
 
     @ViewBuilder private func row(_ item: LedgerRecord, index: Int) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            if kind == .sessions && selecting && item.text("status") == "planned" {
-                Button {
+        LedgerRow(kind: kind, item: item, note: layout == .notes, index: index,
+                  selecting: selecting, checked: selected.contains(item.id),
+                  select: {
                     if selected.contains(item.id) { selected.remove(item.id) }
                     else if selected.count < 100 { selected.insert(item.id) }
-                } label: {
-                    Image(systemName: selected.contains(item.id) ? "checkmark.square.fill" : "square")
-                        .frame(minWidth: 36, minHeight: 44)
-                }.buttonStyle(.plain).accessibilityLabel(store.t("Select"))
-            }
-            NavigationLink(value: kind.route(item)) {
-                LedgerRow(kind: kind, item: item, note: layout == .notes, index: index)
-            }.buttonStyle(.plain)
-        }
+                  }, edit: {
+                    Task {
+                        do {
+                            recordEditing = kind == .classes ? try await store.read(kind.endpoint + "/" + item.id) : item
+                        } catch { self.error = store.t(error.localizedDescription) }
+                    }
+                  }, archive: { archiveRecord = item })
     }
 
     @ViewBuilder private var addEditor: some View {
@@ -290,7 +340,7 @@ struct LedgerDirectory: View {
         case .students: StudentEditor()
         case .classes: ClassEditor()
         case .sessions, .lessons:
-            NavigationStack { LessonEditor(classID: relation["classId"], studentID: relation["studentId"]) }
+            LessonEditor(classID: relation["classId"], studentID: relation["studentId"])
         case .statements: StatementEditor(studentID: relation["studentId"])
         }
     }
@@ -361,10 +411,11 @@ struct LedgerBadge: View {
     var body: some View {
         let color = code == "paid" || code == "completed" ? store.palette.mint :
             ["unpaid", "cancelled", "void", "overdue"].contains(code) ? Color(red: 0.98, green: 0.62, blue: 0.67) : store.palette.yellow
-        Text(store.t(ledgerStatus(code))).font(.caption.weight(.semibold))
+        Text(store.t(ledgerStatus(code))).font(store.palette.font(12, .bold))
             .padding(.horizontal, 7).padding(.vertical, 3)
             .foregroundStyle(store.palette.dashboardInk)
             .background(color, in: Capsule())
+            .overlay(Capsule().stroke(store.palette.border, lineWidth: store.palette.outline))
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -375,95 +426,176 @@ struct LedgerRow: View {
     let item: LedgerRecord
     let note: Bool
     let index: Int
+    var selecting = false
+    var checked = false
+    var select: () -> Void = {}
+    var edit: () -> Void = {}
+    var archive: () -> Void = {}
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var title: String {
-        switch kind {
-        case .students, .classes: return item.name
-        case .sessions, .lessons:
-            return item.string("className") ?? item.string("studentName") ?? store.t("Group lesson")
-        case .statements:
-            return [item.string("number"), item.object("recipientSnapshot")?.name]
-                .compactMap { $0 }.joined(separator: " · ")
-        }
+    private var people: Bool { kind == .students || kind == .classes }
+    private var p: WorkspacePalette { store.palette }
+    private var paper: Color { workspacePaperColor(item.id) }
+    private var pinPositions: [CGFloat] { [0.28, 0.78, 0.43, 0.66, 0.5] }
+    private var payment: String? {
+        if kind == .statements { return item.text("status") == "issued" ? (item.int("totalVnd") == item.int("paidVnd") ? "paid" : "unpaid") : nil }
+        if let status = item.string("paymentStatus") { return status }
+        return item.text("status") == "planned" && item.flag("billable") ? nil : "no_charge"
     }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 8) {
-                if kind == .students || kind == .classes {
-                    Text(String(title.prefix(1)).uppercased()).font(.headline)
-                        .frame(width: 32, height: 32)
-                        .background(store.palette.recordAccent.opacity(0.45), in: RoundedRectangle(cornerRadius: 5))
-                        .accessibilityHidden(true)
-                }
-                Text(title).font(.system(.subheadline, design: store.palette.fontDesign).bold())
-                    .padding(kind == .students || kind == .classes ? 4 : 0)
-                    .background(kind == .students || kind == .classes ? store.palette.recordAccent.opacity(0.25) : .clear,
-                                in: RoundedRectangle(cornerRadius: min(8, store.palette.radius)))
+        Group {
+            if note {
+                content.padding(.horizontal, people ? 7 : 12).padding(.top, 24).padding(.bottom, people ? 6 : 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.trailing, note ? 18 : 0)
-                if !note { Image(systemName: "chevron.right").font(.caption2).accessibilityHidden(true) }
+                    .background {
+                        let shape = WorkspacePaperShape(radius: min(16, p.radius))
+                        shape.fill(p.surface).overlay(shape.fill(paper.opacity(people ? (p.dark ? 0.13 : 0.18) : (p.dark ? 0.25 : 0.70))))
+                            .overlay(shape.stroke(p.dark ? paper.opacity(0.65) : p.border, lineWidth: p.outline))
+                            .background(shape.fill(p.border).offset(x: p.shadowOffset, y: p.shadowOffset))
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        Path { path in path.move(to: .zero); path.addLine(to: CGPoint(x: 12, y: 0)); path.addLine(to: CGPoint(x: 0, y: 12)); path.closeSubpath() }
+                            .fill(paper.opacity(0.7)).frame(width: 12, height: 12).allowsHitTesting(false)
+                    }
+                    .overlay(alignment: .top) {
+                        GeometryReader { proxy in
+                            NativeNotePin().scaleEffect(1.3)
+                                .rotationEffect(.degrees([-18.0,32,-28,14,24][index % 5]))
+                                .position(x: proxy.size.width * pinPositions[index % 5], y: 3)
+                        }.allowsHitTesting(false).accessibilityHidden(true)
+                    }
+                    .rotationEffect(.degrees(reduceMotion || hovering ? 0 : [-1.1,1.3,-0.8,1.0][index % 4]))
+                    .scaleEffect(hovering && !reduceMotion ? 1.01 : 1)
+                    .animation(.easeOut(duration: 0.2), value: hovering).onHover { hovering = $0 }
+                    .padding(.vertical, 4)
+            } else {
+                content.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    .background {
+                        p.surface
+                        if p.retroRows { listColor.opacity(0.3) }
+                    }
+                    .overlay(alignment: .leading) { if p.retroRows { listColor.frame(width: 5) } }
+                    .overlay(alignment: .bottom) { Rectangle().fill(p.border).frame(height: 1) }
             }
-            switch kind {
-            case .students:
-                if !item.text("contactName").isEmpty { Text(item.text("contactName")).font(.caption) }
-                if !item.text("phone").isEmpty { Text(item.text("phone")).font(.caption) }
-            case .classes:
-                Text("\(item.strings("studentIds").count) " + store.t("students")).font(.caption)
-                if !item.objects("weeklySchedule").isEmpty {
-                    Text(item.objects("weeklySchedule").map { weekday($0.int("weekday"), locale: store.language) + " " + $0.text("time") }
-                        .joined(separator: " · ")).font(.caption)
+        }.foregroundStyle(p.foreground).font(p.font(14))
+    }
+    private var listColor: Color {
+        if kind == .statements { return payment == "paid" ? p.mint : Color(red: 1, green: 0.53, blue: 0.69) }
+        return index % 2 == 0 ? p.blue : p.mint
+    }
+    @ViewBuilder private var content: some View {
+        if people {
+            VStack(alignment: .leading, spacing: 4) {
+                NavigationLink(value: kind.route(item)) { identity }.buttonStyle(.plain)
+                HStack(spacing: 12) {
+                    Button(store.t("Edit"), action: edit)
+                    Button(store.t(item.string("archivedAt") == nil ? "Archive" : "Restore"), action: archive)
+                }.font(p.font(note ? 13 : 14)).underline().buttonStyle(.plain).frame(minHeight: 34)
+            }
+        } else if kind == .statements {
+            NavigationLink(value: kind.route(item)) { statement }.buttonStyle(.plain)
+        } else { lesson }
+    }
+    private var identity: some View {
+        HStack(alignment: .top, spacing: note ? 5 : 8) {
+            Text(String(item.name.prefix(1)).uppercased()).font(p.font(note ? 15 : 19, .bold))
+                .frame(width: note ? 24 : 36, height: note ? 24 : 36)
+                .background(p.retroRows ? p.yellow : p.recordAccent, in: RoundedRectangle(cornerRadius: 4))
+                .foregroundStyle(p.retroRows ? p.dashboardInk : p.foreground).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name).font(p.font(note ? 15 : 17, .heavy)).fixedSize(horizontal: false, vertical: true)
+                let detail = kind == .classes ? "\(item.strings("studentIds").count) " + store.t("students") :
+                    [item.text("contactName"), item.text("phone")].filter { !$0.isEmpty }.joined(separator: " · ")
+                if !detail.isEmpty { Text(detail).font(p.font(13)).foregroundStyle(p.secondaryInk).fixedSize(horizontal: false, vertical: true) }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(note ? 5 : 8).frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: min(12, p.radius)).fill(p.surface)
+                    .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).fill((note ? paper : p.recordAccent).opacity(p.dark ? 0.35 : 0.7)))
+            }
+            .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).stroke(p.controlTint, lineWidth: 2))
+    }
+    private var lesson: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 9) {
+                if selecting && item.text("status") == "planned" {
+                    Button(action: select) { Image(systemName: checked ? "checkmark.square.fill" : "square").font(.system(size: 21)).frame(width: 24, height: 44) }
+                        .buttonStyle(.plain).accessibilityLabel(store.t("Select"))
                 }
-            case .sessions, .lessons:
-                Text([item.text("sessionDate"), item.text("startTime")].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.caption.monospacedDigit())
-                if kind == .sessions {
-                    HStack(spacing: 5) {
-                        LedgerBadge(code: item.text("status"))
-                        if let payment = item.string("paymentStatus") { LedgerBadge(code: payment) }
-                        else if item.text("status") != "planned" || !item.flag("billable") { LedgerBadge(code: "no_charge") }
-                        Spacer(minLength: 0)
-                        if item.int("amountVnd") > 0 { Text(store.money(item.int("amountVnd"))).font(.caption.bold()) }
+                LessonDateBadge(date: item.text("sessionDate"))
+                VStack(alignment: .leading, spacing: 4) {
+                    NavigationLink(value: item.string("studentId").map(WorkspaceRoute.student) ?? kind.route(item)) {
+                        Text(item.string("studentName") ?? item.string("className") ?? store.t("Group lesson"))
+                            .font(p.font(15, .bold))
+                    }.buttonStyle(.plain)
+                    if let lessonID = item.string("lessonId") {
+                        NavigationLink(value: WorkspaceRoute.lesson(lessonID)) {
+                            Text(item.string("className") ?? store.t("Custom student group")).font(p.font(12)).underline()
+                        }.buttonStyle(.plain)
+                    }
+                    Text([dateText(item.text("sessionDate")), item.text("startTime")].filter { !$0.isEmpty }.joined(separator: " · "))
+                        .font(p.font(13)).lineLimit(1).minimumScaleFactor(0.8)
+                    HStack(spacing: 3) {
+                        Text("· " + (item.flag("billable") ? store.money(item.int(item.text("status") == "completed" ? "amountVnd" : "rateVnd")) : store.t("Free"))).font(p.font(13, .bold))
+                        if item.int("durationMinutes") > 0 { Text("· \(item.int("durationMinutes")) " + store.t("minutes")).font(p.font(13)) }
                     }
                 }
-            case .statements:
-                Text(item.text("periodStart") + " – " + item.text("periodEnd")).font(.caption)
+            }.frame(maxWidth: .infinity, alignment: note ? .center : .leading)
+            if note { Divider().overlay(p.border) }
+            HStack(spacing: 7) {
+                LedgerBadge(code: item.text("status"))
+                if let payment { LedgerBadge(code: payment) }
+                Button(store.t("Edit"), action: edit).buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                    .disabled(item.string("billedStatementId") != nil || store.saving)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+    private var statement: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                Text((item.string("number") ?? store.t("Draft")) + " · " + (item.object("recipientSnapshot")?.name ?? ""))
+                    .font(p.font(15, .bold)).fixedSize(horizontal: false, vertical: true)
+                if payment == nil { LedgerBadge(code: item.text("status")) }
+            }
+            Text(dateText(item.text("periodStart")) + " – " + dateText(item.text("periodEnd")) + " · \(item.objects("items").count) " + store.t("lessons"))
+                .font(p.font(13))
+            Text(store.t(item.string("issueDate") == nil ? "Created:" : "Issued:") + " " + dateText(item.string("issueDate") ?? String(item.text("createdAt").prefix(10))))
+                .font(p.font(13))
+            HStack {
+                Text(store.t("Due") + " " + dateText(item.text("dueDate"))).font(p.font(13))
+                Spacer(minLength: 4)
+                Text(store.money(item.int("totalVnd"))).font(p.font(17, .bold))
+            }
+            if let payment {
                 HStack {
-                    LedgerBadge(code: item.text("status") == "issued" ? (item.int("paidVnd") == item.int("totalVnd") ? "paid" : "unpaid") : item.text("status"))
-                    Spacer()
-                    Text(store.money(item.int("totalVnd"))).font(.subheadline.bold())
+                    Text(store.t("Remaining:") + " " + store.money(max(0, item.int("totalVnd") - item.int("paidVnd")))).font(p.font(13))
+                    Spacer(minLength: 4)
+                    LedgerBadge(code: payment)
                 }
             }
-            if item.string("archivedAt") != nil {
-                Text(store.t("Archived")).font(.caption.weight(.semibold))
-            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .foregroundStyle(store.palette.foreground)
-        .modifier(WorkspacePanel(palette: store.palette, fill: note ? noteFill : store.palette.surface))
-        .overlay(alignment: .topTrailing) {
-            if note {
-                NativeNotePin().rotationEffect(.degrees(index % 2 == 0 ? 20 : -18))
-                    .padding(5).accessibilityHidden(true)
-            }
-        }
-        .rotationEffect(.degrees(note && !reduceMotion ? (hovering ? 0 : (index % 2 == 0 ? -0.5 : 0.5)) : 0))
-        .scaleEffect(hovering && !reduceMotion ? 1.015 : 1)
-        .animation(.easeOut(duration: 0.16), value: hovering)
-        .onHover { hovering = $0 }
     }
+    private func dateText(_ value: String) -> String {
+        LedgerDate.date(value)?.formatted(.dateTime.day().month(.abbreviated).year().locale(store.language)) ?? value
+    }
+}
 
-    private var noteFill: Color {
-        if store.palette.dark { return store.palette.surface }
-        let colors: [Color] = store.palette.retroRows ? [
-            Color(red: 1, green: 0.78, blue: 0.86), Color(red: 1, green: 0.82, blue: 0.69),
-            Color(red: 1, green: 0.92, blue: 0.62), Color(red: 0.89, green: 0.79, blue: 0.99),
-            Color(red: 0.69, green: 0.92, blue: 0.79), Color(red: 0.74, green: 0.89, blue: 0.99)
-        ] : [store.palette.yellow, store.palette.mint, store.palette.blue]
-        return colors[index % colors.count]
+struct LessonDateBadge: View {
+    @EnvironmentObject private var store: WorkspaceStore
+    let date: String
+    var body: some View {
+        let p = store.palette
+        let actual = LedgerDate.date(date) ?? .now
+        VStack(spacing: 0) {
+            Text(actual.formatted(.dateTime.month(.abbreviated).locale(store.language)).uppercased())
+                .font(p.font(11, .bold)).frame(maxWidth: .infinity).padding(.vertical, 4)
+                .background(p.retroRows ? p.yellow : p.accent).foregroundStyle(p.onAccent)
+            Text(String(date.suffix(2))).font(p.font(22, .heavy)).frame(maxWidth: .infinity).padding(.vertical, 4)
+                .background(p.retroRows ? p.blue : p.recordAccent)
+        }.frame(width: 72).background(p.surface).clipShape(RoundedRectangle(cornerRadius: min(12, p.radius)))
+            .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).stroke(p.border, lineWidth: p.outline))
+            .background(RoundedRectangle(cornerRadius: min(12, p.radius)).fill(p.border).offset(x: p.shadowOffset > 0 ? 2 : 0, y: p.shadowOffset > 0 ? 2 : 0))
+            .accessibilityHidden(true)
     }
 }
 
