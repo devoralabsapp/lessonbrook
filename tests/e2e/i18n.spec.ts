@@ -263,10 +263,16 @@ test("configured iOS presents the native Google action while Android keeps brows
   for (const { agent, label } of mobile) {
     const context = await browser.newContext({
       userAgent: `Mozilla/5.0 ${agent}`,
+      viewport: { width: 360, height: 760 },
     });
     try {
       const page = await context.newPage();
       await page.goto(`${origin}/login`);
+      const login = page.locator("main[data-mobile-login]");
+      await expect(
+        login.getByRole("heading", { name: "Sign in", exact: true }),
+      ).toBeVisible();
+      await expect(login.locator('[data-slot="card"]')).toBeVisible();
       await expect(page.getByRole("link", { name: label })).toHaveAttribute(
         "href",
         "tech.devoralabs.lessonbrook://start",
@@ -274,6 +280,29 @@ test("configured iOS presents the native Google action while Android keeps brows
     } finally {
       await context.close();
     }
+  }
+});
+
+test("the mobile browser handoff uses a compact sign-in card", async ({
+  browser,
+}) => {
+  const page = await browser.newPage({ viewport: { width: 320, height: 700 } });
+  try {
+    await page.goto(`${origin}/login?mobileChallenge=${"a".repeat(43)}`);
+    const login = page.locator("main[data-mobile-login]");
+    await expect(
+      login.getByRole("heading", { name: "Sign in", exact: true }),
+    ).toBeVisible();
+    await expect(
+      login.getByRole("button", { name: "Continue with Google" }),
+    ).toBeEnabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  } finally {
+    await page.close();
   }
 });
 

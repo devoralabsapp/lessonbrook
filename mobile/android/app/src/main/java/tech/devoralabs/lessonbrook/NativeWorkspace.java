@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
@@ -14,6 +15,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -22,7 +24,6 @@ import android.widget.TextView;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -179,13 +180,14 @@ final class NativeWorkspace {
             case "sticker-sprint" -> 0xff111111;
             default -> 0xff211f1b;
         }; }
-        int[] scheduleTones() {
-            return switch (theme) {
-                case "mono-os" -> new int[] { surface, background };
-                case "chapter-desk" -> new int[] { surface, background, 0xfff1dfc2 };
-                default -> new int[] { blue(), mint(), yellow() };
-            };
-        }
+        int recordAccent() { return switch (theme) {
+            case "mono-os" -> 0xffe7e7e7;
+            case "chapter-desk" -> 0xffefdcac;
+            case "afterhours-fm" -> 0xff323019;
+            case "margin-notes" -> 0xffead5dd;
+            case "sticker-sprint" -> 0xffbdebd9;
+            default -> 0xffffd02c;
+        }; }
         Typeface font() {
             return switch (theme) {
                 case "mono-os" -> Typeface.MONOSPACE;
@@ -214,61 +216,123 @@ final class NativeWorkspace {
     View welcome(Boolean available, boolean expired, boolean failed, Runnable signIn, Runnable demo, Runnable retry,
                  Runnable language, Runnable help) {
         LinearLayout page = column();
-        page.setPadding(dp(20), dp(36), dp(20), dp(20));
-        ImageView mark = new ImageView(context);
-        mark.setImageResource(R.drawable.lessonbrook_mark);
-        mark.setBackground(shape(palette.accent(), 18));
-        mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        page.addView(mark, new LinearLayout.LayoutParams(dp(66), dp(66)));
-        add(page, heading(text(R.string.app_name), 36), 18);
-        add(page, label(text(R.string.welcome_description), 16, palette.foreground()), 8);
-        if (expired) add(page, label(text(R.string.session_expired), 14, palette.foreground()), 14);
-        if (Boolean.TRUE.equals(available)) {
-            add(page, button(text(R.string.continue_google), signIn, true), 24);
-        } else if (failed) {
-            add(page, label(text(R.string.load_error), 14, palette.foreground()), 16);
-            add(page, button(text(R.string.try_again), retry, false), 8);
-        } else if (Boolean.FALSE.equals(available)) {
-            add(page, label(text(R.string.sign_in_unavailable), 14, palette.foreground()), 16);
-            add(page, button(text(R.string.try_again), retry, false), 8);
-        } else {
-            add(page, loading(), 18);
+        page.setPadding(0, dp(14), dp(4), dp(12));
+        LinearLayout header = new LinearLayout(context);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.addView(heading(text(R.string.app_name), 18), new LinearLayout.LayoutParams(0, -2, 1));
+        boolean vietnamese = "vi".equals(context.getResources().getConfiguration().getLocales().get(0).getLanguage());
+        Button locale = button(vietnamese ? "Tiếng Việt" : "English", language, false);
+        locale.setTextSize(14);
+        header.addView(locale, new LinearLayout.LayoutParams(-2, -2));
+        add(page, header, 0);
+
+        LinearLayout entry = card(palette.surface(), 18);
+        FrameLayout mark = new FrameLayout(context);
+        View sheet = new View(context);
+        GradientDrawable blueSheet = shape(palette.blue(), 14);
+        blueSheet.setStroke(dp(2), palette.border());
+        sheet.setBackground(blueSheet);
+        sheet.setRotation(11);
+        sheet.setTranslationX(dp(10));
+        mark.addView(sheet, new FrameLayout.LayoutParams(dp(58), dp(66), Gravity.CENTER));
+        ImageView cover = icon(R.drawable.lessonbrook_mark, palette.dashboardInk());
+        cover.setBackground(panel(palette.yellow()));
+        cover.setRotation(-7);
+        cover.setTranslationX(-dp(6));
+        mark.addView(cover, new FrameLayout.LayoutParams(dp(58), dp(66), Gravity.CENTER));
+        mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        entry.addView(mark, new LinearLayout.LayoutParams(-1, dp(86)));
+
+        TextView title = heading(text(R.string.sign_in), 32);
+        title.setGravity(Gravity.CENTER);
+        add(entry, title, 5);
+        TextView description = label(text(R.string.welcome_description), 15, palette.foreground());
+        description.setGravity(Gravity.CENTER);
+        add(entry, description, 6);
+        if (expired) {
+            TextView status = label(text(R.string.session_expired), 13, palette.foreground());
+            status.setGravity(Gravity.CENTER);
+            status.setPadding(dp(8), dp(8), dp(8), dp(8));
+            status.setBackground(shape(tint(palette.surface(), palette.yellow(), 0.32f), 10));
+            add(entry, status, 10);
         }
-        add(page, button(text(R.string.view_demo), demo, false), 12);
-        add(page, label(text(R.string.demo_description), 14, palette.foreground()), 8);
-        LinearLayout links = new LinearLayout(context);
-        links.addView(button("vi".equals(context.getResources().getConfiguration().getLocales().get(0).getLanguage())
-            ? "Tiếng Việt" : "English", language, false), new LinearLayout.LayoutParams(0, -2, 1));
-        links.addView(button(text(R.string.help_support), help, false), new LinearLayout.LayoutParams(0, -2, 1));
-        add(page, links, 10);
-        return scroll(page);
+        if (Boolean.TRUE.equals(available)) {
+            add(entry, welcomeAction("G", text(R.string.continue_google), signIn, true), 16);
+        } else if (failed || Boolean.FALSE.equals(available)) {
+            TextView status = label(text(failed ? R.string.connection_help : R.string.sign_in_unavailable),
+                13, palette.foreground());
+            status.setGravity(Gravity.CENTER);
+            add(entry, status, 12);
+            add(entry, button(text(R.string.try_again), retry, false), 8);
+        } else {
+            LinearLayout.LayoutParams spinner = new LinearLayout.LayoutParams(dp(36), dp(36));
+            spinner.gravity = Gravity.CENTER;
+            spinner.topMargin = dp(12);
+            entry.addView(loading(), spinner);
+        }
+        add(page, entry, 20);
+
+        add(page, welcomeAction("▷", text(R.string.view_demo), demo, false), 20);
+        TextView demoDescription = label(text(R.string.demo_description), 13, palette.foreground());
+        demoDescription.setGravity(Gravity.CENTER);
+        add(page, demoDescription, 9);
+        TextView support = textAction(text(R.string.help_support), help);
+        support.setGravity(Gravity.CENTER);
+        add(page, support, 6);
+
+        FrameLayout centered = new FrameLayout(context);
+        int width = Math.min(400, Math.max(0, context.getResources().getConfiguration().screenWidthDp - 40));
+        centered.addView(page, new FrameLayout.LayoutParams(dp(width), -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+        return scroll(centered);
+    }
+
+    private View welcomeAction(String symbol, String title, Runnable open, boolean primary) {
+        LinearLayout row = new LinearLayout(context);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(12), dp(8), dp(14), dp(8));
+        row.setMinimumHeight(dp(48));
+        row.setBackground(actionBackground(primary));
+        int ink = primary ? palette.onAccent() : palette.controlTint();
+        TextView mark = bold(symbol, 16, ink);
+        row.addView(mark, new LinearLayout.LayoutParams(dp(30), -2));
+        row.addView(bold(title, 16, ink), new LinearLayout.LayoutParams(0, -2, 1));
+        row.addView(bold("→", 16, ink));
+        for (int i = 0; i < row.getChildCount(); i++)
+            row.getChildAt(i).setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        action(row, title, open);
+        return row;
+    }
+
+    private TextView textAction(String title, Runnable open) {
+        TextView link = bold(title, 14, palette.controlTint());
+        link.setMinimumHeight(dp(44));
+        link.setPaintFlags(link.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        link.setGravity(Gravity.CENTER_VERTICAL);
+        action(link, title, open);
+        return link;
     }
 
     View today(Snapshot data, Consumer<String> open) {
         LinearLayout page = page();
-        add(page, heading(text(R.string.hello, data.displayName()), 26), 0);
-        LinearLayout hero = card(palette.yellow(), 18, 14);
-        add(hero, label(text(R.string.outstanding_tuition), 15, palette.dashboardInk()), 0);
-        add(hero, bold(money(data.outstanding()), 34, palette.dashboardInk()), 6);
-        add(page, hero, 16);
+        add(page, heading(text(R.string.teaching_day), 25), 0);
+        add(page, metric(R.string.outstanding_tuition, money(data.outstanding()), 32, palette.yellow(), false), 16);
 
-        LinearLayout unbilled = metric(R.string.unbilled_lessons, money(data.unbilled()), R.drawable.ic_lessons, palette.blue());
-        add(unbilled, label(text(R.string.lesson_count, numbers.format(data.unbilledCount())), 12, palette.dashboardInk()), 6);
-        LinearLayout received = metric(R.string.received_this_month, money(data.received()), R.drawable.ic_tuition, palette.mint());
+        LinearLayout unbilled = metric(R.string.unbilled_lessons, money(data.unbilled()), 17, palette.blue(), true);
+        LinearLayout received = metric(R.string.received_this_month, money(data.received()), 17, palette.mint(), true);
         float fontScale = context.getResources().getConfiguration().fontScale;
-        if (context.getResources().getConfiguration().screenWidthDp >= 350 && fontScale <= 1.2f) {
+        if (context.getResources().getConfiguration().screenWidthDp >= 350 && fontScale <= 1.3f) {
             LinearLayout row = new LinearLayout(context);
             row.addView(unbilled, new LinearLayout.LayoutParams(0, -1, 1));
             LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, -1, 1);
-            right.leftMargin = dp(12);
+            right.setMarginStart(dp(12));
             row.addView(received, right);
-            add(page, row, 12);
+            add(page, row, 16);
         } else {
-            add(page, unbilled, 12);
+            add(page, unbilled, 16);
             add(page, received, 12);
         }
-        add(page, metric(R.string.active_students, numbers.format(data.students()), R.drawable.ic_students), 12);
-        if (data.schedule() != null) add(page, schedule(data.schedule(), open), 12);
+        add(page, metric(R.string.active_students, numbers.format(data.students()), 20, null, false), 16);
+        if (data.schedule() != null) add(page, schedule(data.schedule(), open), 16);
         if (data.needsOnboarding()) {
             add(page, button(text(R.string.get_started), () -> open.accept("/onboarding"), false), 8);
         }
@@ -281,22 +345,22 @@ final class NativeWorkspace {
         int inset = dp(palette.outline());
         section.setPadding(inset, inset, inset + dp(palette.shadowOffset()),
             inset + dp(palette.shadowOffset()));
-        TextView title = heading(text(R.string.upcoming_lessons), 17);
+        TextView title = heading(text(R.string.upcoming_lessons), 20);
         title.setPadding(dp(12), dp(10), dp(12), dp(10));
         add(section, title, 0);
+        scheduleDivider(section);
         if (data.items().isEmpty()) {
             TextView empty = label(text(R.string.no_planned_lessons), 14, palette.foreground());
-            empty.setPadding(dp(12), 0, dp(12), dp(12));
+            empty.setPadding(dp(12), dp(12), dp(12), dp(12));
             add(section, empty, 0);
             return section;
         }
-        int[] tones = palette.scheduleTones();
         int index = 0;
-        var dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-            .withLocale(context.getResources().getConfiguration().getLocales().get(0));
+        var dateFormat = DateTimeFormatter.ofPattern("d MMM yyyy",
+            context.getResources().getConfiguration().getLocales().get(0));
         for (Lesson lesson : data.items()) {
-            int tone = tones[index++ % tones.length];
-            int ink = palette.dashboardInk();
+            int tone = index++ % 2 == 0 ? palette.blue() : palette.mint();
+            int ink = palette.foreground();
             String name = lesson.name() == null || lesson.name().isEmpty()
                 ? text(R.string.group_lesson) : lesson.name();
             String day = data.today().equals(lesson.date()) ? text(R.string.today)
@@ -306,34 +370,39 @@ final class NativeWorkspace {
                 + ("recurring".equals(lesson.kind()) ? " · " + text(R.string.weekly) : "");
             LinearLayout identity = new LinearLayout(context);
             identity.setGravity(Gravity.CENTER_VERTICAL);
-            identity.setPadding(dp(7), dp(6), dp(9), dp(6));
-            GradientDrawable frame = shape(tone, Math.min(palette.radius(), 10));
-            frame.setStroke(dp(palette.outline()), palette.border());
+            identity.setPadding(dp(9), dp(6), dp(9), dp(6));
+            GradientDrawable frame = shape(tint(palette.surface(), palette.recordAccent(), 0.7f),
+                Math.min(palette.radius(), 14));
+            frame.setStroke(dp(2), palette.controlTint());
             identity.setBackground(frame);
             TextView initial = bold(name.substring(0, name.offsetByCodePoints(0, 1))
                 .toUpperCase(context.getResources().getConfiguration().getLocales().get(0)), 15, ink);
             initial.setGravity(Gravity.CENTER);
-            initial.setBackground(shape(tint(tone, palette.surface(), 0.2f), 3));
-            identity.addView(initial, new LinearLayout.LayoutParams(dp(34), dp(34)));
+            initial.setBackground(shape(palette.recordAccent(), 3));
+            identity.addView(initial, new LinearLayout.LayoutParams(dp(40), dp(40)));
             LinearLayout labels = column();
             add(labels, bold(name, 15, ink), 0);
             add(labels, label(when, 13, ink), 2);
             LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1);
             labelParams.setMarginStart(dp(9));
             identity.addView(labels, labelParams);
-            identity.addView(bold("›", 18, ink));
             action(identity, name + ", " + when, () -> open.accept(lesson.path()));
             LinearLayout row = column();
-            row.setPadding(dp(10), dp(7), dp(10), dp(7));
-            row.setBackgroundColor(tint(palette.surface(), tone, 0.18f));
+            row.setPadding(dp(12), dp(12), dp(12), dp(12));
+            if ("playful-retro".equals(palette.theme())) {
+                LayerDrawable paper = new LayerDrawable(new Drawable[] {
+                    shape(tint(palette.surface(), tone, 0.3f), 0), shape(tone, 0)
+                });
+                paper.setLayerWidth(1, dp(5));
+                paper.setLayerGravity(1, Gravity.LEFT);
+                row.setBackground(paper);
+            }
             add(row, identity, 0);
-            scheduleDivider(section);
             add(section, row, 0);
+            scheduleDivider(section);
         }
-        scheduleDivider(section);
-        LinearLayout footer = column();
-        footer.setPadding(dp(10), dp(6), dp(10), dp(8));
-        add(footer, button(text(R.string.full_schedule), () -> open.accept("/app/schedule"), false), 0);
+        TextView footer = textAction(text(R.string.full_schedule), () -> open.accept("/app/schedule"));
+        footer.setPadding(dp(12), 0, dp(12), 0);
         add(section, footer, 0);
         return section;
     }
@@ -408,16 +477,12 @@ final class NativeWorkspace {
         });
     }
 
-    private LinearLayout metric(int title, String value, int symbol) {
-        return metric(title, value, symbol, palette.surface());
-    }
-
-    private LinearLayout metric(int title, String value, int symbol, int fill) {
-        int ink = fill == palette.surface() ? palette.foreground() : palette.dashboardInk();
-        LinearLayout metric = card(fill, 18, 14);
-        metric.addView(icon(symbol, ink), new LinearLayout.LayoutParams(dp(20), dp(20)));
-        add(metric, label(text(title), 13, ink), 8);
-        add(metric, bold(value, 19, ink), 5);
+    private LinearLayout metric(int title, String value, int size, Integer fill, boolean compact) {
+        int ink = fill == null ? palette.foreground() : palette.dashboardInk();
+        LinearLayout metric = card(fill == null ? palette.surface() : fill, 12);
+        if (compact) metric.setMinimumHeight(dp(92));
+        add(metric, label(text(title), compact ? 13 : 15, ink), 0);
+        add(metric, bold(value, size, ink), 6);
         return metric;
     }
 
@@ -437,15 +502,17 @@ final class NativeWorkspace {
         button.setTypeface(palette.font(), Typeface.BOLD);
         button.setTextColor(primary ? palette.onAccent() : palette.controlTint());
         button.setMinimumHeight(dp(50));
-        button.setBackground(new RippleDrawable(
-            ColorStateList.valueOf(0x284b916e),
-            panel(primary ? palette.accent() : palette.surface()), null
-        ));
+        button.setBackground(actionBackground(primary));
         button.setOnClickListener(view -> action.run());
         return button;
     }
 
-    private ScrollView scroll(LinearLayout contents) {
+    private Drawable actionBackground(boolean primary) {
+        return new RippleDrawable(ColorStateList.valueOf(0x28211f1b),
+            panel(primary ? palette.accent() : palette.surface()), null);
+    }
+
+    private ScrollView scroll(View contents) {
         ScrollView scroll = new ScrollView(context);
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(palette.background());
@@ -455,7 +522,7 @@ final class NativeWorkspace {
 
     private LinearLayout page() {
         LinearLayout page = column();
-        page.setPadding(dp(14), dp(12), dp(14), dp(9));
+        page.setPadding(dp(12), dp(14), dp(12), dp(9));
         return page;
     }
 
@@ -465,7 +532,7 @@ final class NativeWorkspace {
         return column;
     }
 
-    private LinearLayout card(int color, int radius, int padding) {
+    private LinearLayout card(int color, int padding) {
         LinearLayout card = column();
         card.setBackground(panel(color));
         card.setPadding(dp(padding), dp(padding), dp(padding), dp(padding));
@@ -517,6 +584,9 @@ final class NativeWorkspace {
         return label;
     }
 
-    private String money(long vnd) { return numbers.format(vnd) + " ₫"; }
+    private String money(long vnd) {
+        return "vi".equals(context.getResources().getConfiguration().getLocales().get(0).getLanguage())
+            ? numbers.format(vnd) + "\u00a0₫" : "₫" + numbers.format(vnd);
+    }
     private int dp(int value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }
 }

@@ -10,6 +10,7 @@ import {
   ArrowRight,
   BookOpen,
   LoaderCircle,
+  NotebookPen,
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
@@ -46,6 +47,7 @@ export function LoginForm({
   const preparation = useAuthReady(configured && !inApp && !mobileCode);
   const running = useRef(false);
   const params = useSearchParams();
+  const mobileLayout = inApp || params.has("mobileChallenge");
   const mobileSignInLabel = nativeGoogleSignIn
     ? t("Tiếp tục với Google")
     : t("Đăng nhập Google trong trình duyệt");
@@ -92,114 +94,193 @@ export function LoginForm({
   return (
     <main
       data-theme={theme}
-      className="grid min-h-dvh bg-background text-foreground lg:grid-cols-2"
+      data-mobile-login={mobileLayout || undefined}
+      className={
+        mobileLayout
+          ? "min-h-dvh bg-background text-foreground"
+          : "grid min-h-dvh bg-background text-foreground lg:grid-cols-2"
+      }
     >
-      <section className="hidden flex-col justify-between bg-accent-soft p-12 lg:flex">
-        <Brand />
-        <div className="max-w-lg">
-          <BookOpen className="mb-10 text-primary" size={44} strokeWidth={1} />
-          <h1 className="serif text-5xl leading-tight">
-            {t("Dành tâm trí")}
-            <br />
-            {t("cho những buổi dạy.")}
-          </h1>
-          <p className="mt-6 max-w-sm text-base leading-7 text-foreground">
-            {t(
-              "Từng học viên, từng buổi học, từng đơn giá — gọn gàng trong một cuốn sổ của riêng bạn.",
-            )}
-          </p>
-        </div>
-        <p className="text-xs text-foreground">
-          {t("LessonBrook · Sổ buổi dạy & học phí")}
-        </p>
-      </section>
-      <section className="flex flex-col px-6 py-8 sm:px-12">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs text-muted-foreground"
-        >
-          <ArrowLeft size={14} />
-          {t(" Về trang giới thiệu")}
-        </Link>
-        <div className="mx-auto my-auto w-full max-w-sm py-14">
-          <div className="mb-12 lg:hidden">
-            <Brand />
-          </div>
-          <div className="mb-5 flex justify-end">
-            <LanguageSwitcher />
-          </div>
-          <p className="mb-3 text-xs font-semibold tracking-[.18em] text-primary">
-            {t("MỘT CUỐN SỔ NHẸ NHÀNG HƠN")}
-          </p>
-          <h2 className="serif text-4xl">{t("Chào bạn.")}</h2>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            {t("Đăng nhập để mở sổ buổi dạy của bạn.")}
-            <br />
-            {t("Học viên không cần tạo tài khoản.")}
-          </p>
-          {params.has("expired") && (
-            <p
-              role="status"
-              className="mt-5 rounded-xl bg-warning-soft p-3 text-sm text-warning-foreground"
-            >
-              {t("Phiên đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.")}
+      {!mobileLayout && (
+        <section className="hidden flex-col justify-between bg-accent-soft p-12 lg:flex">
+          <Brand />
+          <div className="max-w-lg">
+            <BookOpen
+              className="mb-10 text-primary"
+              size={44}
+              strokeWidth={1}
+            />
+            <h1 className="serif text-5xl leading-tight">
+              {t("Dành tâm trí")}
+              <br />
+              {t("cho những buổi dạy.")}
+            </h1>
+            <p className="mt-6 max-w-sm text-base leading-7 text-foreground">
+              {t(
+                "Từng học viên, từng buổi học, từng đơn giá — gọn gàng trong một cuốn sổ của riêng bạn.",
+              )}
             </p>
-          )}
-          {mobileCode || (inApp && configured) ? (
-            <Button asChild variant="outline" className="mt-8 h-12 w-full">
-              <a
-                href={
-                  mobileCode
-                    ? `${MOBILE_SCHEME}://finish?code=${mobileCode}`
-                    : `${MOBILE_SCHEME}://start`
+          </div>
+          <p className="text-xs text-foreground">
+            {t("LessonBrook · Sổ buổi dạy & học phí")}
+          </p>
+        </section>
+      )}
+      <section
+        className={
+          mobileLayout
+            ? "mx-auto flex w-full max-w-md flex-col gap-5 px-5 py-4"
+            : "flex flex-col px-6 py-8 sm:px-12"
+        }
+      >
+        {mobileLayout ? (
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <Brand compact href="/" />
+            <LanguageSwitcher />
+          </header>
+        ) : (
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-xs text-muted-foreground"
+          >
+            <ArrowLeft size={14} />
+            {t(" Về trang giới thiệu")}
+          </Link>
+        )}
+        <div
+          className={
+            mobileLayout ? "w-full" : "mx-auto my-auto w-full max-w-sm py-14"
+          }
+        >
+          <div
+            data-slot={mobileLayout ? "card" : undefined}
+            className={
+              mobileLayout
+                ? "rounded-2xl border border-border bg-card p-4 sm:p-6"
+                : undefined
+            }
+          >
+            {mobileLayout ? (
+              <div
+                aria-hidden="true"
+                className="mobile-login-mark mx-auto mb-3"
+              >
+                <NotebookPen className="relative size-8" />
+              </div>
+            ) : (
+              <>
+                <div className="mb-12 lg:hidden">
+                  <Brand />
+                </div>
+                <div className="mb-5 flex justify-end">
+                  <LanguageSwitcher />
+                </div>
+                <p className="mb-3 text-xs font-semibold tracking-[.18em] text-primary">
+                  {t("MỘT CUỐN SỔ NHẸ NHÀNG HƠN")}
+                </p>
+              </>
+            )}
+            {mobileLayout ? (
+              <h1 className="serif text-center text-3xl">{t("Đăng nhập")}</h1>
+            ) : (
+              <h2 className="serif text-4xl">{t("Chào bạn.")}</h2>
+            )}
+            <p
+              className={
+                mobileLayout
+                  ? "mt-2 text-center text-sm leading-6 text-foreground"
+                  : "mt-4 text-sm leading-6 text-muted-foreground"
+              }
+            >
+              {t("Đăng nhập để mở sổ buổi dạy của bạn.")}
+              {!mobileLayout && (
+                <>
+                  <br />
+                  {t("Học viên không cần tạo tài khoản.")}
+                </>
+              )}
+            </p>
+            {params.has("expired") && (
+              <p
+                role="status"
+                className="mt-5 rounded-xl bg-warning-soft p-3 text-sm text-warning-foreground"
+              >
+                {t("Phiên đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.")}
+              </p>
+            )}
+            {mobileCode || (inApp && configured) ? (
+              <Button
+                asChild
+                variant={mobileLayout ? "default" : "outline"}
+                className={
+                  mobileLayout
+                    ? "mt-4 min-h-12 w-full whitespace-normal"
+                    : "mt-8 h-12 w-full"
                 }
               >
-                {mobileCode ? t("Mở LessonBrook") : mobileSignInLabel}
-                <ArrowRight className="ml-auto" />
-              </a>
-            </Button>
-          ) : (
-            <Button
-              onClick={login}
-              disabled={busy || !configured || !preparation.ready}
-              variant="outline"
-              className="mt-8 h-12 w-full"
-            >
-              {busy ? (
-                <LoaderCircle className="animate-spin" />
-              ) : (
-                <span className="text-base font-bold text-primary">G</span>
-              )}
-              {busy
-                ? t("Đang đăng nhập…")
-                : configured && !preparation.ready && !preparation.error
-                  ? t("Đang chuẩn bị đăng nhập…")
-                  : t("Tiếp tục với Google")}
-              {!busy && <ArrowRight className="ml-auto" />}
-            </Button>
-          )}
-          {!configured && (
-            <p
-              role="status"
-              className="mt-4 rounded-xl bg-warning-soft p-3 text-sm leading-6 text-warning-foreground"
-            >
-              {t("Ứng dụng đang được thiết lập. Đăng nhập sẽ được mở sau.")}
-            </p>
-          )}
-          {(error || preparation.error) && (
-            <p role="alert" className="mt-4 text-sm leading-6 text-destructive">
-              {t(error || preparation.error)}
-            </p>
-          )}
-          {preparation.error && (
-            <Button
-              className="mt-3"
-              variant="outline"
-              onClick={preparation.retry}
-            >
-              {t("Thử chuẩn bị lại")}
-            </Button>
-          )}
+                <a
+                  href={
+                    mobileCode
+                      ? `${MOBILE_SCHEME}://finish?code=${mobileCode}`
+                      : `${MOBILE_SCHEME}://start`
+                  }
+                >
+                  {mobileCode ? t("Mở LessonBrook") : mobileSignInLabel}
+                  <ArrowRight className="ml-auto" />
+                </a>
+              </Button>
+            ) : (
+              <Button
+                onClick={login}
+                disabled={busy || !configured || !preparation.ready}
+                variant={mobileLayout ? "default" : "outline"}
+                className={
+                  mobileLayout
+                    ? "mt-4 min-h-12 w-full whitespace-normal"
+                    : "mt-8 h-12 w-full"
+                }
+              >
+                {busy ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
+                  <span aria-hidden="true" className="text-base font-bold">
+                    G
+                  </span>
+                )}
+                {busy
+                  ? t("Đang đăng nhập…")
+                  : configured && !preparation.ready && !preparation.error
+                    ? t("Đang chuẩn bị đăng nhập…")
+                    : t("Tiếp tục với Google")}
+                {!busy && <ArrowRight className="ml-auto" />}
+              </Button>
+            )}
+            {!configured && (
+              <p
+                role="status"
+                className="mt-4 rounded-xl bg-warning-soft p-3 text-sm leading-6 text-warning-foreground"
+              >
+                {t("Ứng dụng đang được thiết lập. Đăng nhập sẽ được mở sau.")}
+              </p>
+            )}
+            {(error || preparation.error) && (
+              <p
+                role="alert"
+                className="mt-4 text-sm leading-6 text-destructive"
+              >
+                {t(error || preparation.error)}
+              </p>
+            )}
+            {preparation.error && (
+              <Button
+                className="mt-3"
+                variant="outline"
+                onClick={preparation.retry}
+              >
+                {t("Thử chuẩn bị lại")}
+              </Button>
+            )}
+          </div>
           {!inApp && !mobileCode && (
             <details className="mt-5 text-xs leading-6 text-muted-foreground">
               <summary className="cursor-pointer text-primary">

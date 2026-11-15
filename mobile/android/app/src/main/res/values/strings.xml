@@ -5,6 +5,8 @@
     <string name="reload">Reload</string>
     <string name="try_again">Try again</string>
     <string name="load_error">LessonBrook couldn’t load. Check your connection and try again.</string>
+    <string name="sign_in">Sign in</string>
+    <string name="connection_help">Check your connection and try again.</string>
     <string name="sign_in_error">Couldn’t sign in</string>
     <string name="sign_in_retry">Return to LessonBrook and start Google sign-in again.</string>
     <string name="browser_error">No browser is available to open this link.</string>
@@ -13,10 +15,10 @@
     <string name="lessons">Lessons</string>
     <string name="tuition">Tuition</string>
     <string name="more">More</string>
-    <string name="hello">Hello, %1$s</string>
+    <string name="teaching_day">Have a good teaching day.</string>
     <string name="outstanding_tuition">Outstanding tuition</string>
     <string name="overdue_amount">%1$s overdue</string>
-    <string name="unbilled_lessons">Unbilled lessons</string>
+    <string name="unbilled_lessons">Lessons ready for a statement</string>
     <string name="lesson_count">%1$s lessons</string>
     <string name="received_this_month">Received this month</string>
     <string name="active_students">Active students</string>
@@ -38,7 +40,7 @@
     <string name="keep_editing">Keep editing</string>
     <string name="discard_changes">Discard changes</string>
     <string name="upcoming_lessons">Upcoming lessons</string>
-    <string name="no_planned_lessons">No planned lessons in the next seven days.</string>
+    <string name="no_planned_lessons">No planned lessons in the schedule.</string>
     <string name="group_lesson">Group lesson</string>
     <string name="time_not_set">Time not set</string>
     <string name="full_schedule">View full schedule</string>

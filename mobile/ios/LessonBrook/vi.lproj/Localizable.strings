@@ -11,10 +11,10 @@
 "Lessons" = "Buổi dạy";
 "Tuition" = "Học phí";
 "More" = "Thêm";
-"Hello, %@" = "Chào %@";
+"Have a good teaching day." = "Một ngày dạy học thật tốt.";
 "Outstanding tuition" = "Học phí chưa thu";
 "%@ overdue" = "%@ quá hạn";
-"Unbilled lessons" = "Buổi chưa lập bảng kê";
+"Lessons ready for a statement" = "Buổi chưa lập bảng kê";
 "%@ lessons" = "%@ buổi";
 "Received this month" = "Đã thu tháng này";
 "Active students" = "Học viên đang học";
@@ -37,7 +37,7 @@
 "Keep editing" = "Tiếp tục chỉnh sửa";
 "Discard changes" = "Bỏ thay đổi";
 "Upcoming lessons" = "Lịch dạy sắp tới";
-"No planned lessons in the next seven days." = "Không có buổi dự kiến trong lịch.";
+"No planned lessons in the schedule." = "Không có buổi dự kiến trong lịch.";
 "Group lesson" = "Buổi nhóm tự chọn";
 "Time not set" = "Chưa đặt giờ";
 "View full schedule" = "Xem lịch đầy đủ";
@@ -50,3 +50,5 @@
 
 "View demo" = "Xem demo";
 "Explore with sample data. No account needed." = "Trải nghiệm với dữ liệu mẫu. Không cần tài khoản.";
+
+"Sign in" = "Đăng nhập";
