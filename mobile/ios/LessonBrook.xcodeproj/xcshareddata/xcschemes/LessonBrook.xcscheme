@@ -39,7 +39,31 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "CABEAD0D1B987C3A276C61F2"
+               BuildableName = "WorkspaceTests.xctest"
+               BlueprintName = "WorkspaceTests"
+               ReferencedContainer = "container:LessonBrook.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C01A0207224988CD525F224C"
+               BuildableName = "WorkspaceUITests.xctest"
+               BlueprintName = "WorkspaceUITests"
+               ReferencedContainer = "container:LessonBrook.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
+      <CommandLineArguments>
+      </CommandLineArguments>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

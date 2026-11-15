@@ -7,29 +7,66 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02BBC24A4C8111005BAB3535 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B52D512566820A4FA3F494A /* WorkspaceStore.swift */; };
+		04CAB7986C01B8AAB19F7B3C /* EmulatorAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDB88A650EA60155B7FE42B8 /* EmulatorAPITests.swift */; };
 		52F0D7A338DE29CE323B739C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3B66AEB7C66001FFA6F37D7A /* Assets.xcassets */; };
+		577E63C21C284C3B40D421F4 /* NativeStatements.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAC489D9B80F57D8333C838 /* NativeStatements.swift */; };
+		64283AF8B41484E097CADA79 /* LedgerCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B1EE176E02EC38164158F /* LedgerCalendar.swift */; };
 		73EF40BD4426F497B1FBD026 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE16A7B650742CE6EC2ACD19 /* AppDelegate.swift */; };
 		8271DDC1C444218E601B76B2 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1A08BCE1EC91432DAC73B79F /* Localizable.strings */; };
-		8DA9B29959E2288E8BCC953E /* BrowserViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2756913D3A0994B45114F22A /* BrowserViewController.swift */; };
+		83E831F661170A4D0846CE18 /* LedgerDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0704A62A7A94007C059AB5 /* LedgerDetail.swift */; };
+		99259575DFBBCF3E26BB719D /* NativeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C5AAB90E2BFD9110714666 /* NativeSettings.swift */; };
 		B858009A5AE59F0AA3033B65 /* NativeWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50C38D19580B1FAEFE3E7F3 /* NativeWorkspace.swift */; };
 		C1FECC370D2C20E72B3522EC /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 864FF7E806B3CDA7D61ED921 /* FirebaseCore */; };
 		D44B89EC1E4FC77158BA1FCD /* MobileSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D711185E1F90EFE3122B35A /* MobileSignIn.swift */; };
 		D4658394922AF42865097CD4 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 2296D826A4574052198F742F /* GoogleSignIn */; };
+		DA1E651C765EB3A107FFF295 /* LedgerEditors.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8DC62F1E131138FBDC6F4A5 /* LedgerEditors.swift */; };
+		E1048E1DB4DF97FEF5D73764 /* WorkspaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B224551A3643DE2B151CD4 /* WorkspaceTests.swift */; };
 		F1E3AD0678589DFB5CA9C963 /* NativeGoogleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9944FA4ECE3C801ED4750694 /* NativeGoogleSignIn.swift */; };
+		F53FC46E84E04AFC62FA5E3E /* LedgerDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487160D86AABBA71FEEC522D /* LedgerDirectory.swift */; };
+		F81B5F2C4876AF085241D8E8 /* WorkspaceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27835B9C89D435901D72CF40 /* WorkspaceUITests.swift */; };
 		F9910059CFE90D622EEAA9E7 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = B868BE3BAC2C0C04E5E70B9D /* FirebaseAuth */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		6D54BB9787A0D12A2AB9F62A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4B1BD8712F3A9F6885C14900 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 97059C5307787D3EE7E2C6AA;
+			remoteInfo = LessonBrook;
+		};
+		93F67896C7FB5E80EB4F5C85 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4B1BD8712F3A9F6885C14900 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 97059C5307787D3EE7E2C6AA;
+			remoteInfo = LessonBrook;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		00C5AAB90E2BFD9110714666 /* NativeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSettings.swift; sourceTree = "<group>"; };
+		069CE422919DF978DF3260DE /* WorkspaceUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WorkspaceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0D711185E1F90EFE3122B35A /* MobileSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileSignIn.swift; sourceTree = "<group>"; };
 		1A08BCE1EC91432DAC73B79F /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = vi.lproj/Localizable.strings; sourceTree = "<group>"; };
-		2756913D3A0994B45114F22A /* BrowserViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserViewController.swift; sourceTree = "<group>"; };
+		1B52D512566820A4FA3F494A /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
+		27835B9C89D435901D72CF40 /* WorkspaceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceUITests.swift; sourceTree = "<group>"; };
 		35CCF0C2A11C14A5206B8635 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 		3B66AEB7C66001FFA6F37D7A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		487160D86AABBA71FEEC522D /* LedgerDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerDirectory.swift; sourceTree = "<group>"; };
+		4D0479E69AD8AB2B735E854A /* WorkspaceTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WorkspaceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		95B224551A3643DE2B151CD4 /* WorkspaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTests.swift; sourceTree = "<group>"; };
+		977B1EE176E02EC38164158F /* LedgerCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerCalendar.swift; sourceTree = "<group>"; };
 		9944FA4ECE3C801ED4750694 /* NativeGoogleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGoogleSignIn.swift; sourceTree = "<group>"; };
 		C6A9AC6F8EDC6A6F47F4B4FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D5FE1BD4EB8BF8146DD644E3 /* LessonBrook.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LessonBrook.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA0704A62A7A94007C059AB5 /* LedgerDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerDetail.swift; sourceTree = "<group>"; };
+		DCAC489D9B80F57D8333C838 /* NativeStatements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeStatements.swift; sourceTree = "<group>"; };
 		DE16A7B650742CE6EC2ACD19 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E50C38D19580B1FAEFE3E7F3 /* NativeWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWorkspace.swift; sourceTree = "<group>"; };
+		E8DC62F1E131138FBDC6F4A5 /* LedgerEditors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerEditors.swift; sourceTree = "<group>"; };
+		EDB88A650EA60155B7FE42B8 /* EmulatorAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmulatorAPITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +88,8 @@
 			children = (
 				257692566EEC7411A264EEED /* Config */,
 				6194786DC91E166D96590F1C /* LessonBrook */,
+				A13559D07E2AC8B955F67176 /* Tests */,
+				83BBA599CDA86A041E6054A3 /* UITests */,
 				7524E40862DF9D4D60466475 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -68,12 +107,18 @@
 			children = (
 				DE16A7B650742CE6EC2ACD19 /* AppDelegate.swift */,
 				3B66AEB7C66001FFA6F37D7A /* Assets.xcassets */,
-				2756913D3A0994B45114F22A /* BrowserViewController.swift */,
 				C6A9AC6F8EDC6A6F47F4B4FC /* Info.plist */,
+				977B1EE176E02EC38164158F /* LedgerCalendar.swift */,
+				DA0704A62A7A94007C059AB5 /* LedgerDetail.swift */,
+				487160D86AABBA71FEEC522D /* LedgerDirectory.swift */,
+				E8DC62F1E131138FBDC6F4A5 /* LedgerEditors.swift */,
 				1A08BCE1EC91432DAC73B79F /* Localizable.strings */,
 				0D711185E1F90EFE3122B35A /* MobileSignIn.swift */,
 				9944FA4ECE3C801ED4750694 /* NativeGoogleSignIn.swift */,
+				00C5AAB90E2BFD9110714666 /* NativeSettings.swift */,
+				DCAC489D9B80F57D8333C838 /* NativeStatements.swift */,
 				E50C38D19580B1FAEFE3E7F3 /* NativeWorkspace.swift */,
+				1B52D512566820A4FA3F494A /* WorkspaceStore.swift */,
 			);
 			path = LessonBrook;
 			sourceTree = "<group>";
@@ -82,8 +127,27 @@
 			isa = PBXGroup;
 			children = (
 				D5FE1BD4EB8BF8146DD644E3 /* LessonBrook.app */,
+				4D0479E69AD8AB2B735E854A /* WorkspaceTests.xctest */,
+				069CE422919DF978DF3260DE /* WorkspaceUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		83BBA599CDA86A041E6054A3 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				27835B9C89D435901D72CF40 /* WorkspaceUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		A13559D07E2AC8B955F67176 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				EDB88A650EA60155B7FE42B8 /* EmulatorAPITests.swift */,
+				95B224551A3643DE2B151CD4 /* WorkspaceTests.swift */,
+			);
+			path = Tests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +176,42 @@
 			productReference = D5FE1BD4EB8BF8146DD644E3 /* LessonBrook.app */;
 			productType = "com.apple.product-type.application";
 		};
+		C01A0207224988CD525F224C /* WorkspaceUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 433618C68A4E1169BDD271C7 /* Build configuration list for PBXNativeTarget "WorkspaceUITests" */;
+			buildPhases = (
+				D9EB10638AFB1A74E5423E66 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CEA79FE0F2336D26D554D21E /* PBXTargetDependency */,
+			);
+			name = WorkspaceUITests;
+			packageProductDependencies = (
+			);
+			productName = WorkspaceUITests;
+			productReference = 069CE422919DF978DF3260DE /* WorkspaceUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		CABEAD0D1B987C3A276C61F2 /* WorkspaceTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D19B84254CECD599BB5364EB /* Build configuration list for PBXNativeTarget "WorkspaceTests" */;
+			buildPhases = (
+				18B424C6D10A700DCFE042C0 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				200A132067A20EB10714FE6D /* PBXTargetDependency */,
+			);
+			name = WorkspaceTests;
+			packageProductDependencies = (
+			);
+			productName = WorkspaceTests;
+			productReference = 4D0479E69AD8AB2B735E854A /* WorkspaceTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -121,6 +221,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					C01A0207224988CD525F224C = {
+						TestTargetID = 97059C5307787D3EE7E2C6AA;
+					};
 				};
 			};
 			buildConfigurationList = 1FDDC0EAF67055E927224FED /* Build configuration list for PBXProject "LessonBrook" */;
@@ -143,6 +246,8 @@
 			projectRoot = "";
 			targets = (
 				97059C5307787D3EE7E2C6AA /* LessonBrook */,
+				CABEAD0D1B987C3A276C61F2 /* WorkspaceTests */,
+				C01A0207224988CD525F224C /* WorkspaceUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -182,21 +287,74 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		18B424C6D10A700DCFE042C0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04CAB7986C01B8AAB19F7B3C /* EmulatorAPITests.swift in Sources */,
+				E1048E1DB4DF97FEF5D73764 /* WorkspaceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4F0F0577A92B2CD79A5DC744 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				73EF40BD4426F497B1FBD026 /* AppDelegate.swift in Sources */,
-				8DA9B29959E2288E8BCC953E /* BrowserViewController.swift in Sources */,
+				64283AF8B41484E097CADA79 /* LedgerCalendar.swift in Sources */,
+				83E831F661170A4D0846CE18 /* LedgerDetail.swift in Sources */,
+				F53FC46E84E04AFC62FA5E3E /* LedgerDirectory.swift in Sources */,
+				DA1E651C765EB3A107FFF295 /* LedgerEditors.swift in Sources */,
 				D44B89EC1E4FC77158BA1FCD /* MobileSignIn.swift in Sources */,
 				F1E3AD0678589DFB5CA9C963 /* NativeGoogleSignIn.swift in Sources */,
+				99259575DFBBCF3E26BB719D /* NativeSettings.swift in Sources */,
+				577E63C21C284C3B40D421F4 /* NativeStatements.swift in Sources */,
 				B858009A5AE59F0AA3033B65 /* NativeWorkspace.swift in Sources */,
+				02BBC24A4C8111005BAB3535 /* WorkspaceStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9EB10638AFB1A74E5423E66 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F81B5F2C4876AF085241D8E8 /* WorkspaceUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		200A132067A20EB10714FE6D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 97059C5307787D3EE7E2C6AA /* LessonBrook */;
+			targetProxy = 6D54BB9787A0D12A2AB9F62A /* PBXContainerItemProxy */;
+		};
+		CEA79FE0F2336D26D554D21E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 97059C5307787D3EE7E2C6AA /* LessonBrook */;
+			targetProxy = 93F67896C7FB5E80EB4F5C85 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		72E4437A59B4DD8FFC84ED82 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = tech.devoralabs.lessonbrook.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LessonBrook;
+			};
+			name = Debug;
+		};
 		83B2BAAC69EFCF3CCD54752A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -231,7 +389,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -250,7 +408,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 0.4.11;
+				MARKETING_VERSION = 0.5.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -300,6 +458,40 @@
 			};
 			name = Debug;
 		};
+		DF51985BDD34316A6F75559B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = tech.devoralabs.lessonbrook.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LessonBrook.app/LessonBrook";
+			};
+			name = Debug;
+		};
+		E657696D5282ABABD6CE7AC4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = tech.devoralabs.lessonbrook.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LessonBrook.app/LessonBrook";
+			};
+			name = Release;
+		};
 		F0B1CC884E6101642995956B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -334,7 +526,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -347,7 +539,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 0.4.11;
+				MARKETING_VERSION = 0.5.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -355,6 +547,23 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		F11A0DAA93BA6AB150020385 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = tech.devoralabs.lessonbrook.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LessonBrook;
 			};
 			name = Release;
 		};
@@ -370,11 +579,29 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		433618C68A4E1169BDD271C7 /* Build configuration list for PBXNativeTarget "WorkspaceUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				72E4437A59B4DD8FFC84ED82 /* Debug */,
+				F11A0DAA93BA6AB150020385 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		B8AB81740F76AF5C81E71538 /* Build configuration list for PBXNativeTarget "LessonBrook" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CF13C4C7C789BC3C57348069 /* Debug */,
 				A5398FEB6A7F69F477BC5AD2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D19B84254CECD599BB5364EB /* Build configuration list for PBXNativeTarget "WorkspaceTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DF51985BDD34316A6F75559B /* Debug */,
+				E657696D5282ABABD6CE7AC4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -386,7 +386,7 @@ struct WelcomeButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.body, design: palette.fontDesign).bold())
-            .foregroundStyle(palette.foreground)
+            .foregroundStyle(primary ? palette.onAccent : palette.foreground)
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
             .frame(minHeight: 48)
@@ -532,4 +532,21 @@ struct NativeWelcome: View {
     }
 
     private func t(_ key: String) -> String { workspaceText(key, locale: locale) }
+}
+
+/// Compact themed primary actions with explicit contrast in every palette.
+struct WorkspaceActionButton: ButtonStyle {
+    let palette: WorkspacePalette
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.subheadline, design: palette.fontDesign).bold())
+            .foregroundStyle(palette.onAccent)
+            .padding(.horizontal, 12).padding(.vertical, 9)
+            .frame(minHeight: 42)
+            .background(palette.accent, in: RoundedRectangle(cornerRadius: min(16, palette.radius)))
+            .overlay(RoundedRectangle(cornerRadius: min(16, palette.radius)).stroke(palette.border, lineWidth: palette.outline))
+            .opacity(enabled ? 1 : 0.45)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+    }
 }

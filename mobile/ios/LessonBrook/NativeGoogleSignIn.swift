@@ -30,7 +30,17 @@ enum NativeGoogleSignIn {
         isConfigured && GIDSignIn.sharedInstance.handle(url)
     }
 
-    static func firebaseIDToken(presenting controller: UIViewController) async throws -> String? {
+    static func firebaseIDToken() async throws -> String? {
+        try await credentials()?.idToken
+    }
+
+    static func credentials() async throws -> (idToken: String, refreshToken: String?)? {
+        guard isConfigured,
+              let root = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+                .filter({ $0.activationState == .foregroundActive }).compactMap({ $0.keyWindow?.rootViewController }).first
+        else { return nil }
+        var controller = root
+        while let presented = controller.presentedViewController { controller = presented }
         let google = GIDSignIn.sharedInstance
         let auth = Auth.auth()
         defer {
@@ -45,7 +55,7 @@ enum NativeGoogleSignIn {
                 accessToken: result.user.accessToken.tokenString
             )
             let firebase = try await auth.signIn(with: credential)
-            return try await firebase.user.getIDToken()
+            return (try await firebase.user.getIDToken(), firebase.user.refreshToken)
         } catch let error as NSError where error.domain == kGIDSignInErrorDomain
             && error.code == GIDSignInError.canceled.rawValue {
             return nil

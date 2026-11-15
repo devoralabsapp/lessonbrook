@@ -1,24 +1,18 @@
 # LessonBrook for iOS and Android
 
-The iOS and Android apps have native sign-in screens, a Dashboard and a bottom tab bar with Dashboard, Students, Classes, Lessons, and Statements. The Students, Lessons, Tuition, Classes, and account workflows open the existing LessonBrook screens inside the app. Both apps use the same accounts, server APIs, lesson data, theme preferences, and English and Vietnamese options as the web app. The ledger needs an internet connection.
+The iOS app uses SwiftUI for sign-in, all five ledger tabs, record details, editors, month calendars, statements, payments, appearance and account settings. It does not embed the web workspace. Android retains its native sign-in, Dashboard and themed navigation with embedded web ledger screens. Both use the existing Node APIs, server-owned Firebase data, six themes and English/Vietnamese locales. An internet connection is required.
 
-Dashboard shows the current outstanding, unbilled, received, and student totals. Pull down to refresh on iOS or use the refresh button on Android. Open the gear in the header for account settings and language. Use the palette button beside it to choose and save a theme.
+On iOS, each tab keeps a separate navigation stack. Students and Classes offer compact two-column Notes and List views; Classes and Lessons also offer a seven-column month calendar with day agendas. Lessons supports automatic filters, per-student attendance and bulk completion. Statements supports direct issue/edit, VietQR for the remaining balance, sharing, email through the existing server policy, editable cash/transfer history and cancellation when the server permits it. Full payment revokes the share on the server. The detail screen checks for incoming payments every 30 seconds while open.
 
-On the welcome screen, **View demo** opens all five tabs with fictional students, classes, lessons, and statements, without signing in. Demo edits stay in the current app view and reset when the web view reloads. **Sign in** returns to native sign-in. Demo actions never modify an account.
+**View demo** opens all five tabs without signing in. iOS uses the same SwiftUI screens and replays fictional commands through `/api/demo`; edits stay in RAM until sign-out or the next launch. Android uses the web demo. Demo requests carry no account session, and demo previews never publish a live parent payment link.
 
-Phone layouts use compact cards, form spacing, and controls across all themes. The themed native tab bar sits below the scrollable page with room for the device's safe-area inset. The selected button and labels use the active theme's colors and type.
+The themed bottom bar reserves its own safe-area inset below scrollable content. iOS screens have no WebView pinch zoom; native Dynamic Type and VoiceOver remain available. `WorkspacePalette`, `WorkspacePanel` and the native button/pin styles provide reusable visual tokens. Appearance changes preview immediately; Save persists the choice. Rebuilding and installing is required for every iOS UI change. Web deployment continues to update Android's embedded ledger.
 
-Students and Classes notes use two columns on phones. Lessons places Clear filters beside the smaller Lesson type field, with Today, This month and Select on the next row. These shared screens update with the web deployment.
+Both apps use the server read cache. iOS additionally keeps a bounded 20-second directory cache and coalesces overlapping reads in RAM. A successful mutation clears cached pages after the server responds. Changed dashboard snapshots, language changes, sign-out and demo entry invalidate that memory. Filters have independent keys and hide obsolete results; late responses cannot repopulate invalidated pages. Pull to refresh forces a server read. Completed tuition responses are never written to disk. The renewable server session cookie is stored in this device's Keychain; authentication remains subject to server revocation checks.
 
-The native Dashboard uses the selected theme's palette, contrasting text, card borders, corner sizes, offset shadows and platform font styles. Its tokens live in `WorkspacePalette` on iOS and `NativeWorkspace.Palette` on Android; keep them aligned with the web tokens in `src/app/globals.css`. The iOS card and primary button styles are reusable modifiers, and Android shares its panel drawable. Native Dashboard styling requires rebuilding and installing the app; a web deployment alone does not update it.
+Dashboard shows Outstanding tuition, unbilled lessons, received tuition and active students, followed by Upcoming lessons. Refresh on return, foreground activation and once per minute checks the current server snapshot and materializes due weekly class slots while the app is open. There is no background scheduler while the app is closed.
 
-Mobile uses the same server read cache as the web app. Dashboard also retains its latest account-local snapshot and view in RAM, while still checking the server on return and refresh. An unchanged response keeps the current view and scroll position. Data, theme and locale changes refresh it; sign-out or demo entry clears it. No tuition data is persisted offline. Embedded workspace reads coalesce overlapping requests, and lists retain their contents during a refresh of the same filter. Notes animate only in view and respect reduced-motion settings.
-
-The Outstanding tuition card displays the total. Open the Statements tab to view individual balances. The Dashboard places Upcoming lessons below Active students, with row colors from the active theme. The schedule shows planned lessons and weekly class slots from today through seven days ahead. Set weekly days and times when creating or editing a class. Opening a weekly slot prefills the date and time for a lesson you can save. Open a lesson to update it, or use **View full schedule** for the complete date range.
-
-Switching tabs or using the app's Back button while editing a marked form asks whether to keep editing or discard the changes. While a save is in progress, wait for it to finish before leaving.
-
-After reviewing a statement and creating its share link, use **Share via app…** to open the phone's share menu. You choose the destination and send the message there.
+Editors retain their navigation stack when switching tabs. Cancel/Back asks before discarding a changed form; swipe dismissal is disabled for dirty forms. While a save is in progress, navigation and duplicate saves are blocked. Native share sheets let the teacher choose the destination after creating a statement link. Account settings can export all datasets as JSON and manage account deletion through the existing server workflow.
 
 ## iOS
 
@@ -51,7 +45,7 @@ On a configured iOS build, tap **Continue with Google** and select your account 
 
 1. Tap **Continue with Google** in the app.
 2. Finish Google sign-in in the system browser, then tap **Open LessonBrook** to return. If the attempt expires or the app was closed during sign-in, start again from the app.
-3. For data export or account deletion, use the link in **Account settings** to open the web tools in your browser. The browser may ask you to sign in again.
+3. iOS account tools use SwiftUI and the same session. Native account deletion and renewable Shortcut setup require the configured Google SDK for reauthentication. Android opens the web account tools in the system browser, which may ask you to sign in again.
 
 The app keeps a random verifier in memory. The server ties the browser handoff to a hash of that verifier, expires the code after two minutes, and consumes it once. The browser link carries the handoff code. The HTTPS exchange returns the usual HttpOnly session cookie. Expired handoffs are removed in bounded batches on subsequent sign-ins. Sign-in uses the existing Firebase Google provider and server credentials. Dashboard uses that same session cookie to load the latest totals from the server.
 
@@ -79,7 +73,7 @@ Balance: 50,000
 DEMO SENDER CC-2026-000001-4EA8C340B1 transfer
 ```
 
-Only a credit to the configured account with one matching reference and an exact outstanding amount is recorded. A retry returns `duplicate`. If the notification includes only the sender's name and a generic transfer description, the API returns `missing_reference` for a matching account. Check the transaction details for the statement reference and ask the payer to keep it in the transfer memo. The received date uses Vietnam time when the notice is processed. Enter cash payments using **Record payment** on the statement.
+Only a credit to the configured account with one matching reference and an exact outstanding amount is recorded. A retry returns `duplicate`. If the notification includes only the sender's name and a generic transfer description, the API returns `missing_reference` for a matching account. Check the transaction details for the statement reference and ask the payer to keep it in the transfer memo. The received date uses Vietnam time when the notice is processed. Enter cash payments using **Paid by cash** on the statement.
 
 For SMS or email, choose the relevant Apple Shortcuts trigger and restrict the sender to your bank. App push notifications may need to be copied or shared into the Shortcut. See [Apple’s communication triggers](https://support.apple.com/en-ae/guide/shortcuts/apdd711f9dff/ios) and [sending API requests from Shortcuts](https://support.apple.com/en-lb/guide/shortcuts/apd58d46713f/ios).
 
@@ -88,3 +82,17 @@ For SMS or email, choose the relevant Apple Shortcuts trigger and restrict the s
 The checked-in mobile sources use `https://chotcong.devoralabs.tech`. To run a fork, deploy the web app with your own HTTPS `APP_ORIGIN` and authorized Firebase Auth domain. Change the origin in both `MobileSignIn` files. If you change the callback scheme, update it in both native apps, their platform manifests, and `src/domain/mobile-sign-in.ts`. For a fork distributed alongside LessonBrook, use your own iOS bundle identifier and Android application ID.
 
 The build instructions produce development builds. App Store and Google Play distribution require signed release builds and review.
+
+## Verify the SwiftUI app
+
+The Xcode scheme includes `WorkspaceTests` and `WorkspaceUITests`. Choose an installed Simulator destination with `xcrun simctl list devices available`, then run:
+
+```sh
+xcodebuild -project mobile/ios/LessonBrook.xcodeproj -scheme LessonBrook \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -parallel-testing-enabled NO test
+```
+
+The unit suite checks Vietnam business dates, integer VND decoding, route prefills, server-compatible VietQR payloads, cookies/CSRF/idempotency and page invalidation. The native HTTP integration test only forwards to `127.0.0.1:3000` and Auth Emulator `127.0.0.1:9099`; it skips if the local emulator is absent. Run it against a clean checkout configured with `demo-chotcong`, `APP_ORIGIN=http://localhost:3000`, local Auth/Firestore Emulators and the production-mode Next server. It creates fictional accounts and covers ownership isolation, group attendance, issuing, sharing and the payment lifecycle. Never run emulator tools with hosted Firebase configuration.
+
+UI tests exercise demo creation, search, calendars, lesson/statement/payment forms and all six themes in Vietnamese, and assert that no WebView exists. They require network access to the configured `/api/demo`. Simulator timings include XCTest overhead and are not physical-device performance measurements. Real Google authorization, mailbox delivery, App Store distribution and device installation require separate verification.

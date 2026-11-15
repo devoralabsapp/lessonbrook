@@ -5,8 +5,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.4.11"
-    CURRENT_PROJECT_VERSION: "17"
+    MARKETING_VERSION: "0.5.0"
+    CURRENT_PROJECT_VERSION: "18"
 packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git
@@ -50,8 +50,34 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         OTHER_LDFLAGS: "$(inherited) -ObjC"
         ENABLE_USER_SCRIPT_SANDBOXING: "NO"
+  WorkspaceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: LessonBrook
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: tech.devoralabs.lessonbrook.tests
+  WorkspaceUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: LessonBrook
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: tech.devoralabs.lessonbrook.uitests
 schemes:
   LessonBrook:
     build:
       targets:
         LessonBrook: all
+    test:
+      targets:
+        - WorkspaceTests
+        - WorkspaceUITests

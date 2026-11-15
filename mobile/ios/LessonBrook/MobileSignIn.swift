@@ -12,7 +12,19 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         var needsAccountDeletion: Bool { cookie.name == "chotcong_deletion" }
     }
 
-    enum Failure: Error { case invalidResponse, expired, deleting }
+    enum Failure: LocalizedError {
+        case invalidResponse, expired, deleting, rejected(Int, String)
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidResponse: return "LessonBrook couldn’t load. Check your connection and try again."
+            case .expired: return "Your session expired. Sign in again."
+            case .deleting: return "Account deletion"
+            case .rejected(_, let message): return message
+            }
+        }
+    }
+    private struct Rejection: Decodable { let error: String }
     private struct CSRF: Decodable { let token: String }
     private struct CSRFPair {
         let token: String
@@ -24,6 +36,13 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
     private struct GoogleProof: Encodable { let idToken: String }
     private struct ScheduleSync: Encodable { let initialize: Bool }
     private struct SessionResponse: Decodable { let redirect: String? }
+    private lazy var connection = makeSession()
+    private let configuration: URLSessionConfiguration?
+
+    init(configuration: URLSessionConfiguration? = nil) {
+        self.configuration = configuration
+        super.init()
+    }
 
     static func isFirstParty(_ url: URL) -> Bool {
         url.scheme == origin.scheme && url.host == origin.host
@@ -65,17 +84,54 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
         return Session(cookie: try cookie(name, from: response))
     }
 
+    @MainActor
     func get<T: Decodable>(_ path: String, cookies: [HTTPCookie] = []) async throws -> T {
-        let session = makeSession()
-        defer { session.finishTasksAndInvalidate() }
-        var request = URLRequest(url: Self.origin.appending(path: path))
+        var request = URLRequest(url: try endpoint(path))
         for (name, value) in HTTPCookie.requestHeaderFields(with: cookies) {
             request.setValue(value, forHTTPHeaderField: name)
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await connection.data(for: request)
         return try decode(data, response)
     }
 
+    @MainActor
+    func mutate<T: Decodable>(_ path: String, method: String, body: some Encodable,
+                              requestID: UUID, cookies: [HTTPCookie]) async throws -> T {
+        let (data, response) = try await post(path: path, body: body, cookies: cookies,
+                                              method: method, requestID: requestID)
+        return try decode(data, response)
+    }
+
+    @MainActor
+    func demo<T: Decodable>(_ body: some Encodable) async throws -> T {
+        var request = URLRequest(url: try endpoint("/api/demo"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await connection.data(for: request)
+        return try decode(data, response)
+    }
+
+    @MainActor
+    func startDeletion(body: some Encodable, requestID: UUID, cookies: [HTTPCookie]) async throws -> Session {
+        let (data, response) = try await post(path: "api/account/deletion/start", body: body,
+                                              cookies: cookies, requestID: requestID)
+        let _: EmptyResponse = try decode(data, response)
+        return Session(cookie: try cookie("chotcong_deletion", from: response))
+    }
+
+    private struct EmptyResponse: Decodable {}
+
+    private func endpoint(_ path: String) throws -> URL {
+        let path = path.hasPrefix("/") ? path : "/" + path
+        guard path.hasPrefix("/api/"), let url = URL(string: path, relativeTo: Self.origin)?.absoluteURL,
+              Self.isFirstParty(url), url.path.hasPrefix("/api/"), url.fragment == nil else {
+            throw Failure.invalidResponse
+        }
+        return url
+    }
+
+    @MainActor
     func workspace(cookies: [HTTPCookie], initialize: Bool) async throws -> WorkspaceSnapshot {
         let (data, response) = try await post(
             path: "api/mobile/workspace", body: ScheduleSync(initialize: initialize), cookies: cookies
@@ -84,16 +140,20 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
     }
 
     private func decode<T: Decodable>(_ data: Data, _ response: URLResponse) throws -> T {
-        switch (response as? HTTPURLResponse)?.statusCode {
-        case 200: return try JSONDecoder().decode(T.self, from: data)
+        guard let status = (response as? HTTPURLResponse)?.statusCode else { throw Failure.invalidResponse }
+        switch status {
+        case 200 ... 299: return try JSONDecoder().decode(T.self, from: data)
         case 401: throw Failure.expired
         case 423: throw Failure.deleting
-        default: throw Failure.invalidResponse
+        default:
+            let message = (try? JSONDecoder().decode(Rejection.self, from: data))?.error ?? ""
+            if !message.isEmpty { throw Failure.rejected(status, message) }
+            throw Failure.invalidResponse
         }
     }
 
     private func makeSession() -> URLSession {
-        let config = URLSessionConfiguration.ephemeral
+        let config = configuration ?? URLSessionConfiguration.ephemeral
         config.httpShouldSetCookies = false
         config.urlCache = nil
         config.timeoutIntervalForRequest = 15
@@ -102,16 +162,18 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
     }
 
     @MainActor
-    private func post(path: String, body: some Encodable, cookies: [HTTPCookie]) async throws -> (Data, URLResponse) {
-        let session = makeSession()
-        defer { session.finishTasksAndInvalidate() }
-
+    private func post(path: String, body: some Encodable, cookies: [HTTPCookie],
+                      method: String = "POST", requestID: UUID? = nil) async throws -> (Data, URLResponse) {
         let now = ProcessInfo.processInfo.systemUptime
         let pair: CSRFPair
         if let cached = csrfPair, now < cached.refreshAt {
             pair = cached
         } else {
-            let (data, response) = try await session.data(from: Self.origin.appending(path: "api/auth/csrf"))
+            var request = URLRequest(url: try endpoint("api/auth/csrf"))
+            (cookies.first { $0.name == "chotcong_locale" }).map {
+                request.setValue("\($0.name)=\($0.value)", forHTTPHeaderField: "Cookie")
+            }
+            let (data, response) = try await connection.data(for: request)
             pair = CSRFPair(
                 token: try JSONDecoder().decode(CSRF.self, from: data).token,
                 cookie: try cookie("chotcong_csrf", from: response),
@@ -119,16 +181,17 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
             )
             csrfPair = pair
         }
-        var request = URLRequest(url: Self.origin.appending(path: path))
-        request.httpMethod = "POST"
+        var request = URLRequest(url: try endpoint(path))
+        request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(Self.origin.absoluteString, forHTTPHeaderField: "Origin")
         request.setValue(pair.token, forHTTPHeaderField: "x-csrf-token")
+        if let requestID { request.setValue(requestID.uuidString.lowercased(), forHTTPHeaderField: "Idempotency-Key") }
         for (name, value) in HTTPCookie.requestHeaderFields(with: [pair.cookie] + cookies) {
             request.setValue(value, forHTTPHeaderField: name)
         }
         request.httpBody = try JSONEncoder().encode(body)
-        let result = try await session.data(for: request)
+        let result = try await connection.data(for: request)
         if (result.1 as? HTTPURLResponse)?.statusCode == 403 { csrfPair = nil }
         return result
     }
@@ -144,7 +207,7 @@ final class MobileSignIn: NSObject, URLSessionTaskDelegate {
     }
 
     private func cookie(_ name: String, from response: URLResponse) throws -> HTTPCookie {
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+        guard let http = response as? HTTPURLResponse, (200 ... 299).contains(http.statusCode),
               let header = http.value(forHTTPHeaderField: "Set-Cookie"),
               let cookie = HTTPCookie.cookies(withResponseHeaderFields: ["Set-Cookie": header], for: Self.origin)
                 .first(where: { $0.name == name }),
