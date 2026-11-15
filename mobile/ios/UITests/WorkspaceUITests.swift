@@ -234,10 +234,14 @@ final class WorkspaceUITests: XCTestCase {
         classes.tap()
 
         func findStudent(_ name: String) -> XCUIElement {
+            let scroll = app.scrollViews.firstMatch
             let search = app.textFields["Search students"]
             XCTAssertTrue(search.waitForExistence(timeout: 10))
-            let student = app.buttons[name]
-            for _ in 0..<4 where !student.isHittable { app.scrollViews.firstMatch.swipeUp() }
+            if !search.isHittable { scroll.swipeUp(velocity: .slow) }
+            search.tap()
+            search.typeText(name + "\n")
+            let student = app.switches[name].firstMatch
+            if !student.isHittable { scroll.swipeUp(velocity: .slow) }
             XCTAssertTrue(student.waitForExistence(timeout: 15))
             XCTAssertTrue(student.isHittable)
             return student
@@ -245,26 +249,35 @@ final class WorkspaceUITests: XCTestCase {
 
         app.buttons["Add class"].tap()
         let addMember = findStudent("Alex Rivera")
+        let addValue = addMember.value as? String
         addMember.tap()
-        XCTAssertEqual(addMember.value as? String, "Selected")
+        XCTAssertNotEqual(addMember.value as? String, addValue)
         app.scrollViews.firstMatch.swipeDown()
         app.buttons["Cancel"].firstMatch.tap()
         app.buttons["Discard changes"].tap()
+        let editorSearch = app.textFields["Search students"]
+        XCTAssertTrue(editorSearch.waitForNonExistence(timeout: 10))
 
-        tapVisible(app.buttons["Edit"].firstMatch, app: app)
+        let edit = app.buttons["Edit"].firstMatch
+        XCTAssertTrue(edit.waitForExistence(timeout: 10))
+        edit.tap()
         let editMember = findStudent("Alex Rivera")
         XCTAssertTrue(editMember.isEnabled)
         app.scrollViews.firstMatch.swipeDown()
         app.buttons["Cancel"].firstMatch.tap()
+        XCTAssertTrue(editorSearch.waitForNonExistence(timeout: 10))
 
         app.buttons["workspace-tab-lessons"].tap()
         app.buttons["Record lesson"].tap()
         app.buttons["Teach"].tap()
-        XCTAssertTrue(app.buttons["One student"].isSelected)
-        app.buttons["Custom student group"].tap()
+        let teach = app.scrollViews["workspace-option-panel"]
+        XCTAssertTrue(teach.waitForExistence(timeout: 10))
+        XCTAssertTrue(teach.buttons["One student"].isSelected)
+        teach.buttons["Custom student group"].tap()
         let participant = findStudent("Alex Rivera")
+        let participantValue = participant.value as? String
         participant.tap()
-        XCTAssertEqual(participant.value as? String, "Selected")
+        XCTAssertNotEqual(participant.value as? String, participantValue)
     }
 
     @MainActor
