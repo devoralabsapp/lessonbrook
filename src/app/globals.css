@@ -1214,11 +1214,15 @@ dialog::backdrop {
     column-gap: 6px;
   }
   [data-workspace] [data-layout="lesson-filter-actions"] {
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
   }
   [data-workspace] [data-layout="lesson-filter-actions"] [data-slot="button"] {
-    padding-inline: 7px;
+    flex-shrink: 1;
+    min-width: 0;
+    padding-inline: 3px;
     font-size: calc(12px + var(--font-size-offset));
+    text-wrap: balance;
   }
   [data-workspace] nav[data-position="bottom"] a {
     min-height: 56px;

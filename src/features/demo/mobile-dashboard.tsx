@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays } from "lucide-react";
+import { RecordIdentity, RecordNote } from "@/components/record-note";
 import Link from "@/components/workspace-link";
 import { Card } from "@/components/ui/card";
 import { formatVnd } from "@/domain";
@@ -13,7 +13,7 @@ import { LoadError, useResource } from "@/features/classes/shared";
 import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
 
-const tones = ["blue", "mint", "yellow"] as const;
+const tones = ["blue", "mint"] as const;
 
 export function MobileDemoDashboard() {
   const { t, locale } = useI18n();
@@ -69,57 +69,58 @@ export function MobileDemoDashboard() {
           {summary?.activeStudents ?? "…"}
         </p>
       </Card>
-      <section className="space-y-3">
-        <h2 className="serif text-xl font-bold">{t("Lịch dạy sắp tới")}</h2>
+      <Card data-testid="upcoming-lesson-list">
+        <h2 className="serif border-b border-border px-5 py-4 text-xl font-bold">
+          {t("Lịch dạy sắp tới")}
+        </h2>
         {scheduleRequest.error ? (
-          <LoadError
-            message={scheduleRequest.error}
-            retry={scheduleRequest.reload}
-          />
+          <div className="p-4">
+            <LoadError
+              message={scheduleRequest.error}
+              retry={scheduleRequest.reload}
+            />
+          </div>
         ) : lessons.length ? (
           <>
-            <Card className="overflow-hidden">
-              <ul className="divide-y divide-border">
-                {lessons.map((lesson, index) => (
-                  <li
-                    key={upcomingLessonPath(lesson)}
-                    data-calendar-tone={tones[index % tones.length]}
-                  >
-                    <Link
-                      href={upcomingLessonPath(lesson)}
-                      className="flex items-center gap-3 p-3"
-                    >
-                      <CalendarDays className="size-5 shrink-0" aria-hidden />
-                      <div className="min-w-0 break-words">
-                        <p className="text-sm font-semibold">
-                          {lesson.name ?? t("Buổi nhóm tự chọn")}
-                        </p>
-                        <p className="text-xs">
-                          {formatDate(lesson.date, locale)} ·{" "}
-                          {lesson.time ?? t("Chưa đặt giờ")}
-                          {lesson.kind === "recurring"
-                            ? ` · ${t("Hằng tuần")}`
-                            : ""}
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+            <div className="divide-y divide-border">
+              {lessons.map((lesson, index) => (
+                <RecordNote
+                  key={upcomingLessonPath(lesson)}
+                  recordId={upcomingLessonPath(lesson)}
+                  note={false}
+                  tone={tones[index % tones.length]}
+                  className="flex px-5 py-3"
+                >
+                  <RecordIdentity
+                    note={false}
+                    href={upcomingLessonPath(lesson)}
+                    name={lesson.name ?? t("Buổi nhóm tự chọn")}
+                    detail={[
+                      lesson.date === schedule?.today
+                        ? t("Hôm nay")
+                        : formatDate(lesson.date, locale),
+                      lesson.time ?? t("Chưa đặt giờ"),
+                      lesson.kind === "recurring" ? t("Hằng tuần") : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  />
+                </RecordNote>
+              ))}
+            </div>
             <Link
               href="/app/schedule"
-              className="text-sm font-semibold text-primary underline"
+              className="block border-t border-border p-4 text-sm font-semibold text-primary underline"
             >
               {t("Xem lịch đầy đủ")}
             </Link>
           </>
         ) : (
-          <p className="text-sm">
+          <p className="p-4 text-sm">
             {schedule ? t("Không có buổi dự kiến trong lịch.") : t("Đang tải…")}
           </p>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

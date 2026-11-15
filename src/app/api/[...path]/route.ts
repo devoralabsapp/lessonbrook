@@ -1,7 +1,9 @@
 import { getI18n } from "@/lib/i18n/server";
 import { z } from "zod";
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import {
+  scheduleCashBalanceEmail,
   sendStatementEmail,
   statementEmailOptions,
 } from "@/lib/server/statement-email";
@@ -65,7 +67,7 @@ import {
 import {
   amendStatement,
   createIssuedStatement,
-  getStatement,
+  getStatementDetail,
   issueStatement,
   listEligibleSessions,
   listStatements,
@@ -193,7 +195,7 @@ async function handle(request: Request, context: Context) {
           );
         return json(
           await read("statement", [id], async () => {
-            const statement = await getStatement(uid, id);
+            const statement = await getStatementDetail(uid, id);
             return {
               ...statement,
               transferReference:
@@ -303,8 +305,18 @@ async function handle(request: Request, context: Context) {
       )
         return json(await startExport(uid, body, requestId));
       if (request.method === "POST" && path.length === 3) {
-        if (resource === "statements" && action === "payments")
-          return json(await recordPayment(uid, id, body, requestId));
+        if (resource === "statements" && action === "payments") {
+          const result = await recordPayment(uid, id, body, requestId);
+          if (z.object({ method: z.literal("cash") }).safeParse(body).success)
+            scheduleCashBalanceEmail(
+              teacher,
+              id,
+              result.id,
+              (await getI18n()).locale,
+              after,
+            );
+          return json(result);
+        }
         if (resource === "payments" && action === "void")
           return json(await voidPayment(uid, id, body, requestId));
         if (resource === "statements" && action === "share")

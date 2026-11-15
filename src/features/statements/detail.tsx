@@ -18,7 +18,10 @@ import { CashPayment, PaymentPanel } from "@/features/payments/payment-panel";
 import { BankTransferDetails } from "@/features/payments/bank-transfer-details";
 import { SharingPanel } from "@/features/sharing/sharing-panel";
 import { useMobileDraft } from "@/lib/use-mobile-draft";
-type StatementDetailData = Statement & { transferReference: string | null };
+type StatementDetailData = Statement & {
+  transferReference: string | null;
+  canCancel: boolean;
+};
 export function StatementDetail({
   id,
   nativeShare,
@@ -31,6 +34,7 @@ export function StatementDetail({
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
   const mutation = useStatementMutation();
   const cancellationDraft = useMobileDraft(mutation.busy);
@@ -102,10 +106,11 @@ export function StatementDetail({
       />
     );
   const display = statementDisplayStatus(data, vietnamToday());
+  const paid = statementIsPaid(data);
   const paymentTone =
     data.status !== "issued"
       ? "bg-card text-foreground"
-      : statementIsPaid(data)
+      : paid
         ? "status-paid"
         : "status-unpaid";
   const refresh = () => setRevision((value) => value + 1);
@@ -126,6 +131,8 @@ export function StatementDetail({
     });
     if (result) {
       cancellationDraft.saved();
+      setCancelling(false);
+      setReason("");
       setData(null);
       setRevision((value) => value + 1);
     }
@@ -140,17 +147,74 @@ export function StatementDetail({
           <h1 className="serif break-words text-3xl">
             {data.number ?? t("Xem trước bản nháp")}
           </h1>
-          {canEditIssued && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditing(true)}
-            >
-              {t("Sửa bảng kê")}
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {canEditIssued && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={mutation.busy}
+                onClick={() => setEditing(true)}
+              >
+                {t("Sửa bảng kê")}
+              </Button>
+            )}
+            {data.canCancel && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={mutation.busy}
+                aria-expanded={cancelling}
+                aria-controls={cancelling ? "cancel-statement" : undefined}
+                onClick={() => {
+                  cancellationDraft.saved();
+                  mutation.clearError();
+                  setCancelling(!cancelling);
+                }}
+              >
+                {t("Hủy bảng kê")}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+      {data.canCancel && cancelling && (
+        <Card className="space-y-3 p-5" id="cancel-statement">
+          <p className="text-sm text-muted-foreground">
+            {t(
+              "Khi hủy, link chia sẻ sẽ được thu hồi và các buổi có thể lập bảng kê mới.",
+            )}
+          </p>
+          <form
+            onSubmit={cancel}
+            {...cancellationDraft.form}
+            className="space-y-3"
+          >
+            <label className="field-label">
+              {t("Lý do hủy")}
+              <textarea
+                className="select-input min-h-20"
+                required
+                maxLength={500}
+                value={reason}
+                disabled={mutation.busy}
+                onChange={(event) => setReason(event.target.value)}
+              />
+            </label>
+            {mutation.error && (
+              <p role="alert" className="text-sm text-destructive">
+                {mutation.error}
+              </p>
+            )}
+            <Button
+              type="submit"
+              variant="destructive"
+              disabled={mutation.busy}
+            >
+              {mutation.busy ? t("Đang hủy…") : t("Xác nhận hủy bảng kê")}
+            </Button>
+          </form>
+        </Card>
+      )}
       <Card className="overflow-hidden" data-testid="statement-preview">
         <div className="space-y-4 border-b border-border bg-accent-soft p-5 sm:p-7">
           <div className="flex items-start justify-between gap-3">
@@ -249,7 +313,7 @@ export function StatementDetail({
           className="border-t border-border p-5 sm:p-7"
         />
       </Card>
-      {mutation.error && (
+      {mutation.error && !(data.canCancel && cancelling) && (
         <p
           role="alert"
           className="rounded-xl border border-destructive p-4 text-sm text-destructive"
@@ -280,51 +344,17 @@ export function StatementDetail({
       ) : data.status === "issued" ? (
         <>
           <PaymentPanel statement={data} onChanged={refresh} />
-          <SharingPanel
-            statement={data}
-            nativeShare={nativeShare}
-            onChanged={() => setRevision((value) => value + 1)}
-          />
-          <Card className="p-5">
-            <details>
-              <summary className="cursor-pointer text-sm font-semibold">
-                {t("Hủy bảng kê")}
-              </summary>
-              <form
-                onSubmit={cancel}
-                {...cancellationDraft.form}
-                className="mt-4 space-y-4"
-              >
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {t(
-                    "Chỉ hủy khi không còn khoản thu hợp lệ. Bản cũ và lịch sử được giữ; các buổi sẽ được giải phóng để lập bảng kê lại.",
-                  )}
-                </p>
-                <label className="field-label">
-                  {t("Lý do hủy")}
-                  <textarea
-                    className="select-input min-h-24"
-                    required
-                    maxLength={500}
-                    value={reason}
-                    disabled={mutation.busy}
-                    onChange={(event) => setReason(event.target.value)}
-                  />
-                </label>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={
-                    mutation.busy ||
-                    data.paidVnd > 0 ||
-                    data.activePaymentCount > 0
-                  }
-                >
-                  {mutation.busy ? t("Đang hủy…") : t("Xác nhận hủy bảng kê")}
-                </Button>
-              </form>
-            </details>
-          </Card>
+          {paid ? (
+            <Card className="p-5 text-sm">
+              {t("Bảng kê đã thu đủ và link chia sẻ đã được thu hồi.")}
+            </Card>
+          ) : (
+            <SharingPanel
+              statement={data}
+              nativeShare={nativeShare}
+              onChanged={refresh}
+            />
+          )}
         </>
       ) : (
         <Card className="space-y-3 p-5">

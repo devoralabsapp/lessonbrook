@@ -17,7 +17,7 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
     statementId: string;
   const today = vietnamToday();
   const root = () => admin().db.doc(`apps/chotcong/users/${uid}`);
-  const get = async (): Promise<Statement> =>
+  const get = async (): Promise<Statement & { canCancel: boolean }> =>
     (await a.call(`/api/statements/${statementId}`)).json();
   const payBody = (amountVnd = 1000000) => ({
     amountVnd,
@@ -250,7 +250,23 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
       "amountVnd",
       "receivedDate",
     ]);
-    expect((await pay(600000)).status).toBe(200);
+    // Follow-up emails contain a child link that shares the original expiry.
+    const child = randomBytes(32).toString("base64url");
+    await doc.ref.parent
+      .doc(createHash("sha256").update(child).digest("hex"))
+      .create({
+        ...doc.data(),
+        parentShareTokenHash: link.tokenHash,
+      });
+    expect((await resolve(child)).status).toBe(200);
+    expect(
+      (
+        await a.call(`/api/statements/${statementId}/payments`, "POST", {
+          ...payBody(600000),
+          method: "cash",
+        })
+      ).status,
+    ).toBe(200);
     const paidLessons = await lessonsWithPayment("paid");
     expect(paidLessons).toHaveLength(8);
     expect(
@@ -261,8 +277,18 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
       ),
     ).toBe(true);
     expect(await lessonsWithPayment("unpaid")).toEqual([]);
-    expect((await (await resolve(link.token!)).json()).remainingVnd).toBe(0);
+    expect((await resolve(link.token!)).status).toBe(404);
+    expect((await resolve(child)).status).toBe(404);
+    expect((await doc.ref.get()).get("revokedAt")).toBeInstanceOf(Timestamp);
     expect((await get()).activePaymentCount).toBe(2);
+    expect((await get()).activeShareTokenHash).toBeNull();
+    expect(
+      (
+        await a.call(`/api/statements/${statementId}/share`, "POST", {
+          version: (await get()).version,
+        })
+      ).status,
+    ).toBe(409);
     expect(
       (
         await a.call(`/api/statements/${statementId}/void`, "POST", {
@@ -296,9 +322,12 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
     expect((await get()).activePaymentCount).toBe(1);
     expect(await lessonsWithPayment("paid")).toEqual([]);
     expect(await lessonsWithPayment("unpaid")).toHaveLength(8);
-    expect((await (await resolve(link.token!)).json()).remainingVnd).toBe(
-      1000000,
-    );
+    expect((await resolve(link.token!)).status).toBe(404);
+    expect((await resolve(child)).status).toBe(404);
+    const replacement = await share();
+    expect(
+      (await (await resolve(replacement.token!)).json()).remainingVnd,
+    ).toBe(1000000);
     const after = await (await a.call("/api/summary")).json();
     expect(after).toMatchObject({
       outstandingVnd: 1000000,
@@ -312,6 +341,44 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
         .filter((d) => d.get("voidedAt") === null)
         .reduce((sum, d) => sum + d.get("amountVnd"), 0),
     ).toBe((await get()).paidVnd);
+  });
+  it("revokes a link when an edit settles the balance and keeps cancelled payments in history", async () => {
+    const link = await share();
+    const response = await pay();
+    expect(response.status).toBe(200);
+    const { id } = await response.json();
+    expect((await resolve(link.token!)).status).toBe(200);
+    expect((await get()).canCancel).toBe(false);
+    expect(
+      (
+        await a.call(`/api/payments/${id}`, "PATCH", {
+          amountVnd: 1600000,
+          receivedDate: today,
+          expectedUpdatedAt: null,
+        })
+      ).status,
+    ).toBe(200);
+    expect((await resolve(link.token!)).status).toBe(404);
+    expect(
+      (
+        await a.call(`/api/payments/${id}/void`, "POST", {
+          reason: "Correction",
+        })
+      ).status,
+    ).toBe(200);
+    expect(await get()).toMatchObject({
+      paidVnd: 0,
+      activePaymentCount: 0,
+      canCancel: false,
+    });
+    expect(
+      (
+        await a.call(`/api/statements/${statementId}/void`, "POST", {
+          version: (await get()).version,
+          reason: "Correction",
+        })
+      ).status,
+    ).toBe(409);
   });
   it("tổng quan tính ngày nhận tiền trong tháng, ngày đến hạn inclusive và tách buổi chưa lập bảng", async () => {
     const lastMonth = addBusinessDays(today.slice(0, 7) + "-01", -1);
@@ -466,6 +533,7 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
     expect((await pay(1)).status).toBe(409);
   });
   it("rotate/revoke/expiry/pointer/void đều chặn link cũ ngay; không phân biệt các link không khả dụng", async () => {
+    expect((await get()).canCancel).toBe(true);
     const first = await share();
     const second = await share();
     const unknown = await resolve(randomBytes(32).toString("base64url"));
@@ -494,6 +562,7 @@ describe("Thu tiền và link chia sẻ qua HTTP/Firestore thật trên Emulator
       .update({ revokedAt: null });
     expect((await resolve(third.token!)).status).toBe(404); // Pointer also revokes access.
     const fourth = await share();
+    expect((await get()).canCancel).toBe(true);
     expect(
       (
         await a.call(`/api/statements/${statementId}/void`, "POST", {

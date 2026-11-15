@@ -51,11 +51,30 @@ export const shareTokenDocumentSchema = z
     statementId: idSchema,
     expiresAt: timestamp,
     revokedAt: timestamp.nullable(),
+    parentShareTokenHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
     emailDelivery: z
       .object({
         requestId: requestIdSchema,
         attemptedAt: timestamp,
         sentAt: timestamp.nullable(),
+        recipientHash: z
+          .string()
+          .regex(/^[a-f0-9]{64}$/)
+          .optional(),
+        locale: z.enum(["en", "vi"]).optional(),
+        remainingVnd: z.number().int().nonnegative().optional(),
+        balanceUpdate: z
+          .object({
+            paymentId: idSchema,
+            attemptedAt: timestamp,
+            remainingVnd: z.number().int().positive(),
+            sentAt: timestamp.nullable(),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .optional(),

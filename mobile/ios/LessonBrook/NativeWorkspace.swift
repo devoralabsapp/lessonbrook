@@ -265,45 +265,61 @@ struct NativeDashboard: View {
 
     private func scheduleView(_ schedule: WorkspaceSnapshot.Schedule) -> some View {
         let items = schedule.upcoming
-        return VStack(alignment: .leading, spacing: 9) {
-            Text(t("Upcoming lessons")).font(.system(.title2, design: palette.fontDesign).bold()).accessibilityAddTraits(.isHeader)
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(t("Upcoming lessons"))
+                .font(.system(.headline, design: palette.fontDesign).bold())
+                .accessibilityAddTraits(.isHeader)
+                .padding(12)
+            Divider().overlay(palette.border.opacity(0.4))
             if items.isEmpty {
                 Text(t("No planned lessons in the next seven days."))
                     .font(.system(.subheadline, design: palette.fontDesign)).foregroundStyle(palette.foreground)
+                    .padding(12)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(items.enumerated()), id: \.element.path) { index, lesson in
+                        let name = lesson.name ?? t("Group lesson")
+                        let tone = palette.scheduleTones[index % palette.scheduleTones.count]
+                        let frame = RoundedRectangle(cornerRadius: min(palette.radius, 10))
                         Button { open(lesson.path) } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "calendar")
+                            HStack(spacing: 9) {
+                                Text(String(name.prefix(1)).uppercased())
+                                    .font(.system(.subheadline, design: palette.fontDesign).bold())
+                                    .frame(width: 34, height: 34)
+                                    .background(palette.surface.opacity(0.2), in: RoundedRectangle(cornerRadius: 3))
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(lesson.name ?? t("Group lesson")).font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
-                                    Text("\(dayLabel(lesson.date, today: schedule.today)) · \(lesson.time ?? t("Time not set"))")
+                                    Text(name).font(.system(.subheadline, design: palette.fontDesign).bold())
+                                    let recurrence = lesson.kind == "recurring" ? " · \(t("Weekly"))" : ""
+                                    Text("\(dayLabel(lesson.date, today: schedule.today)) · \(lesson.time ?? t("Time not set"))\(recurrence)")
                                         .font(.system(.footnote, design: palette.fontDesign))
-                                    if lesson.kind == "recurring" { Text(t("Weekly")).font(.system(.caption, design: palette.fontDesign)) }
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.system(.footnote, design: palette.fontDesign)).accessibilityHidden(true)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .frame(minHeight: 46)
+                            .padding(7)
                             .foregroundStyle(palette.dashboardInk)
-                            .background(palette.scheduleTones[index % palette.scheduleTones.count])
+                            .background(tone, in: frame)
+                            .overlay(frame.strokeBorder(palette.border, lineWidth: palette.outline))
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(tone.opacity(0.18))
                         if index < items.count - 1 { Divider().overlay(palette.border.opacity(0.4)) }
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: palette.radius))
-                .modifier(WorkspacePanel(palette: palette, fill: palette.surface))
+                Divider().overlay(palette.border.opacity(0.4))
                 Button(t("View full schedule")) { open("/app/schedule") }
                     .font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
                     .tint(palette.controlTint)
+                    .padding(12)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipShape(RoundedRectangle(cornerRadius: palette.radius))
+        .modifier(WorkspacePanel(palette: palette, fill: palette.surface))
     }
 
     private func dayLabel(_ date: String, today: String) -> String {

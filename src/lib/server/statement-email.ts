@@ -1,5 +1,5 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { createTransport } from "nodemailer";
 import MailComposer from "nodemailer/lib/mail-composer";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
@@ -7,6 +7,7 @@ import { z } from "zod";
 import { idSchema, requestIdSchema } from "@/domain";
 import { shareTokenDocumentSchema } from "@/domain/firestore";
 import { shareTokenSchema, type StatementEmailOptions } from "@/domain/sharing";
+import { statementIsPaid } from "@/domain/statements";
 import { admin } from "@/lib/firebase/admin";
 import type { Locale } from "@/lib/i18n/core";
 import {
@@ -16,12 +17,15 @@ import {
 import { assertAccountWritable } from "./account-access";
 import { transferReferenceFor } from "./bank-shortcut";
 import { AppError } from "./errors";
+import { paymentDto } from "./payments-repository";
 import { studentDto, userRef } from "./repository";
 import { appOrigin } from "./session";
 import { tokenHash } from "./sharing-repository";
 import { statementDto } from "./statements-repository";
 
 type Teacher = { uid: string; email?: string; email_verified?: boolean };
+const recipientHash = (email: string) =>
+  createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
 
 function gmailConfig(teacher: Teacher) {
   const env = process.env;
@@ -75,7 +79,11 @@ export async function statementEmailOptions(
   const statement = statementDto(
     await root.collection("statements").doc(idSchema.parse(id)).get(),
   );
-  if (statement.status !== "issued" || !statement.activeShareTokenHash)
+  if (
+    statement.status !== "issued" ||
+    statementIsPaid(statement) ||
+    !statement.activeShareTokenHash
+  )
     return { available: false };
   const student = studentDto(
     await root.collection("students").doc(statement.studentId).get(),
@@ -235,6 +243,7 @@ export async function sendStatementEmail(
       link.data.revokedAt ||
       link.data.expiresAt.toMillis() <= Date.now() ||
       statement.status !== "issued" ||
+      statementIsPaid(statement) ||
       statement.activeShareTokenHash !== hash
     )
       throw new AppError(
@@ -265,7 +274,14 @@ export async function sendStatementEmail(
         "Email nhận bảng kê đã thay đổi. Tải lại trang để kiểm tra địa chỉ mới.",
       );
     tx.update(tokenRef, {
-      emailDelivery: { requestId, attemptedAt: Timestamp.now(), sentAt: null },
+      emailDelivery: {
+        requestId,
+        attemptedAt: Timestamp.now(),
+        sentAt: null,
+        recipientHash: recipientHash(recipient),
+        locale,
+        remainingVnd: statement.totalVnd - statement.paidVnd,
+      },
     });
     const reference = statement.bankTransferSnapshot
       ? transferReferenceFor(statement)
@@ -310,4 +326,143 @@ export async function sendStatementEmail(
       tx.update(tokenRef, { "emailDelivery.sentAt": Timestamp.now() });
   });
   return { id };
+}
+
+export function scheduleCashBalanceEmail(
+  teacher: Teacher,
+  id: string,
+  paymentId: string,
+  locale: Locale,
+  schedule: (run: () => Promise<void>) => void,
+) {
+  const config = gmailConfig(teacher);
+  if (!config) return;
+  schedule(async () => {
+    try {
+      await sendCashBalanceEmail(teacher.uid, id, paymentId, locale, config);
+    } catch {
+      console.warn("Statement balance email delivery failed.");
+    }
+  });
+}
+
+async function sendCashBalanceEmail(
+  uid: string,
+  id: string,
+  paymentId: string,
+  locale: Locale,
+  config: NonNullable<ReturnType<typeof gmailConfig>>,
+) {
+  const root = userRef(uid);
+  const { db } = admin();
+  const tokens = db.collection("apps/chotcong/shareTokens");
+  const token = randomBytes(32).toString("base64url");
+  const linkRef = tokens.doc(tokenHash(token));
+  const qrContentId = `payment-${randomUUID()}@lessonbrook`;
+  const claim = await db.runTransaction(async (tx) => {
+    await assertAccountWritable(tx, uid);
+    const statement = statementDto(
+      await tx.get(root.collection("statements").doc(id)),
+    );
+    const hash = statement.activeShareTokenHash;
+    const remainingVnd = statement.totalVnd - statement.paidVnd;
+    if (
+      statement.status !== "issued" ||
+      !hash ||
+      !statement.bankTransferSnapshot ||
+      remainingVnd <= 0
+    )
+      return null;
+    const parentRef = tokens.doc(hash);
+    const [parentDoc, paymentDoc, studentDoc] = await tx.getAll(
+      parentRef,
+      root.collection("payments").doc(paymentId),
+      root.collection("students").doc(statement.studentId),
+    );
+    const parent = shareTokenDocumentSchema.safeParse(parentDoc.data());
+    if (
+      !parent.success ||
+      parent.data.ownerUid !== uid ||
+      parent.data.statementId !== id ||
+      parent.data.revokedAt ||
+      parent.data.expiresAt.toMillis() <= Date.now() ||
+      !paymentDoc.exists ||
+      !studentDoc.exists
+    )
+      return null;
+    const delivery = parent.data.emailDelivery;
+    if (!delivery?.sentAt) return null;
+    const payment = paymentDto(paymentDoc);
+    const previous = delivery.balanceUpdate;
+    if (
+      payment.statementId !== id ||
+      payment.studentId !== statement.studentId ||
+      payment.method !== "cash" ||
+      payment.voidedAt ||
+      Date.parse(payment.recordedAt) <
+        (previous?.attemptedAt ?? delivery.attemptedAt).toMillis() ||
+      previous?.paymentId === paymentId ||
+      (previous?.remainingVnd ?? delivery.remainingVnd) === remainingVnd
+    )
+      return null;
+    const recipient = studentDto(studentDoc).email;
+    // Legacy deliveries predate the recipient fingerprint. An intervening
+    // student edit makes the original recipient uncertain.
+    const originalRecipient = delivery.recipientHash
+      ? recipient && recipientHash(recipient) === delivery.recipientHash
+      : studentDoc.get("updatedAt")?.toMillis() <=
+        delivery.attemptedAt.toMillis();
+    const reference = transferReferenceFor(statement);
+    if (!recipient || !originalRecipient || !reference) return null;
+    const now = Timestamp.now();
+    const content = buildStatementEmail(statement, {
+      url: `${appOrigin()}/s#${token}`,
+      locale: delivery.locale ?? locale,
+      expiresAt: parent.data.expiresAt.toDate().toISOString(),
+      payment: { reference, cid: qrContentId },
+      cashBalanceUpdate: true,
+    });
+    tx.create(linkRef, {
+      ownerUid: uid,
+      statementId: id,
+      parentShareTokenHash: hash,
+      expiresAt: parent.data.expiresAt,
+      revokedAt: null,
+      createdAt: now,
+      schemaVersion: 1,
+    });
+    tx.update(parentRef, {
+      "emailDelivery.balanceUpdate": {
+        paymentId,
+        remainingVnd,
+        attemptedAt: now,
+        sentAt: null,
+      },
+    });
+    return { parentRef, previous, recipient, content };
+  });
+  if (!claim) return;
+  try {
+    await deliver(config, claim.recipient, claim.content);
+  } catch (error) {
+    if (error instanceof GmailDeliveryError && error.safeToRetry) {
+      await db.runTransaction(async (tx) => {
+        const parent = await tx.get(claim.parentRef);
+        if (parent.get("emailDelivery.balanceUpdate.paymentId") === paymentId)
+          tx.update(claim.parentRef, {
+            "emailDelivery.balanceUpdate":
+              claim.previous ?? FieldValue.delete(),
+          });
+        tx.delete(linkRef);
+      });
+    }
+    throw error;
+  }
+  await db.runTransaction(async (tx) => {
+    const parent = await tx.get(claim.parentRef);
+    if (parent.get("emailDelivery.balanceUpdate.paymentId") === paymentId)
+      tx.update(claim.parentRef, {
+        "emailDelivery.balanceUpdate.sentAt": Timestamp.now(),
+      });
+  });
 }

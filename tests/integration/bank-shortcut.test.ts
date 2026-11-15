@@ -105,6 +105,18 @@ describe("iPhone bank notification Shortcut", () => {
       transferReference: reference,
       remainingVnd: 30000,
     });
+    const link = await (
+      await teacher.app.call(`${teacher.path}/share`, "POST", {
+        version: teacher.detail.version,
+      })
+    ).json();
+    const resolve = () =>
+      fetch(`${origin}/api/share/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: origin },
+        body: JSON.stringify({ token: link.token }),
+      });
+    expect((await resolve()).status).toBe(200);
     const wrongKey = await teacher.connect(newAccount);
     expect(
       (await send(message(reference, "30,000", newAccount), wrongKey)).status,
@@ -124,6 +136,7 @@ describe("iPhone bank notification Shortcut", () => {
     expect(await (await send(reformatted, key)).json()).toEqual({
       status: "recorded",
     });
+    expect((await resolve()).status).toBe(404);
     expect(await (await send(message(reference), key)).json()).toEqual({
       status: "duplicate",
     });

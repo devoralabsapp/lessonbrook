@@ -128,7 +128,7 @@ test("360px: tìm học viên → chọn buổi → phát hành trực tiếp �
       .getByRole("button", { name: "Sửa", exact: true }),
   ).toBeEnabled();
   await page.goto(statementUrl);
-  await page.locator("summary").filter({ hasText: "Hủy bảng kê" }).click();
+  await page.getByRole("button", { name: "Hủy bảng kê", exact: true }).click();
   await page
     .getByLabel("Lý do hủy", { exact: true })
     .fill("Đối chiếu lại kỳ học thử");

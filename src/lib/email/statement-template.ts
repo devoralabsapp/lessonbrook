@@ -53,11 +53,13 @@ export function buildStatementEmail(
     locale,
     expiresAt,
     payment,
+    cashBalanceUpdate = false,
   }: {
     url: string;
     locale: Locale;
     expiresAt: string;
     payment?: { reference: string; cid: string };
+    cashBalanceUpdate?: boolean;
   },
 ): StatementEmailContent {
   const t = translator(locale);
@@ -86,11 +88,15 @@ export function buildStatementEmail(
       : null;
   const number = statement.number ?? statement.id;
   const period = `${date(statement.periodStart)} – ${date(statement.periodEnd)}`;
-  const introduction = t("{0} gửi bảng kê học phí của {1} cho kỳ {2}.", {
-    "0": statement.teacherSnapshot.displayName,
-    "1": statement.recipientSnapshot.displayName,
-    "2": period,
-  });
+  const introduction = cashBalanceUpdate
+    ? t(
+        "Giáo viên đã ghi nhận một phần tiền mặt. Hãy dùng mã VietQR trong email này để thanh toán số tiền còn lại.",
+      )
+    : t("{0} gửi bảng kê học phí của {1} cho kỳ {2}.", {
+        "0": statement.teacherSnapshot.displayName,
+        "1": statement.recipientSnapshot.displayName,
+        "2": period,
+      });
   const metadata = [
     [t("Tên học viên"), statement.recipientSnapshot.displayName],
     [t("Giáo viên"), statement.teacherSnapshot.displayName],
@@ -127,10 +133,18 @@ export function buildStatementEmail(
   const expiryNote = t("Link có hiệu lực đến {0} (giờ Việt Nam).", {
     "0": expiry,
   });
-  const subject = t("Bảng kê học phí {0} · {1}", {
-    "0": number,
-    "1": statement.recipientSnapshot.displayName,
-  });
+  const title = cashBalanceUpdate
+    ? t("Cập nhật số tiền còn lại")
+    : t("Bảng kê học phí của bạn");
+  const subject = t(
+    cashBalanceUpdate
+      ? "Cập nhật học phí {0} · {1}"
+      : "Bảng kê học phí {0} · {1}",
+    {
+      "0": number,
+      "1": statement.recipientSnapshot.displayName,
+    },
+  );
   const text = [
     "LessonBrook",
     "",
@@ -194,7 +208,7 @@ export function buildStatementEmail(
         </td></tr>
         <tr><td style="padding:26px 24px 18px;">
           <p style="margin:0 0 8px;color:#5a5248;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">${escapeHtml(number)}</p>
-          <h1 style="margin:0 0 16px;font-size:28px;line-height:36px;letter-spacing:-0.6px;">${escapeHtml(t("Bảng kê học phí của bạn"))}</h1>
+          <h1 style="margin:0 0 16px;font-size:28px;line-height:36px;letter-spacing:-0.6px;">${escapeHtml(title)}</h1>
           <p style="margin:0 0 8px;font-size:15px;line-height:24px;">${escapeHtml(t("Xin chào,"))}</p>
           <p style="margin:0;font-size:15px;line-height:24px;word-break:break-word;">${escapeHtml(introduction)}</p>
         </td></tr>

@@ -294,9 +294,11 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
     await recipient
       .getByRole("button", { name: "Cập nhật số liệu", exact: true })
       .click();
-    await expect(recipient.getByTestId("public-remaining")).toHaveText(
-      /^0\s*₫$/,
-    );
+    const unavailable = recipient.getByRole("heading", {
+      name: "Bảng kê không khả dụng",
+      exact: true,
+    });
+    await expect(unavailable).toBeVisible();
     const remove = first.getByRole("button", {
       name: "Xóa khoản thu",
       exact: true,
@@ -320,26 +322,9 @@ test("360px: thu từng phần → mất response tạo link → link mới → 
       first.getByText("PRIVATE REASON", { exact: false }),
     ).toBeVisible();
     await expect(statementCard.locator(".status-unpaid")).toBeVisible();
-    await recipient
-      .getByRole("button", { name: "Cập nhật số liệu", exact: true })
-      .click();
-    await expect(recipient.getByTestId("public-remaining")).toContainText(
-      "1.000.000",
-    );
-    await expect(recipient.locator("body")).not.toContainText("PRIVATE");
-    await page
-      .getByRole("button", { name: "Thu hồi link", exact: true })
-      .click();
-    await expect(
-      page.getByRole("status").filter({ hasText: "Đã thu hồi link chia sẻ" }),
-    ).toBeVisible();
     await recipient.reload();
-    await expect(
-      recipient.getByRole("heading", {
-        name: "Bảng kê không khả dụng",
-        exact: true,
-      }),
-    ).toBeVisible();
+    await expect(unavailable).toBeVisible();
+    await expect(recipient.locator("body")).not.toContainText("PRIVATE");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

@@ -12,6 +12,7 @@ import {
 } from "@/domain/payments";
 import { paymentDocumentSchema } from "@/domain/firestore";
 import {
+  statementIsPaid,
   statementMoneySchema,
   statementVersionSchema,
 } from "@/domain/statements";
@@ -19,6 +20,7 @@ import { AppError } from "./errors";
 import { dto, operation, userRef } from "./repository";
 import { listPage, listScope } from "./list-page";
 import { getStatement, statementDto } from "./statements-repository";
+import { revokeActiveShare } from "./share-revocation";
 import {
   assertBankShortcutActive,
   transferReferenceFor,
@@ -44,7 +46,7 @@ function audit(
     schemaVersion: 1,
   });
 }
-function writePayment(
+async function writePayment(
   tx: FirebaseFirestore.Transaction,
   root: FirebaseFirestore.DocumentReference,
   statementDoc: FirebaseFirestore.DocumentSnapshot,
@@ -89,9 +91,16 @@ function writePayment(
     requestId,
     schemaVersion: 1,
   });
+  const paidVnd = statementMoneySchema.parse(
+    statement.paidVnd + input.amountVnd,
+  );
+  const share = statementIsPaid({ ...statement, paidVnd })
+    ? await revokeActiveShare(tx, root, statement, now)
+    : {};
   tx.create(root.collection("payments").doc(paymentId), data);
   tx.update(statementDoc.ref, {
-    paidVnd: statementMoneySchema.parse(statement.paidVnd + input.amountVnd),
+    ...share,
+    paidVnd,
     activePaymentCount: statement.activePaymentCount + 1,
     version: statementVersionSchema.parse(statement.version + 1),
     updatedAt: now,
@@ -204,7 +213,7 @@ export async function recordBankPayment(
         receivedDate: vietnamToday(now.toDate()),
         method: "transfer",
       });
-      const result = writePayment(tx, root, matches.docs[0], input, {
+      const result = await writePayment(tx, root, matches.docs[0], input, {
         requestId,
         paymentId,
         eventId,
@@ -235,8 +244,12 @@ export async function voidPayment(
         root,
         paymentId,
       );
+      const share = statementIsPaid(statement)
+        ? await revokeActiveShare(tx, root, statement, now)
+        : {};
       tx.update(ref, { voidedAt: now, voidReason: input.reason });
       tx.update(statementRef, {
+        ...share,
         paidVnd: statementMoneySchema.parse(
           statement.paidVnd - payment.amountVnd,
         ),
@@ -307,8 +320,13 @@ export async function updatePayment(
           409,
           "Số tiền vượt khoản còn phải thu. Hãy tải lại bảng kê để đối chiếu.",
         );
+      const share =
+        statementIsPaid(statement) || statementIsPaid({ ...statement, paidVnd })
+          ? await revokeActiveShare(tx, root, statement, now)
+          : {};
       tx.update(ref, { ...changes, updatedAt: now });
       tx.update(statementRef, {
+        ...share,
         paidVnd: statementMoneySchema.parse(paidVnd),
         version: statementVersionSchema.parse(statement.version + 1),
         updatedAt: now,

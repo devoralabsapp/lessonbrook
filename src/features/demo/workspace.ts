@@ -129,6 +129,14 @@ function assertVersion(statement: Statement, version: number | undefined) {
 function activePayments(state: DemoWorkspace, id: string) {
   return state.payments.filter((p) => p.statementId === id && !p.voidedAt);
 }
+function canCancelStatement(state: DemoWorkspace, statement: Statement) {
+  return (
+    statement.status === "issued" &&
+    statement.paidVnd === 0 &&
+    statement.activePaymentCount === 0 &&
+    !state.payments.some((payment) => payment.statementId === statement.id)
+  );
+}
 
 function canBill(
   session: TeachingSession,
@@ -263,6 +271,7 @@ function publicShare(
   const statement = find(state.statements, link.statementId);
   if (
     statement.status !== "issued" ||
+    statementIsPaid(statement) ||
     statement.activeShareTokenHash !== key ||
     !statement.number ||
     !statement.issueDate
@@ -474,11 +483,17 @@ function read(
         query,
       );
     if (action === "share") {
+      if (statement.status !== "issued" || statementIsPaid(statement))
+        return { active: false, expiresAt: null };
       const link = state.shares.get(statement.activeShareTokenHash ?? "");
       const expiresAt = link && link.expiresAt > at ? link.expiresAt : null;
       return { active: !!expiresAt, expiresAt };
     }
-    return { ...statement, transferReference: transferReference(statement) };
+    return {
+      ...statement,
+      canCancel: canCancelStatement(state, statement),
+      transferReference: transferReference(statement),
+    };
   }
   if (resource === "exports" && state.exports.has(id)) {
     const { dataset } = exportPageInputSchema.parse(Object.fromEntries(query));
@@ -721,6 +736,11 @@ function changePayment(
     );
   if (record.receivedDate > vietnamToday(new Date(command.at)))
     throw new AppError(400, "Ngày nhận tiền không được nằm trong tương lai.");
+  if (
+    statementIsPaid(statement) ||
+    statementIsPaid({ ...statement, paidVnd: paid })
+  )
+    statement.activeShareTokenHash = null;
   statement.paidVnd = paid;
   statement.activePaymentCount += remove ? -1 : payment ? 0 : 1;
   statement.version++;
@@ -876,10 +896,10 @@ export function executeDemoCommand(
     if (action === "void") {
       const { version, reason } = statementVoidInputSchema.parse(command.body);
       assertVersion(statement, version);
-      if (statement.activePaymentCount)
+      if (!canCancelStatement(state, statement))
         throw new AppError(
           409,
-          "Khoản thu không còn hợp lệ hoặc không khớp bảng kê.",
+          "Chỉ hủy được bảng kê có lịch sử thanh toán trống.",
         );
       for (const s of state.sessions)
         if (s.billedStatementId === id) s.billedStatementId = null;
@@ -898,6 +918,11 @@ export function executeDemoCommand(
       assertVersion(statement, version);
       if (statement.status !== "issued")
         throw new AppError(409, "Chỉ chia sẻ bảng kê đã phát hành.");
+      if (statementIsPaid(statement))
+        throw new AppError(
+          409,
+          "Bảng kê đã thu đủ và link chia sẻ đã được thu hồi.",
+        );
       const token = hash(command.id).digest("base64url");
       const tokenHash = hash(token).digest("hex");
       const expiresAt = new Date(

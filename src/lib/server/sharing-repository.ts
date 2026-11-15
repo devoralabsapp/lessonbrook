@@ -14,7 +14,11 @@ import {
   type SharePreview,
   type ShareResult,
 } from "@/domain/sharing";
-import { statementVersionSchema, type Statement } from "@/domain/statements";
+import {
+  statementIsPaid,
+  statementVersionSchema,
+  type Statement,
+} from "@/domain/statements";
 import { AppError } from "./errors";
 import { transferReferenceFor } from "./bank-shortcut";
 import { maintenanceRef } from "./maintenance";
@@ -108,7 +112,11 @@ export async function getShareStatus(uid: string, id: string) {
   return admin().db.runTransaction(
     async (tx) => {
       const statement = statementDto(await tx.get(ref));
-      if (!statement.activeShareTokenHash || statement.status !== "issued")
+      if (
+        !statement.activeShareTokenHash ||
+        statement.status !== "issued" ||
+        statementIsPaid(statement)
+      )
         return { active: false, expiresAt: null };
       const doc = await tx.get(tokens().doc(statement.activeShareTokenHash));
       if (!doc.exists) return { active: false, expiresAt: null };
@@ -159,6 +167,11 @@ export async function createShare(
       return { created: false };
     }
     const statement = statementDto(await tx.get(statementRef));
+    if (statementIsPaid(statement))
+      throw new AppError(
+        409,
+        "Bảng kê đã thu đủ và link chia sẻ đã được thu hồi.",
+      );
     if (statement.version !== input.version)
       throw new AppError(
         409,
@@ -289,11 +302,26 @@ export async function resolveShare(
       );
       if (!statementDoc.exists) return null;
       const statement = statementDto(statementDoc);
+      const activeHash = token.parentShareTokenHash ?? ref.id;
       if (
         statement.status !== "issued" ||
-        statement.activeShareTokenHash !== ref.id
+        statementIsPaid(statement) ||
+        statement.activeShareTokenHash !== activeHash
       )
         return null;
+      if (token.parentShareTokenHash) {
+        const parent = shareTokenDocumentSchema.safeParse(
+          (await tx.get(tokens().doc(activeHash))).data(),
+        );
+        if (
+          !parent.success ||
+          parent.data.ownerUid !== token.ownerUid ||
+          parent.data.statementId !== token.statementId ||
+          parent.data.revokedAt ||
+          parent.data.expiresAt.toMillis() <= Date.now()
+        )
+          return null;
+      }
       return publicSnapshot(tx, root, statement);
     },
     { readOnly: true },

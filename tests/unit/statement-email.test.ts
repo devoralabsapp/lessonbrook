@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Timestamp } from "firebase-admin/firestore";
-import { sendStatementEmail } from "@/lib/server/statement-email";
+import { vietQrPayload } from "@/domain/bank-transfer";
+import { qrPng } from "@/lib/email/qr-png";
+import { transferReferenceFor } from "@/lib/server/bank-shortcut";
+import {
+  scheduleCashBalanceEmail,
+  sendStatementEmail,
+} from "@/lib/server/statement-email";
 
 const mocks = vi.hoisted(() => {
   const runTransaction = vi.fn();
@@ -52,7 +58,11 @@ vi.mock("@/lib/server/statements-repository", () => ({
   }),
 }));
 vi.mock("@/lib/server/sharing-repository", () => ({
-  tokenHash: () => "a".repeat(64),
+  tokenHash: (token: string) =>
+    (token === "b".repeat(43) ? "a" : "c").repeat(64),
+}));
+vi.mock("@/lib/server/payments-repository", () => ({
+  paymentDto: (doc: { data(): unknown }) => doc.data(),
 }));
 
 const teacher = {
@@ -230,6 +240,110 @@ it("uses Gmail TLS and sends the statement once with an app password", async () 
     }),
   );
   expect(record.emailDelivery?.sentAt).toBeInstanceOf(Timestamp);
+});
+
+it("emails a refreshed VietQR once after a partial cash payment on a previously emailed statement", async () => {
+  vi.stubEnv("STATEMENT_EMAIL_GMAIL_APP_PASSWORD", "abcdefghijklmnop");
+  const sendMail = vi.fn().mockResolvedValue({});
+  mocks.createTransport.mockReturnValue({ sendMail });
+  const beforePayment = Timestamp.fromMillis(Date.now() - 1_000);
+  const delivery = {
+    requestId: key,
+    attemptedAt: beforePayment,
+    sentAt: beforePayment,
+    remainingVnd: 400000,
+    balanceUpdate: undefined as
+      | {
+          paymentId: string;
+          attemptedAt: Timestamp;
+          remainingVnd: number;
+          sentAt: Timestamp | null;
+        }
+      | undefined,
+  };
+  const parentDoc = {
+    data: () => ({
+      ownerUid: teacher.uid,
+      statementId: id,
+      expiresAt: Timestamp.fromMillis(Date.now() + 60_000),
+      createdAt: beforePayment,
+      revokedAt: null,
+      schemaVersion: 1,
+      emailDelivery: delivery,
+    }),
+    get: () => delivery.balanceUpdate?.paymentId,
+  };
+  const paymentId = "payment-a";
+  const payment = {
+    statementId: id,
+    studentId: "student-a",
+    method: "cash",
+    voidedAt: null,
+    recordedAt: new Date().toISOString(),
+  };
+  const student = { exists: true, get: () => beforePayment };
+  const create = vi.fn();
+  mocks.runTransaction.mockImplementation(async (run) =>
+    run({
+      get: async () => parentDoc,
+      getAll: async () => [
+        parentDoc,
+        { exists: true, data: () => payment },
+        student,
+      ],
+      create,
+      update: (
+        _ref: string,
+        patch: Record<string, typeof delivery.balanceUpdate | Timestamp>,
+      ) => {
+        const balance = patch["emailDelivery.balanceUpdate"];
+        if (balance && !(balance instanceof Timestamp))
+          delivery.balanceUpdate = balance;
+        const sent = patch["emailDelivery.balanceUpdate.sentAt"];
+        if (delivery.balanceUpdate && sent instanceof Timestamp)
+          delivery.balanceUpdate.sentAt = sent;
+      },
+    }),
+  );
+  async function send() {
+    let task: (() => Promise<void>) | undefined;
+    scheduleCashBalanceEmail(teacher, id, paymentId, "en", (run) => {
+      task = run;
+    });
+    await task?.();
+  }
+  await send();
+  await send();
+  expect(sendMail).toHaveBeenCalledOnce();
+  expect(sendMail).toHaveBeenCalledWith(
+    expect.objectContaining({
+      to: { name: "", address: "guardian@example.test" },
+      subject: "Tuition balance update CC-2026-000001 · Alex Rivera",
+      text: expect.stringContaining("300,000"),
+      html: expect.stringContaining("Updated balance due"),
+      attachments: [expect.objectContaining({ contentType: "image/png" })],
+    }),
+  );
+  expect(create).toHaveBeenCalledOnce();
+  expect(create.mock.calls[0][1]).toMatchObject({
+    parentShareTokenHash: "a".repeat(64),
+  });
+  const bank = {
+    bankBin: "970436",
+    bankName: "Example Bank",
+    accountNumber: "1234567890",
+    accountName: "Demo Teacher",
+  };
+  const reference = transferReferenceFor({
+    number: "CC-2026-000001",
+    id,
+    bankTransferSnapshot: bank,
+  });
+  const expectedQr = qrPng(vietQrPayload(bank, 300000, reference!));
+  expect(sendMail.mock.lastCall?.[0].attachments[0].content).toEqual(
+    expectedQr,
+  );
+  expect(delivery.balanceUpdate?.sentAt).toBeInstanceOf(Timestamp);
 });
 
 it("preserves the send claim on an ambiguous SMTP disconnect", async () => {

@@ -50,9 +50,14 @@ for (const platform of ["iOS", "Android"]) {
       expect((await upcoming.boundingBox())!.y).toBeGreaterThan(
         (await active.boundingBox())!.y,
       );
-      const rows = page.locator("li[data-calendar-tone]");
+      const scheduleCard = page.getByTestId("upcoming-lesson-list");
+      await expect(scheduleCard.getByRole("heading")).toHaveText(
+        "Upcoming lessons",
+      );
+      const rows = scheduleCard.locator("[data-list-tone]");
       await expect(rows.first()).toBeVisible();
-      await expect(rows.first()).toHaveAttribute("data-calendar-tone", "blue");
+      await expect(rows.first()).toHaveAttribute("data-list-tone", "blue");
+      await expect(rows.first().locator(".record-identity")).toBeVisible();
       const marker = await page.evaluate(() => {
         (window as Window & { demoVisit?: string }).demoVisit = "kept";
         return !window.dispatchEvent(
@@ -99,6 +104,21 @@ for (const platform of ["iOS", "Android"]) {
           new RegExp(path.replace("/app", "/demo") + "$"),
         );
         await expect(page.locator("#main h1")).toBeVisible();
+        if (path === "/app/sessions") {
+          const buttons = page.locator(
+            '[data-layout="lesson-filter-actions"] button',
+          );
+          await expect(buttons).toHaveText([
+            "Today",
+            "This month",
+            "Clear filters",
+            "Select",
+          ]);
+          const positions = await buttons.evaluateAll((items) =>
+            items.map((item) => item.getBoundingClientRect().top),
+          );
+          expect(new Set(positions).size).toBe(1);
+        }
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= innerWidth,

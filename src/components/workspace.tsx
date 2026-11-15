@@ -839,21 +839,6 @@ export function Workspace({
                 />
               </label>
             )}
-            {searchBy === "student" && (
-              <div className="flex self-end justify-end sm:hidden">
-                <Button
-                  variant="ghost"
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setSearchBy("student");
-                    changeRange({ ...initialRange, billing: "all" });
-                  }}
-                >
-                  {t("Xóa bộ lọc")}
-                </Button>
-              </div>
-            )}
             {!showCalendar && invalidRange && (
               <p
                 role="alert"
@@ -864,7 +849,7 @@ export function Workspace({
             )}
             <div
               data-layout="lesson-filter-actions"
-              className="col-span-2 flex flex-wrap gap-2 sm:col-span-4"
+              className="col-span-full flex flex-wrap gap-2"
             >
               {!showCalendar && (
                 <>
@@ -897,9 +882,6 @@ export function Workspace({
                 </>
               )}
               <Button
-                className={
-                  searchBy === "student" ? "hidden sm:inline-flex" : undefined
-                }
                 variant="ghost"
                 type="button"
                 size="sm"
@@ -911,56 +893,54 @@ export function Workspace({
                 {t("Xóa bộ lọc")}
               </Button>
               {!showCalendar && (
-                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    aria-pressed={selecting}
-                    onClick={() => {
-                      setSelecting(!selecting);
-                      clearSelection();
-                    }}
-                  >
-                    {selecting ? t("Bỏ chế độ chọn") : t("Chọn buổi")}
-                  </Button>
-                  {selecting && (
-                    <>
-                      <label className="inline-flex min-h-9 items-center gap-2 px-2 text-sm font-semibold">
-                        <input
-                          type="checkbox"
-                          className="size-4 accent-primary"
-                          checked={allSelected}
-                          ref={(checkbox) => {
-                            if (checkbox)
-                              checkbox.indeterminate =
-                                !allSelected && selectedIds.size > 0;
-                          }}
-                          disabled={
-                            !selectable ||
-                            !["all", "planned"].includes(range.status)
-                          }
-                          onChange={(event) =>
-                            void selectAllSessions(event.target.checked)
-                          }
-                        />
-                        {t("Tất cả")}
-                      </label>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={!selectable || !selectedIds.size}
-                        onClick={() => void completeSelection()}
-                      >
-                        {completing
-                          ? t("Đang lưu…")
-                          : t("Hoàn thành ({0})", { "0": selectedIds.size })}
-                      </Button>
-                    </>
-                  )}
-                </div>
+                <Button
+                  className="ml-auto"
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={selecting}
+                  onClick={() => {
+                    setSelecting(!selecting);
+                    clearSelection();
+                  }}
+                >
+                  {selecting ? t("Bỏ chế độ chọn") : t("Chọn buổi")}
+                </Button>
               )}
             </div>
+            {selecting && !showCalendar && (
+              <div className="col-span-full flex flex-wrap items-center justify-end gap-2">
+                <label className="inline-flex min-h-9 items-center gap-2 px-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={allSelected}
+                    ref={(checkbox) => {
+                      if (checkbox)
+                        checkbox.indeterminate =
+                          !allSelected && selectedIds.size > 0;
+                    }}
+                    disabled={
+                      !selectable || !["all", "planned"].includes(range.status)
+                    }
+                    onChange={(event) =>
+                      void selectAllSessions(event.target.checked)
+                    }
+                  />
+                  {t("Tất cả")}
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!selectable || !selectedIds.size}
+                  onClick={() => void completeSelection()}
+                >
+                  {completing
+                    ? t("Đang lưu…")
+                    : t("Hoàn thành ({0})", { "0": selectedIds.size })}
+                </Button>
+              </div>
+            )}
             {selecting && (
               <p
                 className="col-span-full text-right text-xs text-muted-foreground"

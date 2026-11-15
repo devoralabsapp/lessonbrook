@@ -22,9 +22,11 @@ import {
   statementTotal,
   statementVoidInputSchema,
   type StatementDraftInput,
+  type Statement,
 } from "@/domain/statements";
 import { AppError } from "./errors";
 import { listPage, listScope } from "./list-page";
+import { revokeActiveShare } from "./share-revocation";
 import {
   statementFilterSchema,
   storedStatementStatus,
@@ -442,6 +444,26 @@ export async function amendStatement(
   );
 }
 
+async function canCancelStatement(
+  tx: Transaction,
+  root: DocumentReference,
+  statement: Statement,
+) {
+  if (
+    statement.status !== "issued" ||
+    statement.paidVnd ||
+    statement.activePaymentCount
+  )
+    return false;
+  const history = await tx.get(
+    root
+      .collection("payments")
+      .where("statementId", "==", statement.id)
+      .limit(1),
+  );
+  return history.empty;
+}
+
 export async function voidStatement(
   uid: string,
   id: string,
@@ -462,8 +484,11 @@ export async function voidStatement(
       if (statement.status !== "issued")
         throw new AppError(409, "Chỉ bảng kê đã phát hành mới được hủy.");
       assertVersion(statement.version, input.version);
-      if (statement.paidVnd !== 0 || statement.activePaymentCount !== 0)
-        throw new AppError(409, "Không thể hủy bảng kê còn khoản thu hợp lệ.");
+      if (!(await canCancelStatement(tx, root, statement)))
+        throw new AppError(
+          409,
+          "Chỉ hủy được bảng kê có lịch sử thanh toán trống.",
+        );
       const sessions = (
         await tx.getAll(
           ...statement.items.map((item) =>
@@ -482,23 +507,12 @@ export async function voidStatement(
           409,
           "Liên kết buổi dạy không khớp bảng kê. Vui lòng đối chiếu trước khi hủy.",
         );
-      const tokenRef = statement.activeShareTokenHash
-        ? root.firestore.doc(
-            `apps/chotcong/shareTokens/${statement.activeShareTokenHash}`,
-          )
-        : null;
-      const token = tokenRef ? await tx.get(tokenRef) : null;
-      if (
-        token?.exists &&
-        (token.get("ownerUid") !== uid || token.get("statementId") !== id)
-      )
-        throw new AppError(409, "Liên kết chia sẻ không khớp bảng kê.");
+      await revokeActiveShare(tx, root, statement, now);
       for (const session of sessions)
         tx.update(root.collection("sessions").doc(session.id), {
           billedStatementId: null,
           updatedAt: now,
         });
-      if (token?.exists) tx.update(token.ref, { revokedAt: now });
       tx.update(ref, {
         status: "void",
         voidedAt: now,
@@ -515,6 +529,20 @@ export async function voidStatement(
 export async function getStatement(uid: string, id: string) {
   return statementDto(
     await userRef(uid).collection("statements").doc(idSchema.parse(id)).get(),
+  );
+}
+export async function getStatementDetail(uid: string, id: string) {
+  const root = userRef(uid);
+  const ref = root.collection("statements").doc(idSchema.parse(id));
+  return root.firestore.runTransaction(
+    async (tx) => {
+      const statement = statementDto(await tx.get(ref));
+      return {
+        ...statement,
+        canCancel: await canCancelStatement(tx, root, statement),
+      };
+    },
+    { readOnly: true },
   );
 }
 const eligibleSchema = z

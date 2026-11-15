@@ -277,33 +277,80 @@ final class NativeWorkspace {
 
     private View schedule(Schedule data, Consumer<String> open) {
         LinearLayout section = column();
-        add(section, heading(text(R.string.upcoming_lessons), 22), 0);
+        section.setBackground(panel(palette.surface()));
+        int inset = dp(palette.outline());
+        section.setPadding(inset, inset, inset + dp(palette.shadowOffset()),
+            inset + dp(palette.shadowOffset()));
+        TextView title = heading(text(R.string.upcoming_lessons), 17);
+        title.setPadding(dp(12), dp(10), dp(12), dp(10));
+        add(section, title, 0);
         if (data.items().isEmpty()) {
-            add(section, label(text(R.string.no_planned_lessons), 14, palette.foreground()), 8);
+            TextView empty = label(text(R.string.no_planned_lessons), 14, palette.foreground());
+            empty.setPadding(dp(12), 0, dp(12), dp(12));
+            add(section, empty, 0);
             return section;
         }
-        LinearLayout rows = column();
         int[] tones = palette.scheduleTones();
         int index = 0;
         var dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
             .withLocale(context.getResources().getConfiguration().getLocales().get(0));
         for (Lesson lesson : data.items()) {
-            LinearLayout row = card(tones[index % tones.length], 16, 10);
-            String name = lesson.name() == null ? text(R.string.group_lesson) : lesson.name();
+            int tone = tones[index++ % tones.length];
+            int ink = palette.dashboardInk();
+            String name = lesson.name() == null || lesson.name().isEmpty()
+                ? text(R.string.group_lesson) : lesson.name();
             String day = data.today().equals(lesson.date()) ? text(R.string.today)
                 : LocalDate.parse(lesson.date()).format(dateFormat);
             String time = lesson.time() == null ? text(R.string.time_not_set) : lesson.time();
             String when = day + " · " + time
                 + ("recurring".equals(lesson.kind()) ? " · " + text(R.string.weekly) : "");
-            add(row, bold(name + " ›", 15, palette.dashboardInk()), 0);
-            add(row, label(when, 13, palette.dashboardInk()), 3);
-            row.setMinimumHeight(dp(50));
-            action(row, name + ", " + when, () -> open.accept(lesson.path()));
-            add(rows, row, index++ == 0 ? 0 : 6);
+            LinearLayout identity = new LinearLayout(context);
+            identity.setGravity(Gravity.CENTER_VERTICAL);
+            identity.setPadding(dp(7), dp(6), dp(9), dp(6));
+            GradientDrawable frame = shape(tone, Math.min(palette.radius(), 10));
+            frame.setStroke(dp(palette.outline()), palette.border());
+            identity.setBackground(frame);
+            TextView initial = bold(name.substring(0, name.offsetByCodePoints(0, 1))
+                .toUpperCase(context.getResources().getConfiguration().getLocales().get(0)), 15, ink);
+            initial.setGravity(Gravity.CENTER);
+            initial.setBackground(shape(tint(tone, palette.surface(), 0.2f), 3));
+            identity.addView(initial, new LinearLayout.LayoutParams(dp(34), dp(34)));
+            LinearLayout labels = column();
+            add(labels, bold(name, 15, ink), 0);
+            add(labels, label(when, 13, ink), 2);
+            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1);
+            labelParams.setMarginStart(dp(9));
+            identity.addView(labels, labelParams);
+            identity.addView(bold("›", 18, ink));
+            action(identity, name + ", " + when, () -> open.accept(lesson.path()));
+            LinearLayout row = column();
+            row.setPadding(dp(10), dp(7), dp(10), dp(7));
+            row.setBackgroundColor(tint(palette.surface(), tone, 0.18f));
+            add(row, identity, 0);
+            scheduleDivider(section);
+            add(section, row, 0);
         }
-        add(section, rows, 8);
-        add(section, button(text(R.string.full_schedule), () -> open.accept("/app/schedule"), false), 6);
+        scheduleDivider(section);
+        LinearLayout footer = column();
+        footer.setPadding(dp(10), dp(6), dp(10), dp(8));
+        add(footer, button(text(R.string.full_schedule), () -> open.accept("/app/schedule"), false), 0);
+        add(section, footer, 0);
         return section;
+    }
+
+    private void scheduleDivider(LinearLayout list) {
+        View divider = new View(context);
+        divider.setBackgroundColor(tint(palette.surface(), palette.border(), 0.4f));
+        list.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+    }
+
+    private static int tint(int base, int color, float strength) {
+        float weight = 1f - strength;
+        return Color.rgb(
+            Math.round(Color.red(base) * weight + Color.red(color) * strength),
+            Math.round(Color.green(base) * weight + Color.green(color) * strength),
+            Math.round(Color.blue(base) * weight + Color.blue(color) * strength)
+        );
     }
 
     View error(Runnable retry) {
