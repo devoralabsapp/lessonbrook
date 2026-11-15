@@ -193,6 +193,18 @@
 "Your data" = "Dữ liệu của bạn";
 "events" = "mục";
 "students" = "học viên";
+"student" = "học viên";
+"per student" = "/ học viên";
+"per student per lesson" = "/ học viên / buổi";
+"Record lesson for class" = "Ghi buổi cho lớp";
+"Archive class" = "Lưu trữ lớp";
+"Restore class" = "Khôi phục lớp";
+"Students in this class" = "Học viên trong lớp";
+"Choose the students who attended. Changes to the roster or rate apply to new lessons." = "Chỉ chọn học viên có tham gia. Đổi thành viên hoặc đơn giá áp dụng cho buổi mới.";
+"Archived · excluded from new lessons" = "Đã lưu trữ · không thêm vào buổi mới";
+"Class lessons" = "Buổi học của lớp";
+"No lessons for this class yet." = "Lớp chưa có buổi học.";
+"View all lessons" = "Xem tất cả buổi học";
 
 "Choose a bank" = "Chọn ngân hàng";
 "Discard unsaved changes?" = "Bỏ các thay đổi chưa lưu?";

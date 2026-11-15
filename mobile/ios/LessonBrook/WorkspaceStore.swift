@@ -102,6 +102,16 @@ enum LedgerDate {
     static var today: String { text(Date()) }
     static func text(_ date: Date) -> String { formatter.string(from: date) }
     static func date(_ text: String) -> Date? { formatter.date(from: text) }
+    static func localized(_ date: Date, locale: Locale, style: Date.FormatStyle = .dateTime.day().month(.abbreviated).year()) -> String {
+        var format = style.locale(locale)
+        format.timeZone = zone
+        return date.formatted(format)
+    }
+
+    static func localized(_ value: String, locale: Locale) -> String {
+        guard let date = date(value) else { return value }
+        return localized(date, locale: locale)
+    }
     static func range(_ component: Calendar.Component, at date: Date = .now) -> (String, String) {
         guard let interval = calendar.dateInterval(of: component, for: date)
         else { return (today, today) }

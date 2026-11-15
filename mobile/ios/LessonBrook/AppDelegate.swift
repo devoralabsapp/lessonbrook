@@ -94,6 +94,7 @@ struct WorkspaceTabs: View {
     @State private var discardNavigation = false
     @State private var pendingBack: WorkspaceTab?
     @Environment(\.openURL) private var openURL
+    @Environment(\.displayScale) private var displayScale
     private let logger = Logger(subsystem: "tech.devoralabs.lessonbrook", category: "performance")
 
     var body: some View {
@@ -139,56 +140,79 @@ struct WorkspaceTabs: View {
     }
 
     private func header(_ tab: WorkspaceTab) -> some View {
-        VStack(spacing: 0) {
+        let currentPage = paths[tab]?.last
+        let palette = store.palette
+        return VStack(spacing: 0) {
             ZStack {
-                Text(store.t(headerTitle(tab))).font(store.palette.font(17, .bold))
-                    .lineLimit(1).frame(maxWidth: .infinity).padding(.horizontal, 100)
-                HStack {
-                    if tab != .dashboard || !(paths[tab] ?? []).isEmpty {
-                        Button {
+                Text(store.t(headerTitle(tab))).font(.headline)
+                    .lineLimit(2).minimumScaleFactor(0.8).multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity).padding(.horizontal, 108)
+                    .accessibilityAddTraits(.isHeader)
+                HStack(spacing: 4) {
+                    if currentPage != nil {
+                        headerIcon("chevron.backward", label: "Back", tint: palette.foreground) {
                             if store.hasUnsavedEdits { pendingBack = tab; discardNavigation = true }
                             else { goBack(tab) }
-                        } label: { Image(systemName: "chevron.left").frame(width: 18, height: 20) }
-                            .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
-                            .accessibilityLabel(store.t("Back")).disabled(store.saving)
-                    }
-                    Spacer()
-                    HStack(spacing: 6) {
-                        Button { appearance = true } label: { Image(systemName: "paintpalette").frame(width: 20, height: 20) }
-                            .accessibilityLabel(store.t("Choose a theme"))
-                        if paths[tab]?.last != .settings {
-                            Button { push(.settings, in: tab) } label: { Image(systemName: "gearshape").frame(width: 20, height: 20) }
-                                .accessibilityLabel(store.t("Account settings"))
                         }
-                    }.buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true)).disabled(store.saving)
+                    }
+                    Spacer(minLength: 0)
+                    if currentPage != .appearance {
+                        headerIcon("paintpalette", label: "Choose a theme", tint: palette.controlTint) { appearance = true }
+                    }
+                    if currentPage != .settings {
+                        headerIcon("gearshape", label: "Account settings", tint: palette.foreground) { push(.settings, in: tab) }
+                    }
                 }
-            }.frame(height: 52).padding(.horizontal, 12)
-            Rectangle().fill(store.palette.border.opacity(0.15)).frame(height: 0.5)
-            if store.demo && tab != .dashboard {
-                HStack {
-                    Text(store.t("Demo teaching ledger")).font(store.palette.font(13, .semibold))
-                    Spacer()
-                    Button(store.t("Sign in")) { Task { await store.beginSignIn(open: openURL) } }
-                        .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
-                }.padding(.horizontal, 12).padding(.vertical, 8)
-                Divider().overlay(store.palette.border)
+                .padding(.horizontal, 12)
+                .disabled(store.saving)
             }
-        }.foregroundStyle(store.palette.foreground).background(store.palette.background)
+            .padding(.vertical, 4)
+            Rectangle().fill(palette.foreground.opacity(0.15)).frame(height: 1 / displayScale)
+            if store.demo {
+                HStack(spacing: 8) {
+                    Text(store.t("Demo teaching ledger")).font(palette.font(12, .semibold))
+                    Spacer(minLength: 0)
+                    Button { Task { await store.beginSignIn(open: openURL) } } label: {
+                        Label(store.t("Sign in"), systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                    .buttonStyle(WorkspaceOutlineButton(palette: palette, compact: true))
+                    .accessibilityIdentifier("workspace-demo-sign-in")
+                }
+                .padding(.horizontal, 12).padding(.vertical, 4)
+                Rectangle().fill(palette.border).frame(height: 1 / displayScale)
+            }
+        }
+        .foregroundStyle(palette.foreground)
+        .background(palette.background)
     }
+
+    private func headerIcon(_ icon: String, label: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).font(.system(size: 19, weight: .medium))
+                .foregroundStyle(tint)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(store.t(label))
+    }
+
     private func headerTitle(_ tab: WorkspaceTab) -> String {
         guard let route = paths[tab]?.last else { return tab.label }
         switch route {
-        case .student: return "Student"
-        case .teachingClass: return "Class"
+        case .student: return "Students"
+        case .teachingClass: return "Classes"
         case .statement: return "Statements"
-        case .session, .lesson: return "Lessons"
+        case .session, .lesson, .classHistory: return "Lessons"
+        case .recordLesson, .recordStudentLesson: return "Record lesson"
+        case .studentHistory(let kind, _): return kind.title
         case .settings: return "Account settings"
         case .appearance: return "Appearance"
         case .schedule: return "Upcoming lessons"
         case .onboarding: return "Get started"
-        default: return tab.label
         }
     }
+
     private func goBack(_ tab: WorkspaceTab) {
         if !(paths[tab] ?? []).isEmpty { paths[tab]?.removeLast() }
         else { selection = .dashboard }
@@ -231,16 +255,6 @@ struct WorkspaceTabs: View {
         switch tab {
         case .dashboard:
             VStack(spacing: 0) {
-                if store.demo {
-                    HStack {
-                        Text(store.t("Demo teaching ledger"))
-                        Spacer()
-                        Button(store.t("Sign in")) { Task { await store.beginSignIn(open: openURL) } }
-                            .buttonStyle(WorkspaceActionButton(palette: store.palette))
-                    }
-                    .padding(12)
-                    .background(store.palette.surface)
-                }
                 if let snapshot = store.snapshot {
                     NativeDashboard(snapshot: snapshot, theme: store.previewTheme ?? store.theme, open: { path in
                         if let route = WorkspaceRoute.from(path) { push(route, in: tab) }

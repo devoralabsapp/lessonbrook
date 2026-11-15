@@ -186,7 +186,7 @@ final class WorkspaceUITests: XCTestCase {
         for _ in 0..<6 where !exit.isHittable { app.swipeUp() }
         XCTAssertTrue(exit.isHittable)
         XCTAssertLessThanOrEqual(exit.frame.maxY, dashboard.frame.minY)
-        let signIn = app.buttons["Sign in"]
+        let signIn = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Sign in", "workspace-demo-sign-in")).firstMatch
         XCTAssertEqual(exit.frame.midY, signIn.frame.midY, accuracy: 2)
         app.buttons["Back"].tap()
 
@@ -241,6 +241,7 @@ final class WorkspaceUITests: XCTestCase {
                 for _ in 0..<6 where !today.isHittable { app.swipeUp() }
                 XCTAssertTrue(today.isHittable)
                 XCTAssertTrue(today.isSelected)
+                XCTAssertTrue(app.staticTexts["calendar-agenda-title"].exists)
                 let shot = XCTAttachment(screenshot: app.screenshot())
                 shot.name = "Highlighted current day in " + tab
                 shot.lifetime = .keepAlways
@@ -257,6 +258,57 @@ final class WorkspaceUITests: XCTestCase {
                 }
             }
         }
+    }
+
+    @MainActor
+    func testWebViewListActionsClassDetailsAndUpcomingLessons() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-workspace.locale", "en"]
+        app.launch()
+        XCTAssertTrue(app.buttons["View demo"].waitForExistence(timeout: 20))
+        app.buttons["View demo"].tap()
+        XCTAssertTrue(app.buttons["workspace-tab-dashboard"].waitForExistence(timeout: 20))
+
+        let identity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "ledger-person-")).firstMatch
+        for tab in ["students", "classes"] {
+            app.buttons["workspace-tab-" + tab].tap()
+            XCTAssertFalse(app.buttons["Back"].exists)
+            let list = app.buttons["List"]
+            XCTAssertTrue(list.waitForExistence(timeout: 10))
+            list.tap()
+            XCTAssertTrue(identity.waitForExistence(timeout: 15))
+            let edit = app.buttons["Edit"].firstMatch
+            let archive = app.buttons["Archive"].firstMatch
+            XCTAssertTrue(archive.waitForExistence(timeout: 10))
+            XCTAssertGreaterThan(edit.frame.midX, identity.frame.midX)
+            XCTAssertGreaterThan(archive.frame.midX, edit.frame.midX)
+            XCTAssertEqual(edit.frame.midY, archive.frame.midY, accuracy: 2)
+            XCTAssertEqual(edit.frame.midY, identity.frame.midY, accuracy: 2)
+            capture("List actions in " + tab, app: app)
+        }
+
+        identity.tap()
+        XCTAssertTrue(app.buttons["Edit class"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Record lesson for class"].exists)
+        XCTAssertTrue(app.staticTexts["Weekly schedule"].exists)
+        XCTAssertTrue(app.staticTexts["Students in this class"].exists)
+        XCTAssertEqual(app.buttons.matching(identifier: "Back").count, 1)
+        capture("Class detail", app: app)
+        let classLesson = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "class-lesson-")).firstMatch
+        XCTAssertTrue(classLesson.waitForExistence(timeout: 10))
+        tapVisible(app.buttons["View all lessons"], app: app)
+        XCTAssertTrue(app.staticTexts["Lesson list"].waitForExistence(timeout: 10))
+
+        app.buttons["workspace-tab-lessons"].tap()
+        XCTAssertFalse(app.buttons["Back"].exists)
+        app.buttons["Upcoming lessons"].tap()
+        XCTAssertTrue(app.staticTexts["upcoming-date-range"].waitForExistence(timeout: 15))
+        let lessons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "upcoming-lesson-"))
+        XCTAssertGreaterThan(lessons.count, 8)
+        capture("Upcoming lessons", app: app)
+        let weekly = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "upcoming-lesson-/app/lessons/new")).firstMatch
+        tapVisible(weekly, app: app)
+        XCTAssertTrue(app.staticTexts["Teach"].waitForExistence(timeout: 10))
     }
 
     @MainActor

@@ -14,7 +14,14 @@ struct LedgerMonth: View {
         let title: String
         let time: String
         let route: WorkspaceRoute
-        let status: String
+        var participants: Int
+        var statuses: [String]
+
+        var tone: String {
+            if statuses.contains("cancelled") { return "cancelled" }
+            if statuses.contains("planned") { return "planned" }
+            return statuses.isEmpty ? "class" : "completed"
+        }
     }
 
     private var days: [Date] {
@@ -34,7 +41,7 @@ struct LedgerMonth: View {
                 for slot in item.objects("weeklySchedule") {
                     recurring[slot.int("weekday"), default: []].append(
                         .init(id: item.id + ":" + slot.text("time"), title: item.name, time: slot.text("time"),
-                              route: .teachingClass(item.id), status: "class")
+                              route: .teachingClass(item.id), participants: item.strings("studentIds").count, statuses: [])
                     )
                 }
             }
@@ -43,20 +50,19 @@ struct LedgerMonth: View {
                 output[LedgerDate.text(date)] = recurring[weekday]
             }
         } else {
-            var indexes: [String: Int] = [:]
+            var indexes: [String: [String: Int]] = [:]
             for item in records {
                 let date = item.text("sessionDate")
                 let id = item.string("lessonId") ?? item.id
                 let status = item.text("status")
-                let event = Event(id: id, title: item.string("className") ??
-                    (item.string("lessonId") == nil ? item.text("studentName") : store.t("Group lesson")),
-                    time: item.text("startTime"), route: kind.route(item), status: status)
-                if let index = indexes[id], let current = output[date]?[index] {
-                    if current.status != "cancelled" && (status == "cancelled" || status == "planned") {
-                        output[date]?[index] = event
-                    }
+                if let index = indexes[date]?[id] {
+                    output[date]?[index].participants += 1
+                    if output[date]?[index].statuses.contains(status) == false { output[date]?[index].statuses.append(status) }
                 } else {
-                    indexes[id] = output[date, default: []].count
+                    let title = item.string("lessonId") == nil ? item.string("studentName") : item.string("className")
+                    let event = Event(id: id, title: title ?? store.t("Custom student group"), time: item.text("startTime"),
+                                      route: kind.route(item), participants: 1, statuses: [status])
+                    indexes[date, default: [:]][id] = output[date, default: []].count
                     output[date, default: []].append(event)
                 }
             }
@@ -75,7 +81,7 @@ struct LedgerMonth: View {
                     .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                     .accessibilityLabel(store.t("Previous month"))
                 Spacer()
-                Text(month.formatted(.dateTime.month(.wide).year().locale(store.language)))
+                Text(LedgerDate.localized(month, locale: store.language, style: .dateTime.month(.wide).year()))
                     .font(p.font(17, .heavy)).multilineTextAlignment(.center)
                     .accessibilityIdentifier("workspace-calendar-month")
                 Spacer()
@@ -100,7 +106,7 @@ struct LedgerMonth: View {
                     let entries = schedule[day] ?? []
                     Button { selected = day } label: {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(date.formatted(.dateTime.day().locale(store.language)))
+                            Text(String(LedgerDate.calendar.component(.day, from: date)))
                                 .font(.caption.bold())
                                 .lineLimit(1)
                                 .padding(.horizontal, 2)
@@ -113,8 +119,9 @@ struct LedgerMonth: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(2)
                                 .foregroundStyle(store.palette.dashboardInk)
-                                .background(eventColor(event.status).opacity(0.42), in: RoundedRectangle(cornerRadius: 3))
+                                .background(eventColor(event.tone).opacity(0.42), in: RoundedRectangle(cornerRadius: 3))
                                 .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 3))
+                                .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(p.border.opacity(0.65), lineWidth: line))
                             }
                             if entries.count > 2 { Text("+\(entries.count - 2)").font(.system(size: 9)) }
                         }
@@ -130,36 +137,66 @@ struct LedgerMonth: View {
                         Rectangle().fill(isSelected ? store.palette.calendarSelection :
                                             inMonth ? store.palette.surface : store.palette.background)
                     }
-                    .accessibilityLabel(date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(store.language))
+                    .accessibilityLabel(LedgerDate.localized(date, locale: store.language, style: .dateTime.weekday(.wide).day().month(.wide))
                         + " · \(entries.count) " + store.t("events"))
                     .accessibilityIdentifier("calendar-day-\(day)")
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
             .padding(line)
-            .background { Rectangle().fill(store.palette.border) }
-            Text(LedgerDate.date(selected)?.formatted(.dateTime.weekday(.wide).day().month(.wide).year().locale(store.language)) ?? selected)
-                .font(p.font(16, .bold))
-            if let selected = schedule[selected], !selected.isEmpty {
-                ForEach(selected) { event in
-                    NavigationLink(value: event.route) {
-                        HStack {
-                            Text(event.time.isEmpty ? "—" : event.time).monospacedDigit()
-                            Text(event.title).fontWeight(.semibold)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption)
-                        }.padding(8)
-                    }
-                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
-                }
-            } else {
-                WorkspaceNotice(message: store.t("No lessons on this day."))
-            }
+            .background { Rectangle().fill(p.border) }
+            .overlay { Rectangle().strokeBorder(p.border, lineWidth: max(1, p.outline)).allowsHitTesting(false) }
+            dayAgenda(schedule[selected] ?? [], palette: p)
         }
         .padding(10)
         .modifier(WorkspacePanel(palette: p, fill: p.surface))
         .onAppear { selectVisibleMonth() }
         .onChange(of: month) { _ in selectVisibleMonth() }
+    }
+
+    private func dayAgenda(_ entries: [Event], palette p: WorkspacePalette) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            let date = LedgerDate.date(selected).map {
+                LedgerDate.localized($0, locale: store.language, style: .dateTime.weekday(.wide).day().month(.wide).year())
+            } ?? selected
+            Text(date).font(p.font(15, .bold)).accessibilityAddTraits(.isHeader)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                .background(p.background)
+                .accessibilityIdentifier("calendar-agenda-title")
+            Rectangle().fill(p.border).frame(height: 1 / displayScale)
+            if entries.isEmpty {
+                Text(store.t("No lessons on this day.")).font(p.font(14))
+                    .foregroundStyle(p.secondaryInk).padding(10)
+            }
+            ForEach(Array(entries.enumerated()), id: \.element.id) { index, event in
+                if index > 0 { Rectangle().fill(p.border).frame(height: 1 / displayScale) }
+                NavigationLink(value: event.route) {
+                    HStack(alignment: .center, spacing: 9) {
+                        Text(event.time.isEmpty ? "—" : event.time).font(p.font(14, .bold)).monospacedDigit()
+                            .frame(minWidth: 43, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(event.title).font(p.font(14, .bold)).fixedSize(horizontal: false, vertical: true)
+                            Text("\(event.participants) " + store.t(event.participants == 1 ? "student" : "students"))
+                                .font(p.font(12)).foregroundStyle(p.secondaryInk)
+                            if event.statuses.count > 1 {
+                                WorkspaceActionRows(spacing: 4) {
+                                    ForEach(event.statuses, id: \.self) { LedgerBadge(code: $0) }
+                                }
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        if event.statuses.count == 1, let status = event.statuses.first { LedgerBadge(code: status) }
+                        Image(systemName: "chevron.right").font(.caption).accessibilityHidden(true)
+                    }
+                    .padding(10).frame(maxWidth: .infinity, minHeight: 45, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .modifier(WorkspaceListTone(palette: p, color: eventColor(event.tone)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("calendar-agenda-row-\(event.id)")
+            }
+        }
+        .overlay { Rectangle().strokeBorder(p.border, lineWidth: 1).allowsHitTesting(false) }
     }
 
     private func selectVisibleMonth() {
@@ -197,34 +234,60 @@ struct NativeSchedule: View {
     @EnvironmentObject private var store: WorkspaceStore
     @State private var data: WorkspaceSnapshot.Schedule?
     @State private var error: String?
+
     var body: some View {
-        WorkspaceScroll {
-            if let error { LedgerError(message: error) { Task { await load() } } }
+        let p = store.palette
+        WorkspaceScroll(eager: true) {
+            Text(store.t("Upcoming lessons")).font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
             if let data {
-                ForEach(data.upcoming) { lesson in
-                    if let route = WorkspaceRoute.from(lesson.path) {
-                        NavigationLink(value: route) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(lesson.name ?? store.t("Group lesson")).font(.headline)
-                                Text(lesson.date + " · " + (lesson.time ?? store.t("Time not set")))
-                                    .font(.subheadline).foregroundStyle(.secondary)
+                let range = [data.today, data.through].compactMap { $0 }.map { LedgerDate.localized($0, locale: store.language) }
+                Text(range.joined(separator: " – "))
+                    .font(p.font(14)).foregroundStyle(p.secondaryInk)
+                    .accessibilityIdentifier("upcoming-date-range")
+                let lessons = data.orderedLessons
+                if lessons.isEmpty {
+                    WorkspaceNotice(message: store.t("No planned lessons in the schedule."))
+                } else {
+                    WorkspaceListCard {
+                        ForEach(Array(lessons.enumerated()), id: \.element.path) { index, lesson in
+                            if let route = WorkspaceRoute.from(lesson.path) {
+                                if index > 0 { Divider().overlay(p.border) }
+                                NavigationLink(value: route) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(lesson.name ?? store.t("Custom student group"))
+                                            .font(p.font(15, .bold))
+                                        Text(lessonDetails(lesson)).font(p.font(13)).foregroundStyle(p.secondaryInk)
+                                    }
+                                    .padding(12).frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("upcoming-lesson-\(lesson.path)")
                             }
                         }
                     }
                 }
-                if data.upcoming.isEmpty { Text(store.t("No planned lessons in the schedule.")) }
-            } else if error == nil { ProgressView() }
+            } else if error == nil {
+                ProgressView().tint(p.controlTint)
+            }
+            if let error { LedgerError(message: error) { Task { await load() } } }
         }
-        .scrollContentBackground(.hidden)
-        .background(store.palette.background)
-        .navigationTitle(store.t("Upcoming lessons"))
-        .task { await load() }
+        .task(id: store.revision) { await load() }
         .refreshable { await load() }
+    }
+
+    private func lessonDetails(_ lesson: WorkspaceSnapshot.Lesson) -> String {
+        let time = lesson.time ?? store.t("Time not set")
+        let weekly = lesson.kind == "recurring" ? " · " + store.t("Weekly") : ""
+        return LedgerDate.localized(lesson.date, locale: store.language) + " · " + time + weekly
     }
 
     private func load() async {
         error = nil
-        do { data = try await store.read("/api/mobile/schedule") }
-        catch { self.error = store.t(error.localizedDescription) }
+        do {
+            let schedule: WorkspaceSnapshot.Schedule = try await store.read("/api/mobile/schedule")
+            try Task.checkCancellation()
+            data = schedule
+        } catch { if !Task.isCancelled { self.error = store.t(error.localizedDescription) } }
     }
 }

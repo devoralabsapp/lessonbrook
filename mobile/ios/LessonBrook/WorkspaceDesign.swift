@@ -445,6 +445,34 @@ struct WorkspaceSection<Content: View>: View {
     init(_ title: String? = nil, fill: Color? = nil, @ViewBuilder content: @escaping () -> Content) { self.title = title; self.fill = fill; self.content = content }
 }
 
+struct WorkspaceListCard<Content: View>: View {
+    @EnvironmentObject private var store: WorkspaceStore
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        let p = store.palette
+        VStack(alignment: .leading, spacing: 0, content: content)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipShape(RoundedRectangle(cornerRadius: p.radius))
+            .modifier(WorkspacePanel(palette: p, fill: p.surface))
+    }
+}
+
+struct WorkspaceListTone: ViewModifier {
+    let palette: WorkspacePalette
+    let color: Color
+
+    func body(content: Content) -> some View {
+        content.background {
+            palette.surface
+            if palette.retroRows { color.opacity(0.3) }
+        }
+        .overlay(alignment: .leading) {
+            if palette.retroRows { color.frame(width: 5).allowsHitTesting(false) }
+        }
+    }
+}
+
 struct WorkspaceKeyValue: View {
     @EnvironmentObject private var store: WorkspaceStore
     let label: String

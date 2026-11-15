@@ -19,14 +19,16 @@ struct WorkspaceSnapshot: Decodable, Equatable {
 
     struct Schedule: Decodable, Equatable {
         let today: String
+        let through: String?
         let items: [Lesson]
         let recurring: [Lesson]?
 
-        var upcoming: [Lesson] {
-            Array((items + (recurring ?? [])).sorted {
+        var orderedLessons: [Lesson] {
+            (items + (recurring ?? [])).sorted {
                 ($0.date, $0.time ?? "24:00", $0.id) < ($1.date, $1.time ?? "24:00", $1.id)
-            }.prefix(8))
+            }
         }
+        var upcoming: [Lesson] { Array(orderedLessons.prefix(8)) }
     }
 
     struct Lesson: Decodable, Identifiable, Equatable {

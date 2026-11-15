@@ -442,6 +442,7 @@ struct LedgerRow: View {
     var archive: () -> Void = {}
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var textSize
     private var people: Bool { kind == .students || kind == .classes }
     private var p: WorkspacePalette { store.palette }
     private var paper: Color { workspacePaperColor(item.id) }
@@ -479,11 +480,7 @@ struct LedgerRow: View {
                     .padding(.vertical, 4)
             } else {
                 content.padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                    .background {
-                        p.surface
-                        if p.retroRows { listColor.opacity(0.3) }
-                    }
-                    .overlay(alignment: .leading) { if p.retroRows { listColor.frame(width: 5) } }
+                    .modifier(WorkspaceListTone(palette: p, color: listColor))
                     .overlay(alignment: .bottom) { Rectangle().fill(p.border).frame(height: 1) }
             }
         }.foregroundStyle(p.foreground).font(p.font(14))
@@ -494,16 +491,33 @@ struct LedgerRow: View {
     }
     @ViewBuilder private var content: some View {
         if people {
-            VStack(alignment: .leading, spacing: 4) {
-                NavigationLink(value: kind.route(item)) { identity }.buttonStyle(.plain)
-                HStack(spacing: 12) {
-                    Button(store.t("Edit"), action: edit)
-                    Button(store.t(item.string("archivedAt") == nil ? "Archive" : "Restore"), action: archive)
-                }.font(p.font(note ? 13 : 14)).underline().buttonStyle(.plain).frame(minHeight: 34)
+            if note || textSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    personLink
+                    personActions.frame(maxWidth: .infinity, alignment: note ? .leading : .trailing)
+                }
+            } else {
+                HStack(alignment: .center, spacing: 12) {
+                    personLink
+                    personActions.fixedSize(horizontal: true, vertical: false)
+                }
             }
         } else if kind == .statements {
             NavigationLink(value: kind.route(item)) { statement }.buttonStyle(.plain)
         } else { lesson }
+    }
+    private var personLink: some View {
+        NavigationLink(value: kind.route(item)) { identity.contentShape(Rectangle()) }.buttonStyle(.plain)
+            .accessibilityIdentifier("ledger-person-\(item.id)")
+    }
+    private var personActions: some View {
+        HStack(spacing: 12) {
+            Button(action: edit) { Text(store.t("Edit")).frame(minHeight: note ? 34 : 44).contentShape(Rectangle()) }
+            Button(action: archive) {
+                Text(store.t(item.string("archivedAt") == nil ? "Archive" : "Restore"))
+                    .frame(minHeight: note ? 34 : 44).contentShape(Rectangle())
+            }
+        }.font(p.font(note ? 13 : 14)).underline().buttonStyle(.plain)
     }
     private var identity: some View {
         HStack(alignment: .top, spacing: note ? 5 : 8) {
