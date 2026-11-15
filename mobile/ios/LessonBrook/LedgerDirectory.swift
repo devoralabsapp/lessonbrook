@@ -209,7 +209,14 @@ struct LedgerDirectory: View {
             }
             HStack(spacing: 8) {
                 ForEach(kind.hasCalendar ? [Layout.list, .notes, .calendar] : [.list, .notes], id: \.self) { option in
-                    Button { layout = option; if option == .calendar { selecting = false; selected.removeAll() } } label: {
+                    Button {
+                        if option == .calendar && layout != .calendar {
+                            month = .now
+                            selecting = false
+                            selected.removeAll()
+                        }
+                        layout = option
+                    } label: {
                         Image(systemName: option == .list ? "list.bullet" : option == .notes ? "note" : "calendar")
                             .frame(width: 18, height: 20)
                     }
@@ -266,8 +273,10 @@ struct LedgerDirectory: View {
                 WorkspaceChoice(label: store.t("Lesson type"), selection: $type,
                     options: [("all", store.t("All")), ("individual", store.t("One student")), ("group", store.t("Custom student group")), ("class", store.t("A class"))])
                 HStack(spacing: 4) {
-                    Button(store.t("Today")) { period = .today }
-                    Button(store.t("This month")) { period = .month }
+                    if layout != .calendar {
+                        Button(store.t("Today")) { period = .today }
+                        Button(store.t("This month")) { period = .month }
+                    }
                     Button(store.t("Clear filters")) { period = .all; status = "all"; billing = "all"; type = "all"; student = ""; selectedClass = "" }
                     if layout != .calendar {
                         Button(store.t(selecting ? "Done selecting" : "Select")) { selecting.toggle(); selected.removeAll() }
@@ -605,8 +614,9 @@ struct LedgerError: View {
     let retry: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(message).font(.subheadline).foregroundStyle(.red)
-            Button(store.t("Try again"), action: retry).buttonStyle(.bordered)
+            WorkspaceNotice(message: message, tone: .error)
+            Button(store.t("Try again"), action: retry)
+                .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
         }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
     }
 }

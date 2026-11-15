@@ -1,16 +1,20 @@
 import SwiftUI
 
 struct LedgerEditorForm<Content: View>: View {
+    enum Layout { case standard, record, teachingClass }
+
     @EnvironmentObject private var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
     let title: String
     let valid: Bool
     let draftKey: String
+    var layout: Layout = .standard
     let save: () async throws -> Void
     @ViewBuilder let content: () -> Content
     @State private var error: String?
     @State private var initialDraft: String?
     @State private var discard = false
+    @State private var contentHeight: CGFloat = 0
     private var changed: Bool { initialDraft.map { $0 != draftKey } ?? false }
 
     private var saveTitle: String {
@@ -23,50 +27,117 @@ struct LedgerEditorForm<Content: View>: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(store.t("Your ledger").uppercased()).font(store.palette.font(11, .semibold)).tracking(2)
-                        Text(store.t(title)).font(store.palette.font(25, .bold))
-                    }
-                    Spacer()
-                    Button { if changed { discard = true } else { dismiss() } } label: { Image(systemName: "xmark").frame(width: 36, height: 36) }
-                        .buttonStyle(.plain).accessibilityLabel(store.t("Cancel")).disabled(store.saving)
+        Group {
+            if layout == .standard {
+                editorPanel.padding(12)
+            } else {
+                GeometryReader { viewport in
+                    editorPanel.frame(maxWidth: 560)
+                        .frame(height: min(contentHeight > 0 ? contentHeight : viewport.size.height,
+                                           max(0, viewport.size.height - 24)))
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                Divider().overlay(store.palette.border)
-                VStack(alignment: .leading, spacing: 14) { content() }
-                if let error { Text(error).foregroundStyle(.red).accessibilityAddTraits(.updatesFrequently) }
-                Divider().overlay(store.palette.border)
+                .onPreferenceChange(EditorContentHeight.self) { contentHeight = $0 }
+                .background(store.palette.background.ignoresSafeArea())
+            }
+        }
+        .accessibilityHidden(discard)
+        .overlay { if discard { discardPrompt } }
+        .workspaceModalBackground()
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden(changed || store.saving)
+        .interactiveDismissDisabled(changed || store.saving || discard)
+        .onAppear { if initialDraft == nil { initialDraft = draftKey }; store.hasUnsavedEdits = changed }
+        .onChange(of: draftKey) { _ in store.hasUnsavedEdits = changed }
+        .onDisappear { store.hasUnsavedEdits = false }
+    }
+
+    private var editorPanel: some View {
+        let p = store.palette
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Spacer()
-                    Button(store.t("Cancel")) { if changed { discard = true } else { dismiss() } }
-                        .buttonStyle(WorkspaceOutlineButton(palette: store.palette)).disabled(store.saving)
-                    Button(store.t(store.saving ? "Saving changes" : saveTitle)) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if layout != .teachingClass {
+                            Text(store.t("Your ledger").uppercased())
+                                .font(p.font(11, .semibold)).tracking(1.8).foregroundStyle(p.secondaryInk)
+                        }
+                        Text(store.t(title)).font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
+                    }
+                    Spacer(minLength: 8)
+                    Button(action: close) { Image(systemName: "xmark").frame(width: 20, height: 24) }
+                        .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                        .accessibilityLabel(store.t("Cancel")).disabled(store.saving)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 12)
+                Divider().overlay(p.border)
+                VStack(alignment: .leading, spacing: 12) {
+                    content()
+                    if let error {
+                        WorkspaceNotice(message: error, tone: .error).accessibilityAddTraits(.updatesFrequently)
+                    }
+                }
+                .padding(14)
+                Divider().overlay(p.border)
+                    .padding(.horizontal, 14)
+                HStack(spacing: 12) {
+                    Spacer(minLength: 0)
+                    Button(store.t(layout == .standard ? "Cancel" : "Later"), action: close)
+                        .buttonStyle(WorkspaceOutlineButton(palette: p))
+                        .accessibilityLabel(store.t("Cancel")).disabled(store.saving)
+                    Button(store.t(store.saving ? "Saving changes" : error != nil ? "Try saving again" : saveTitle)) {
                         Task {
                             do { try await save(); dismiss() }
                             catch { self.error = store.t(error.localizedDescription) }
                         }
-                    }.buttonStyle(WorkspaceActionButton(palette: store.palette)).disabled(!valid || store.saving)
+                    }.buttonStyle(WorkspaceActionButton(palette: p)).disabled(!valid || store.saving)
                         .accessibilityIdentifier("Save")
                 }
-            }.padding(16).font(store.palette.font()).foregroundStyle(store.palette.foreground)
+                .padding(.horizontal, 14).padding(.vertical, 12)
+            }
+            .font(p.font()).foregroundStyle(p.foreground)
+            .background {
+                if layout != .standard {
+                    GeometryReader { content in
+                        Color.clear.preference(key: EditorContentHeight.self, value: content.size.height)
+                    }
+                }
+            }
         }
         .scrollDismissesKeyboard(.interactively)
-        .modifier(WorkspacePanel(palette: store.palette, fill: store.palette.surface))
-        .padding(12)
-        .workspaceModalBackground()
-        .toolbar(.hidden, for: .navigationBar)
-        .navigationBarBackButtonHidden(changed || store.saving)
-        .interactiveDismissDisabled(changed || store.saving)
-        .onAppear { if initialDraft == nil { initialDraft = draftKey }; store.hasUnsavedEdits = changed }
-        .onChange(of: draftKey) { _ in store.hasUnsavedEdits = changed }
-        .onDisappear { store.hasUnsavedEdits = false }
-        .confirmationDialog(store.t("Discard unsaved changes?"), isPresented: $discard, titleVisibility: .visible) {
-            Button(store.t("Discard changes"), role: .destructive) { dismiss() }
-            Button(store.t("Keep editing"), role: .cancel) {}
+        .clipShape(RoundedRectangle(cornerRadius: p.radius))
+        .modifier(WorkspacePanel(palette: p, fill: p.surface))
+    }
+
+    private func close() {
+        if changed { discard = true } else { dismiss() }
+    }
+
+    private var discardPrompt: some View {
+        let p = store.palette
+        return ZStack {
+            Color.black.opacity(0.42).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 16) {
+                Text(store.t("Discard unsaved changes?")).font(p.font(20, .heavy)).accessibilityAddTraits(.isHeader)
+                WorkspaceActionRows {
+                    Button(store.t("Keep editing")) { discard = false }
+                        .buttonStyle(WorkspaceOutlineButton(palette: p))
+                    Button(store.t("Discard changes"), role: .destructive) { dismiss() }
+                        .buttonStyle(WorkspaceActionButton(palette: p))
+                }
+            }
+            .padding(16).foregroundStyle(p.foreground)
+            .modifier(WorkspacePanel(palette: p, fill: p.surface))
+            .padding(20).frame(maxWidth: 420)
+            .accessibilityAddTraits(.isModal)
         }
     }
+}
+
+private struct EditorContentHeight: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 struct StudentEditor: View {
@@ -88,16 +159,20 @@ struct StudentEditor: View {
     }
 
     var body: some View {
-            LedgerEditorForm(title: record == nil ? "Add student" : "Edit student",
-                             valid: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                             draftKey: [name, contact, phone, email, note].joined(separator: "\u{0}"), save: save) {
-                WorkspaceField(store.t("Student name"), text: $name).textContentType(.name)
+        LedgerEditorForm(title: record == nil ? "Add student" : "Edit student",
+                         valid: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                         draftKey: [name, contact, phone, email, note].joined(separator: "\u{0}"),
+                         layout: .record, save: save) {
+            WorkspaceField(store.t("Student name"), text: $name, placeholder: store.t("Example: Linh Nguyen"), required: true)
+                .textContentType(.name)
+            WorkspaceFieldColumns {
                 WorkspaceField(store.t("Contact name"), text: $contact)
                 WorkspaceField(store.t("Phone number"), text: $phone).keyboardType(.phonePad).textContentType(.telephoneNumber)
-                WorkspaceField(store.t("Statement email"), text: $email).keyboardType(.emailAddress)
-                    .textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
-                WorkspaceField(store.t("Private notes"), text: $note, axis: .vertical).lineLimit(3...6)
             }
+            WorkspaceField(store.t("Statement email"), text: $email).keyboardType(.emailAddress)
+                .textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+            WorkspaceField(store.t("Private notes"), text: $note, axis: .vertical, placeholder: store.t("Only you can see this"))
+        }
     }
 
     private func save() async throws {
@@ -135,33 +210,39 @@ struct ClassEditor: View {
     }
 
     var body: some View {
-            LedgerEditorForm(title: record == nil ? "Add class" : "Edit class",
-                             valid: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                                !students.isEmpty && validRate(rate),
-                             draftKey: [name, rate, note, students.sorted().joined(), slots.map { "\($0.weekday):\(lessonTime($0.time))" }.joined()].joined(separator: "\u{0}"), save: save) {
-                WorkspaceSection {
-                    WorkspaceField(store.t("Class name"), text: $name)
-                    WorkspaceField(store.t("Price per lesson (VND)"), text: $rate).keyboardType(.numberPad)
-                    WorkspaceField(store.t("Private notes"), text: $note, axis: .vertical).lineLimit(2...6)
-                }
-                WorkspaceSection(store.t("Weekly schedule")) {
-                    ForEach($slots) { $slot in
-                        HStack(alignment: .bottom, spacing: 12) {
-                            WorkspaceChoice(label: store.t("Day"), selection: $slot.weekday,
-                                options: (1...7).map { ($0, weekday($0, locale: store.language)) })
-                            WorkspaceDatePicker(store.t("Start time"), selection: $slot.time, displayedComponents: .hourAndMinute)
-                            Button(role: .destructive) { slots.removeAll { $0.id == slot.id } } label: {
-                                Image(systemName: "minus.circle")
-                                    .frame(width: 44, height: 44)
-                            }.buttonStyle(.borderless).accessibilityLabel(store.t("Remove time"))
-                        }
+        LedgerEditorForm(title: record == nil ? "Add class" : "Edit class",
+                         valid: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                            !students.isEmpty && validRate(rate),
+                         draftKey: [name, rate, note, students.sorted().joined(), slots.map { "\($0.weekday):\(lessonTime($0.time))" }.joined()].joined(separator: "\u{0}"),
+                         layout: .teachingClass, save: save) {
+            WorkspaceField(store.t("Class name"), text: $name, placeholder: store.t("Example: Tuesday evening piano"), required: true)
+            WorkspaceField(store.t("Tuition per student per lesson (VND)"), text: $rate, required: true).keyboardType(.numberPad)
+            Text(store.t("Each student pays the same rate. Changes to the rate or roster apply to new lessons."))
+                .font(store.palette.font(13)).foregroundStyle(store.palette.secondaryInk)
+            LearnerChecklist(selection: $students)
+            VStack(alignment: .leading, spacing: 10) {
+                Text(store.t("Weekly schedule")).font(store.palette.font(15, .bold)).accessibilityAddTraits(.isHeader)
+                Text(store.t("Vietnam time. Scheduled lessons appear under Upcoming lessons."))
+                    .font(store.palette.font(13)).foregroundStyle(store.palette.secondaryInk)
+                ForEach($slots) { $slot in
+                    HStack(alignment: .bottom, spacing: 12) {
+                        WorkspaceChoice(label: store.t("Day"), selection: $slot.weekday,
+                            options: (1...7).map { ($0, weekday($0, locale: store.language)) })
+                        WorkspaceDatePicker(store.t("Start time"), selection: $slot.time, displayedComponents: .hourAndMinute)
+                        Button(role: .destructive) { slots.removeAll { $0.id == slot.id } } label: {
+                            Image(systemName: "trash").frame(width: 20, height: 28)
+                        }.buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
+                            .accessibilityLabel(store.t("Remove time"))
                     }
-                    if slots.count < 35 {
-                        Button(store.t("Add weekly time")) { slots.append(.init(weekday: 1, time: lessonTimeDate("18:00"))) }
-                    }
                 }
-                WorkspaceSection(store.t("Students")) { LearnerChecklist(selection: $students) }
+                if slots.count < 35 {
+                    Button { slots.append(.init(weekday: 1, time: lessonTimeDate("18:00"))) } label: {
+                        Label(store.t("Add weekly time"), systemImage: "plus")
+                    }.buttonStyle(WorkspaceOutlineButton(palette: store.palette))
+                }
             }
+            WorkspaceField(store.t("Private notes"), text: $note, axis: .vertical, placeholder: store.t("Only you can see this"))
+        }
     }
 
     private func save() async throws {
@@ -183,6 +264,7 @@ struct LearnerChecklist: View {
     @State private var query = ""
     @State private var loading = true
     @State private var error: String?
+    @ScaledMetric(relativeTo: .body) private var studentRowHeight = 44.0
 
     init(selection: Binding<Set<String>>, roster: [LedgerRecord]? = nil) {
         _selection = selection
@@ -192,27 +274,72 @@ struct LearnerChecklist: View {
 
     var body: some View {
         let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let matches = (roster ?? items).filter {
+        let students = roster ?? items
+        let matches = students.filter {
             search.isEmpty || $0.name.range(of: search, options: [.diacriticInsensitive, .caseInsensitive]) != nil
         }
+        let p = store.palette
         VStack(alignment: .leading, spacing: 8) {
-            WorkspaceField(store.t("Search students"), text: $query)
+            Text(store.t(roster == nil ? "Students" : "Attendance") + " (\(selection.count)/\(roster?.count ?? 50))")
+                .font(p.font(15, .bold)).accessibilityAddTraits(.isHeader)
+            WorkspaceField(store.t("Search students"), text: $query, placeholder: store.t("With or without accents"))
+            if roster == nil && !selection.isEmpty {
+                chosenStudents(students.filter { selection.contains($0.id) })
+            }
             if let error {
                 LedgerError(message: error) { Task { await load() } }
             } else if roster == nil && loading && items.isEmpty {
-                ProgressView()
+                ProgressView().tint(p.controlTint)
             } else if matches.isEmpty {
-                Text(store.t("No matching students")).foregroundStyle(store.palette.secondaryInk)
+                WorkspaceNotice(message: store.t("No matching students"))
+            } else {
+                let shape = RoundedRectangle(cornerRadius: p.fieldRadius)
+                ScrollView {
+                    LazyVStack(spacing: 2) {
+                        ForEach(matches) { item in studentRow(item) }
+                    }.padding(5)
+                }
+                .frame(height: min(224, CGFloat(matches.count) * (studentRowHeight + 2) + 10))
+                .background(p.background, in: shape)
+                .clipShape(shape)
+                .overlay(shape.strokeBorder(p.border, lineWidth: max(1, p.outline)))
+                .accessibilityIdentifier("workspace-student-list")
             }
-            ForEach(matches) { item in
-                Toggle(item.name, isOn: Binding(get: { selection.contains(item.id) }, set: { enabled in
-                    if enabled { selection.insert(item.id) } else { selection.remove(item.id) }
-                }))
-                .disabled(!selection.contains(item.id) && selection.count >= 50)
-            }
+            Text(store.t(roster == nil ? "Choose up to 50 students. Searching keeps your selections." :
+                "Clear the checkbox for anyone who is absent."))
+                .font(p.font(13)).foregroundStyle(p.secondaryInk)
         }
         .toggleStyle(WorkspaceCheckbox())
         .task(id: store.revision) { if roster == nil { await load() } }
+    }
+
+    private func studentRow(_ item: LedgerRecord) -> some View {
+        let selected = selection.contains(item.id)
+        let p = store.palette
+        return Toggle(item.name, isOn: Binding(get: { selection.contains(item.id) }, set: { enabled in
+            if enabled { selection.insert(item.id) } else { selection.remove(item.id) }
+        }))
+        .padding(.horizontal, 6).frame(minHeight: studentRowHeight)
+        .background(selected ? p.recordAccent.opacity(0.48) : p.surface,
+                    in: RoundedRectangle(cornerRadius: min(8, p.fieldRadius)))
+        .disabled(!selected && selection.count >= 50)
+    }
+
+    private func chosenStudents(_ students: [LedgerRecord]) -> some View {
+        let p = store.palette
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 128), spacing: 6)], alignment: .leading, spacing: 6) {
+            ForEach(students) { student in
+                Button { selection.remove(student.id) } label: {
+                    HStack(spacing: 4) {
+                        Text(student.name).lineLimit(1)
+                        Image(systemName: "xmark").font(.caption2.bold()).accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                .accessibilityIdentifier("remove-student-\(student.id)")
+            }
+        }
     }
 
     private func load() async {
@@ -234,6 +361,7 @@ struct LearnerPicker: View {
     @Binding var selected: String
     var includeArchived = false
     var allOption = false
+    var inlineSearch = false
     @State private var items: [LedgerRecord] = []
     @State private var label = ""
     @State private var presented = false
@@ -248,10 +376,14 @@ struct LearnerPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(store.t("Students")).font(store.palette.font(15, .semibold))
+            if inlineSearch {
+                WorkspaceField(store.t("Search students by name"), text: $query, placeholder: store.t("With or without accents"))
+                    .padding(.bottom, 6)
+            }
+            Text(inlineSearch ? store.t("Student") + " *" : store.t("Students")).font(store.palette.font(15, .semibold))
             WorkspaceChoiceTrigger(title: items.first { $0.id == selected }?.name ??
                 (label.isEmpty ? store.t(allOption ? "All students" : "Choose a student") : label)) {
-                query = ""
+                if !inlineSearch { query = "" }
                 presented = true
             }
         }
@@ -261,7 +393,7 @@ struct LearnerPicker: View {
             if let record: LedgerRecord = try? await store.read("/api/students/" + selected) { label = record.name }
         }
         .sheet(isPresented: $presented) {
-            WorkspaceOptionPanel(title: store.t("Choose a student"), search: $query, searchLabel: store.t("Search students")) {
+            WorkspaceOptionPanel(title: store.t("Choose a student"), search: inlineSearch ? nil : $query, searchLabel: store.t("Search students")) {
                 if allOption {
                     WorkspaceOptionRow(title: store.t("All students"), selected: selected.isEmpty) {
                         selected = ""; label = ""; presented = false
@@ -270,9 +402,9 @@ struct LearnerPicker: View {
                 if let error {
                     LedgerError(message: error) { Task { await load() } }
                 } else if loading && items.isEmpty {
-                    ProgressView().padding(10)
+                    ProgressView().tint(store.palette.controlTint).padding(10)
                 } else if matches.isEmpty {
-                    Text(store.t("No matching students")).foregroundStyle(store.palette.secondaryInk).padding(10)
+                    WorkspaceNotice(message: store.t("No matching students"))
                 }
                 ForEach(matches) { item in
                     WorkspaceOptionRow(title: item.name, selected: item.id == selected) {
@@ -308,6 +440,7 @@ struct LessonEditor: View {
     @State private var classes: [LedgerRecord] = []
     @State private var classMembers: [LedgerRecord] = []
     @State private var currentClass: LedgerRecord?
+    @State private var classesError: String?
     @State private var rosterError: String?
     @State private var date: Date
     @State private var hasTime: Bool
@@ -347,9 +480,16 @@ struct LessonEditor: View {
             !participants.isEmpty && (target != .teachingClass || !classID.isEmpty))
     }
 
+    private var tuitionPreview: String {
+        guard status != "cancelled", billable else { return store.money(0) }
+        guard validRate(rate), let amount = Int(rate) else { return "—" }
+        return store.money(amount * (target == .student ? 1 : participants.count))
+    }
+
     var body: some View {
         LedgerEditorForm(title: record == nil ? "Record lesson" : "Edit lesson", valid: valid,
-                         draftKey: [target.rawValue, student, classID, participants.sorted().joined(), LedgerDate.text(date), String(hasTime), lessonTime(time), rate, duration, status, String(billable), note].joined(separator: "\u{0}"), save: save) {
+                         draftKey: [target.rawValue, student, classID, participants.sorted().joined(), LedgerDate.text(date), String(hasTime), lessonTime(time), rate, duration, status, String(billable), note].joined(separator: "\u{0}"),
+                         layout: .record, save: save) {
             if record == nil {
                 WorkspaceChoice(label: store.t("Teach"), selection: $target,
                     options: Target.allCases.map { ($0, store.t($0.rawValue)) })
@@ -357,18 +497,22 @@ struct LessonEditor: View {
             switch target {
             case .student:
                 if let record { Text(record.text("studentName")) }
-                else { LearnerPicker(selected: $student) }
+                else { LearnerPicker(selected: $student, inlineSearch: true) }
             case .group:
-                WorkspaceSection(store.t("Students")) { LearnerChecklist(selection: $participants) }
+                LearnerChecklist(selection: $participants)
             case .teachingClass:
                 WorkspaceChoice(label: store.t("Classes"), selection: $classID,
                     options: [("", store.t("Choose a class"))] + classes.map { ($0.id, $0.name) } +
                         (!classID.isEmpty && !classes.contains(where: { $0.id == classID }) ? [(classID, currentClass?.name ?? record?.text("className") ?? store.t("Classes"))] : []))
                 .disabled(record != nil)
+                if let classesError { LedgerError(message: classesError) { Task { await loadClasses() } } }
                 if !classID.isEmpty {
-                    WorkspaceSection(store.t("Attendance")) {
-                        if let rosterError { LedgerError(message: rosterError) { Task { await loadClass() } } }
+                    if let rosterError {
+                        LedgerError(message: rosterError) { Task { await loadClass() } }
+                    } else if currentClass?.id == classID {
                         LearnerChecklist(selection: $participants, roster: classMembers)
+                    } else {
+                        ProgressView().tint(store.palette.controlTint)
                     }
                 }
             }
@@ -383,12 +527,14 @@ struct LessonEditor: View {
                     WorkspaceDatePicker(store.t("Start time"), selection: $time, displayedComponents: .hourAndMinute, optional: $hasTime).disabled(lockedDate)
                     WorkspaceField(store.t("Duration (minutes)"), text: $duration).keyboardType(.numberPad).disabled(lockedDate)
                 }
-                WorkspaceField(store.t("Lesson price (VND)"), text: $rate).keyboardType(.numberPad).disabled(lockedDate)
+                WorkspaceField(store.t(target == .student ? "Lesson price (VND)" : "Tuition per student (VND)"), text: $rate)
+                    .keyboardType(.numberPad).disabled(lockedDate)
                 if status != "keep" && status != "cancelled" { Toggle(store.t("Charge for this lesson"), isOn: $billable) }
-                WorkspaceKeyValue(store.t("Lesson tuition"), value: store.money((status == "cancelled" || !billable) ? 0 : (Int(rate) ?? 0)))
-                    .padding(12).background(store.palette.recordAccent, in: RoundedRectangle(cornerRadius: store.palette.fieldRadius))
-                WorkspaceField(store.t("Private notes"), text: $note, axis: .vertical).lineLimit(2...6)
+                WorkspaceKeyValue(store.t(status == "planned" ? "Expected tuition" : "Lesson tuition"), value: tuitionPreview)
+                    .padding(12).modifier(WorkspacePanel(palette: store.palette, fill: store.palette.recordAccent))
+                WorkspaceField(store.t("Private notes"), text: $note, axis: .vertical, placeholder: store.t("Only you can see this"))
             }
+            .toggleStyle(WorkspaceCheckbox())
 
         }
         .onChange(of: target) { next in
@@ -398,12 +544,15 @@ struct LessonEditor: View {
             }
         }
         .task(id: target) {
-            if target == .teachingClass && classes.isEmpty {
-                do { classes = try await store.all("/api/classes", query: ["order": "schedule"]) }
-                catch { if !Task.isCancelled { rosterError = store.t(error.localizedDescription) } }
-            }
+            if target == .teachingClass && classes.isEmpty { await loadClasses() }
         }
         .task(id: classID) { await loadClass() }
+    }
+
+    private func loadClasses() async {
+        classesError = nil
+        do { classes = try await store.all("/api/classes", query: ["order": "schedule"]) }
+        catch { if !Task.isCancelled { classesError = store.t(error.localizedDescription) } }
     }
 
     private func loadClass() async {

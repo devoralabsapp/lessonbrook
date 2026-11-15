@@ -2,9 +2,11 @@
 
 Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) for local setup, and [Architecture](docs/ARCHITECTURE.md) for data flows and invariants. Use this file as a dated checkpoint. Check `git status --short --branch` and `git log -8 --oneline` to see what changed since then.
 
-## Checkpoint: 15 November 2026
+## Checkpoint: 16 November 2026
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
+
+- **iOS 0.5.4, build 22**. Add student, Add class and Record lesson use the legacy mobile web field order and a framed SwiftUI dialog. Student rosters have search, a bounded list and selected student chips. Date and time controls, fee previews and notices use the active theme. Both monthly views open on the current month, with a themed frame and arrows for other months.
 
 - **iOS 0.5.3, build 21**. Both month calendars use equal-height square-corner tiles divided by one device pixel, with a bright selected-day color for each palette. Ordinary selects and student search share the themed option panel. The Shortcut form shows connection details first, collapses management actions, and presents a new key in a separate sheet. Class and custom group checklists load active students and retain archived members of the record being edited.
 

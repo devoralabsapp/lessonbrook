@@ -68,19 +68,21 @@ struct LedgerMonth: View {
     var body: some View {
         let schedule = events
         let line = 1 / displayScale
+        let p = store.palette
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Button { move(-1) } label: { Image(systemName: "chevron.left").frame(width: 34, height: 38) }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                     .accessibilityLabel(store.t("Previous month"))
                 Spacer()
                 Text(month.formatted(.dateTime.month(.wide).year().locale(store.language)))
-                    .font(.headline).multilineTextAlignment(.center)
+                    .font(p.font(17, .heavy)).multilineTextAlignment(.center)
+                    .accessibilityIdentifier("workspace-calendar-month")
                 Spacer()
                 Button { move(1) } label: { Image(systemName: "chevron.right").frame(width: 34, height: 38) }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                     .accessibilityLabel(store.t("Next month"))
             }
-            Button(store.t("This month")) { month = .now; selected = LedgerDate.today }
-                .buttonStyle(.bordered)
             if kind == .sessions {
                 HStack { ForEach(["planned", "completed", "cancelled"], id: \.self) { LedgerBadge(code: $0) } }
             }
@@ -137,7 +139,7 @@ struct LedgerMonth: View {
             .padding(line)
             .background { Rectangle().fill(store.palette.border) }
             Text(LedgerDate.date(selected)?.formatted(.dateTime.weekday(.wide).day().month(.wide).year().locale(store.language)) ?? selected)
-                .font(.headline)
+                .font(p.font(16, .bold))
             if let selected = schedule[selected], !selected.isEmpty {
                 ForEach(selected) { event in
                     NavigationLink(value: event.route) {
@@ -148,11 +150,14 @@ struct LedgerMonth: View {
                             Image(systemName: "chevron.right").font(.caption)
                         }.padding(8)
                     }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                 }
             } else {
-                Text(store.t("No lessons on this day.")).font(.subheadline).foregroundStyle(.secondary)
+                WorkspaceNotice(message: store.t("No lessons on this day."))
             }
         }
+        .padding(10)
+        .modifier(WorkspacePanel(palette: p, fill: p.surface))
         .onAppear { selectVisibleMonth() }
         .onChange(of: month) { _ in selectVisibleMonth() }
     }
@@ -160,7 +165,7 @@ struct LedgerMonth: View {
     private func selectVisibleMonth() {
         guard let date = LedgerDate.date(selected),
               LedgerDate.calendar.isDate(date, equalTo: month, toGranularity: .month) else {
-            selected = LedgerDate.range(.month, at: month).0
+            selected = defaultDay(in: month)
             return
         }
     }
@@ -170,7 +175,12 @@ struct LedgerMonth: View {
         guard let start = calendar.dateInterval(of: .month, for: month)?.start,
               let next = calendar.date(byAdding: .month, value: offset, to: start) else { return }
         month = next
-        selected = LedgerDate.text(next)
+        selected = defaultDay(in: next)
+    }
+
+    private func defaultDay(in month: Date) -> String {
+        if LedgerDate.calendar.isDate(.now, equalTo: month, toGranularity: .month) { return LedgerDate.today }
+        return LedgerDate.range(.month, at: month).0
     }
 
     private func eventColor(_ status: String) -> Color {

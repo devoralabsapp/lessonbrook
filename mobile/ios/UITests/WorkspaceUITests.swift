@@ -19,6 +19,7 @@ final class WorkspaceUITests: XCTestCase {
         add.tap()
         let name = app.textFields["Student name"]
         XCTAssertTrue(name.waitForExistence(timeout: 10))
+        capture("Add student", app: app)
         name.tap()
         name.typeText("Native QA Student")
         let email = app.textFields["Statement email"]
@@ -43,14 +44,25 @@ final class WorkspaceUITests: XCTestCase {
         app.buttons["Record lesson"].tap()
         XCTAssertTrue(app.staticTexts["Teach"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.webViews.count, 0)
+        capture("Record lesson", app: app)
+        let rosterSearch = app.textFields["Search students by name"]
+        XCTAssertTrue(rosterSearch.waitForExistence(timeout: 10))
+        rosterSearch.tap(); rosterSearch.typeText("Native QA\n")
         let choose = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Choose a student")).firstMatch
         XCTAssertTrue(choose.waitForExistence(timeout: 10))
         choose.tap()
-        let learnerSearch = app.textFields["Search students"]
-        XCTAssertTrue(learnerSearch.waitForExistence(timeout: 10))
-        learnerSearch.tap(); learnerSearch.typeText("Native QA")
         let learner = app.buttons["Native QA Student"]
         XCTAssertTrue(learner.waitForExistence(timeout: 10)); learner.tap()
+        tapVisible(app.buttons["Lesson date"], app: app)
+        let businessDate = DateFormatter()
+        businessDate.locale = Locale(identifier: "en_US_POSIX")
+        businessDate.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")
+        businessDate.dateFormat = "yyyy-MM-dd"
+        let selectedDate = app.buttons[businessDate.string(from: Date())]
+        XCTAssertTrue(selectedDate.waitForExistence(timeout: 10))
+        XCTAssertTrue(selectedDate.isSelected)
+        capture("Themed lesson date picker", app: app)
+        selectedDate.tap()
         let price = app.textFields["Lesson price (VND)"]
         XCTAssertTrue(price.waitForExistence(timeout: 10)); price.tap(); price.typeText("30000")
         tapVisible(app.buttons["Save"], app: app)
@@ -97,6 +109,14 @@ final class WorkspaceUITests: XCTestCase {
             return ProcessInfo.processInfo.systemUptime - started
         }
         print("NATIVE_TAB_XCUITEST_SECONDS \(timings)")
+    }
+
+    @MainActor
+    private func capture(_ label: String, app: XCUIApplication) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = label
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     @MainActor
@@ -191,13 +211,24 @@ final class WorkspaceUITests: XCTestCase {
             XCTAssertLessThanOrEqual(scroll.frame.maxY, dashboard.frame.minY)
             if tab == "classes" {
                 app.buttons["Add class"].tap()
+                XCTAssertTrue(app.textFields["Class name"].waitForExistence(timeout: 10))
+                capture("Add class", app: app)
                 tapVisible(app.buttons["Add weekly time"], app: app)
                 let day = app.buttons["Day"].firstMatch
                 let time = app.buttons["Start time"].firstMatch
                 XCTAssertTrue(day.waitForExistence(timeout: 10))
                 XCTAssertTrue(time.exists)
                 XCTAssertEqual(day.frame.midY, time.frame.midY, accuracy: 2)
-                tapVisible(app.buttons["Cancel"].firstMatch, app: app)
+                tapVisible(time, app: app)
+                let hour = app.buttons["workspace-clock-hour-19"]
+                let minute = app.buttons["workspace-clock-minute-1"]
+                XCTAssertTrue(hour.waitForExistence(timeout: 10))
+                hour.tap()
+                minute.tap()
+                capture("Themed weekly time picker", app: app)
+                app.buttons["Done"].tap()
+                XCTAssertEqual(time.value as? String, "19:01")
+                app.buttons["Cancel"].firstMatch.tap()
                 app.buttons["Discard changes"].tap()
             }
             if tab == "classes" || tab == "lessons" {
@@ -205,6 +236,8 @@ final class WorkspaceUITests: XCTestCase {
                 XCTAssertTrue(calendar.waitForExistence(timeout: 10))
                 for _ in 0..<4 where !calendar.isHittable { app.swipeDown() }
                 calendar.tap()
+                XCTAssertTrue(app.staticTexts["workspace-calendar-month"].waitForExistence(timeout: 10))
+                XCTAssertFalse(app.buttons["This month"].exists)
                 for _ in 0..<6 where !today.isHittable { app.swipeUp() }
                 XCTAssertTrue(today.isHittable)
                 XCTAssertTrue(today.isSelected)
@@ -324,6 +357,15 @@ final class WorkspaceUITests: XCTestCase {
             options.lifetime = .keepAlways
             add(options)
             active.tap()
+            if theme == "Afterhours FM" || theme == "Playful Retro Neo-Brutalism" {
+                XCTAssertTrue(active.waitForNonExistence(timeout: 10))
+                app.buttons["Thêm học viên"].tap()
+                let name = app.textFields["Tên học viên"]
+                XCTAssertTrue(name.waitForExistence(timeout: 10))
+                capture("Vietnamese Add student — " + theme, app: app)
+                app.buttons["Hủy"].firstMatch.tap()
+                XCTAssertTrue(name.waitForNonExistence(timeout: 10))
+            }
         }
     }
 }

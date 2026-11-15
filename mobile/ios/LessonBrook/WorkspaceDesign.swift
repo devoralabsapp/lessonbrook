@@ -49,9 +49,10 @@ struct WorkspaceField: View {
     @Binding var text: String
     var axis: Axis = .horizontal
     var placeholder: String? = nil
+    var required = false
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).font(store.palette.font(15, .semibold)).lineLimit(2)
+            Text(required ? label + " *" : label).font(store.palette.font(15, .semibold)).lineLimit(2)
             TextField(label, text: $text, prompt: Text(placeholder ?? "").foregroundColor(store.palette.secondaryInk), axis: axis)
                 .font(store.palette.font(16)).textFieldStyle(.plain).lineLimit(axis == .vertical ? 3...6 : 1...1)
                 .foregroundStyle(store.palette.foreground)
@@ -59,8 +60,31 @@ struct WorkspaceField: View {
                 .accessibilityLabel(label)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
-    init(_ label: String, text: Binding<String>, axis: Axis = .horizontal, placeholder: String? = nil) {
-        self.label = label; _text = text; self.axis = axis; self.placeholder = placeholder
+    init(_ label: String, text: Binding<String>, axis: Axis = .horizontal, placeholder: String? = nil, required: Bool = false) {
+        self.label = label; _text = text; self.axis = axis; self.placeholder = placeholder; self.required = required
+    }
+}
+
+struct WorkspaceNotice: View {
+    enum Tone { case information, error }
+
+    @EnvironmentObject private var store: WorkspaceStore
+    let message: String
+    var tone: Tone = .information
+
+    var body: some View {
+        let p = store.palette
+        let icon = tone == .error ? "exclamationmark.circle" : "info.circle"
+        let fill = tone == .error ? Color.red.opacity(p.dark ? 0.22 : 0.10) : p.recordAccent.opacity(0.36)
+        let shape = RoundedRectangle(cornerRadius: p.fieldRadius)
+        Label(message, systemImage: icon)
+            .font(p.font(13, .semibold))
+            .fixedSize(horizontal: false, vertical: true)
+            .foregroundStyle(p.foreground)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(fill, in: shape)
+            .overlay(shape.strokeBorder(p.border, lineWidth: max(1, p.outline)))
     }
 }
 
@@ -205,35 +229,101 @@ struct WorkspaceDatePicker: View {
     var placeholder: String? = nil
     @State private var open = false
     @State private var month = Date()
+    @State private var hour = 0
+    @State private var minute = 0
     private var isClock: Bool { displayedComponents == .hourAndMinute }
+    private var displayValue: String {
+        if let placeholder { return placeholder }
+        if optional?.wrappedValue == false { return "—" }
+        return isClock ? lessonTime(selection) :
+            selection.formatted(.dateTime.day().month(.abbreviated).year().locale(store.language))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(store.palette.font(15, .semibold)).lineLimit(2)
-            Button { month = selection; optional?.wrappedValue = true; open = true } label: {
+            Button {
+                month = selection
+                let time = LedgerDate.calendar.dateComponents([.hour, .minute], from: selection)
+                hour = time.hour ?? 0
+                minute = time.minute ?? 0
+                open = true
+            } label: {
                 HStack {
-                    Text(placeholder ?? (optional?.wrappedValue == false ? "—" : isClock ? lessonTime(selection) : selection.formatted(.dateTime.day().month(.abbreviated).year().locale(store.language))))
+                    Text(displayValue)
                         .font(store.palette.font(16)).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 3)
                     Image(systemName: isClock ? "clock" : "calendar").font(.system(size: 14))
                 }.foregroundStyle(store.palette.foreground).modifier(WorkspaceControl())
-            }.buttonStyle(.plain).accessibilityLabel(label)
+            }.buttonStyle(.plain).accessibilityLabel(label).accessibilityValue(displayValue)
                 .sheet(isPresented: $open) {
-                    VStack(spacing: 14) {
-                        HStack {
-                            Text(label).font(store.palette.font(20, .bold))
-                            Spacer()
-                            Button(store.t("Done")) { open = false }.buttonStyle(WorkspaceOutlineButton(palette: store.palette))
+                    WorkspaceScroll(eager: true) {
+                        WorkspaceSection {
+                            HStack {
+                                Text(label).font(store.palette.font(20, .heavy)).accessibilityAddTraits(.isHeader)
+                                Spacer()
+                                Button { open = false } label: { Image(systemName: "xmark").frame(width: 20, height: 20) }
+                                    .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
+                                    .accessibilityLabel(store.t("Close"))
+                            }
+                            Divider().overlay(store.palette.border)
+                            if isClock {
+                                clockFields
+                            } else {
+                                dateGrid
+                            }
                         }
-                        if isClock {
-                            DatePicker(label, selection: $selection, displayedComponents: .hourAndMinute)
-                                .datePickerStyle(.wheel).labelsHidden().tint(store.palette.controlTint)
-                            if optional != nil { Button(store.t("Clear time")) { optional?.wrappedValue = false; open = false } }
-                        } else {
-                            dateGrid
-                        }
-                    }.padding(16).background(store.palette.background).presentationDetents([.medium])
+                    }
+                    .presentationDetents([.height(isClock ? 400 : 468), .large])
+                    .presentationDragIndicator(.visible)
                 }
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private var clockFields: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(format: "%02d:%02d", hour, minute))
+                .font(store.palette.font(26, .heavy).monospacedDigit())
+                .frame(maxWidth: .infinity)
+                .modifier(WorkspaceControl())
+                .accessibilityIdentifier("workspace-clock-value")
+            HStack(alignment: .top, spacing: 10) {
+                clockColumn("Hour", values: 0..<24, value: $hour)
+                clockColumn("Minute", values: 0..<60, value: $minute)
+            }
+            HStack {
+                if optional?.wrappedValue == true {
+                    Button(store.t("Clear time")) { optional?.wrappedValue = false; open = false }
+                        .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
+                }
+                Spacer()
+                Button(store.t("Done")) {
+                    selection = LedgerDate.calendar.date(bySettingHour: hour, minute: minute, second: 0, of: selection) ?? selection
+                    optional?.wrappedValue = true
+                    open = false
+                }.buttonStyle(WorkspaceActionButton(palette: store.palette))
+            }
+        }
+    }
+
+    private func clockColumn(_ title: String, values: Range<Int>, value: Binding<Int>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(store.t(title)).font(store.palette.font(14, .bold))
+            ScrollViewReader { scroll in
+                ScrollView {
+                    LazyVStack(spacing: 4) {
+                        ForEach(values, id: \.self) { item in
+                            WorkspaceOptionRow(title: String(format: "%02d", item), selected: item == value.wrappedValue) {
+                                value.wrappedValue = item
+                            }
+                            .id(item)
+                            .accessibilityIdentifier("workspace-clock-\(title.lowercased())-\(item)")
+                        }
+                    }.padding(5)
+                }
+                .frame(height: 154)
+                .onAppear { scroll.scrollTo(value.wrappedValue, anchor: .center) }
+            }
+        }
     }
     private var dateGrid: some View {
         let cal = LedgerDate.calendar
@@ -243,28 +333,31 @@ struct WorkspaceDatePicker: View {
         let offset = cal.dateComponents([.day], from: first, to: start).day!
         return VStack(spacing: 8) {
             HStack {
-                Button { month = cal.date(byAdding: .month, value: -1, to: start)! } label: { Image(systemName: "chevron.left").frame(width: 38, height: 38) }
-                    .buttonStyle(.plain).accessibilityLabel(store.t("Previous month"))
+                Button { month = cal.date(byAdding: .month, value: -1, to: start)! } label: { Image(systemName: "chevron.left").frame(width: 16, height: 20) }
+                    .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true)).accessibilityLabel(store.t("Previous month"))
                 Spacer()
                 Text(month.formatted(.dateTime.month(.wide).year().locale(store.language))).font(store.palette.font(17, .bold))
                 Spacer()
-                Button { month = cal.date(byAdding: .month, value: 1, to: start)! } label: { Image(systemName: "chevron.right").frame(width: 38, height: 38) }
-                    .buttonStyle(.plain).accessibilityLabel(store.t("Next month"))
+                Button { month = cal.date(byAdding: .month, value: 1, to: start)! } label: { Image(systemName: "chevron.right").frame(width: 16, height: 20) }
+                    .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true)).accessibilityLabel(store.t("Next month"))
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 7), spacing: 3) {
                 ForEach(1...7, id: \.self) { day in Text(weekday(day, locale: store.language)).font(store.palette.font(12, .bold)) }
                 ForEach(0..<((offset + count + 6) / 7 * 7), id: \.self) { index in
                     let date = cal.date(byAdding: .day, value: index, to: first)!
-                    let active = cal.isDate(date, inSameDayAs: selection)
+                    let inMonth = cal.isDate(date, equalTo: month, toGranularity: .month)
+                    let active = inMonth && cal.isDate(date, inSameDayAs: selection)
                     Button { selection = date; open = false } label: {
                         Text(String(cal.component(.day, from: date))).font(store.palette.font(15, active ? .bold : .regular))
-                            .frame(maxWidth: .infinity, minHeight: 34)
-                            .foregroundStyle(active ? store.palette.onAccent : store.palette.foreground)
-                            .background(active ? store.palette.accent : store.palette.surface,
-                                        in: RoundedRectangle(cornerRadius: min(8, store.palette.radius)))
+                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .foregroundStyle(active ? store.palette.dashboardInk : store.palette.foreground.opacity(inMonth ? 1 : 0.55))
+                            .background(active ? store.palette.calendarSelection : store.palette.surface,
+                                        in: RoundedRectangle(cornerRadius: min(8, store.palette.fieldRadius)))
+                            .contentShape(Rectangle())
                     }.buttonStyle(.plain)
-                        .disabled(!cal.isDate(date, equalTo: month, toGranularity: .month) || (maximum.map { date > $0 } ?? false))
+                        .disabled(!inMonth || (maximum.map { date > $0 } ?? false))
                         .accessibilityLabel(LedgerDate.text(date))
+                        .accessibilityAddTraits(active ? .isSelected : [])
                 }
             }
         }.foregroundStyle(store.palette.foreground)
@@ -279,13 +372,23 @@ struct WorkspaceDatePicker: View {
 
 struct WorkspaceCheckbox: ToggleStyle {
     @EnvironmentObject private var store: WorkspaceStore
+    @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
-        Button { configuration.isOn.toggle() } label: {
+        let p = store.palette
+        let shape = RoundedRectangle(cornerRadius: min(4, p.fieldRadius))
+        return Button { configuration.isOn.toggle() } label: {
             HStack(alignment: .center, spacing: 8) {
-                Image(systemName: configuration.isOn ? "checkmark.square.fill" : "square").font(.system(size: 20))
-                configuration.label.font(store.palette.font(14))
+                ZStack {
+                    shape.fill(configuration.isOn ? p.accent : p.surface)
+                    shape.strokeBorder(p.border, lineWidth: max(1, p.outline))
+                    if configuration.isOn {
+                        Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(p.onAccent)
+                    }
+                }.frame(width: 20, height: 20).accessibilityHidden(true)
+                configuration.label.font(p.font(14))
                 Spacer(minLength: 0)
-            }.frame(minHeight: 34, alignment: .leading).foregroundStyle(store.palette.foreground)
+            }.frame(minHeight: 36, alignment: .leading).foregroundStyle(p.foreground)
+                .opacity(enabled ? 1 : 0.48).contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityValue(configuration.isOn ? store.t("Selected") : store.t("Not selected"))
     }
 }
