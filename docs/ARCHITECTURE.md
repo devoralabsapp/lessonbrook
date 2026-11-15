@@ -79,6 +79,8 @@ Workspace directories request Vietnamese alphabetical ordering for students and 
 
 Monthly calendars reuse the authenticated list APIs and follow every pagination cursor, including empty filtered pages. The Classes calendar projects saved weekly timetables and excludes archived classes. The Lessons calendar shows recorded sessions for the selected month and filters, grouping attendance rows by lesson ID. Date-only calendar arithmetic uses UTC to avoid browser timezone shifts. Class times remain Vietnam times.
 
+Classes and Lessons share the same seven-column month grid across desktop, phone browsers and the native app WebViews. Day cells show the first two events with their calendar colors and a count for additional events. At phone widths the time and event title stack and long titles truncate in the grid. Selecting the day shows the full linked agenda below.
+
 Weekly class slots use Vietnam time. The upcoming schedule projects the next seven days. While the signed-in workspace is open, it checks for due slots and records them as planned lessons with one row per active participant. It catches up when the teacher returns. A saved class lesson at the same time takes precedence. A planned lesson enters billing after the teacher marks it complete and chargeable. The manifest provides a launch shortcut.
 
 ## Bank transfer reconciliation

@@ -119,6 +119,33 @@ for (const platform of ["iOS", "Android"]) {
           );
           expect(new Set(positions).size).toBe(1);
         }
+        if (path === "/app/classes" || path === "/app/sessions") {
+          await page
+            .getByRole("button", { name: "Month calendar", exact: true })
+            .click();
+          const calendar = page.getByRole("region", {
+            name: "Month calendar",
+            exact: true,
+          });
+          const event = calendar
+            .locator('[data-slot="calendar-event"]')
+            .first();
+          await expect(event).toBeVisible();
+          const time = event.locator(".calendar-event-time");
+          const title = event.locator(".calendar-event-title");
+          await expect(time).toHaveText(/^(\d{2}:\d{2}|—)$/);
+          await expect(title).toBeVisible();
+          expect((await title.boundingBox())!.y).toBeGreaterThan(
+            (await time.boundingBox())!.y,
+          );
+          await event.click();
+          await expect(
+            calendar
+              .getByLabel("Selected day details")
+              .getByRole("link")
+              .first(),
+          ).toBeVisible();
+        }
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= innerWidth,

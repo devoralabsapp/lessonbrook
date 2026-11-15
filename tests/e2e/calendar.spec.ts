@@ -91,7 +91,18 @@ test("360px: monthly classes and lessons load all pages, filter automatically, a
     await expect(calendar.getByRole("status")).toContainText(
       "56 mục trong tháng",
     );
-    await calendar.locator(`[data-date="${from}"]`).click();
+    const firstDay = calendar.locator(`[data-date="${from}"]`);
+    const previews = firstDay.locator('[data-slot="calendar-event"]');
+    await expect(previews).toHaveCount(2);
+    await expect(previews.first()).toBeVisible();
+    await expect(previews.first().locator(".calendar-event-time")).toHaveText(
+      "18:00",
+    );
+    await expect(previews.first().locator(".calendar-event-title")).toHaveText(
+      "Calendar Alex",
+    );
+    await expect(firstDay.getByText("+54", { exact: true })).toBeVisible();
+    await firstDay.click();
     const agenda = calendar.getByLabel("Chi tiết ngày đã chọn");
     await expect(agenda.getByRole("link")).toHaveCount(56);
     await chooseOption(
@@ -115,13 +126,14 @@ test("360px: monthly classes and lessons load all pages, filter automatically, a
     await expect(calendar.getByRole("status")).toContainText(
       "1 mục trong tháng",
     );
-    await calendar.locator(`[data-date="${from}"]`).click();
+    await firstDay.click();
     await agenda.getByRole("link").click();
     await expect(page).toHaveURL(new RegExp(`/app/lessons/${lesson.id}$`));
     await page.goto("/app/classes");
     await page.getByRole("button", { name: "Lịch tháng", exact: true }).click();
     await expect(calendar.getByRole("status")).toContainText("mục trong tháng");
-    await calendar.locator(`[data-date="${from}"]`).click();
+    await expect(previews.first()).toHaveText(/20:00 Calendar Piano/);
+    await firstDay.click();
     await expect(
       agenda.getByRole("link", { name: /Calendar Piano/ }),
     ).toBeVisible();

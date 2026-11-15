@@ -6,6 +6,8 @@ Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) f
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
 
+- **Mobile month calendars**. Classes and Lessons now show the same colored event previews as desktop in their shared month grid. On narrow screens the time sits above the title, the grid keeps seven columns, and selecting a day opens its full agenda. The existing native apps load both tabs from the website and receive this update through deployment.
+
 - **Mobile 0.4.11**. Native login shows the primary Google action, demo entry and language menu in a compact Retro layout. The mobile browser handoff uses a matching card. The signed-in native Dashboard follows the mobile demo's heading, summary labels, amount formatting and Upcoming lessons row styling while retaining its workspace snapshot and refresh behavior. The ignored mobile builds directory contains iOS build 17 and Android debug code 16. The iOS Simulator fixture covered English sign-in, Vietnamese expired sign-in and the Dashboard in Playful Retro and Afterhours.
 
 - **Mobile 0.4.10**. Upcoming lessons on the native and mobile demo Dashboards uses the Student list layout, with a framed initial and lesson details in each tinted row. Today, This month, Clear filters and Select share the action row in Lessons. Signed iOS build 16 and Android debug code 15 are packaged in the ignored mobile builds directory. Dashboard rendering passed on iOS Simulator with English Playful Retro and Vietnamese Afterhours.

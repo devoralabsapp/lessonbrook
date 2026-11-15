@@ -1084,11 +1084,45 @@ dialog::backdrop {
 
 /* Calendar cells use the active theme's surfaces; event colors also work in dark themes. */
 .calendar-day {
-  min-height: 5rem;
+  min-height: 6.75rem;
+}
+.calendar-event {
+  padding: 1px;
+  font-size: calc(10px + var(--font-size-offset, 0px));
+  line-height: 1.2;
+}
+.calendar-event-time,
+.calendar-event-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calendar-event-time {
+  letter-spacing: -0.035em;
+}
+.calendar-more {
+  font-size: calc(10px + var(--font-size-offset, 0px));
+  line-height: 1.2;
 }
 @media (min-width: 640px) {
   .calendar-day {
     min-height: 8rem;
+  }
+  .calendar-event {
+    padding: 2px 4px;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+  }
+  .calendar-event-time,
+  .calendar-event-title {
+    display: inline;
+  }
+  .calendar-event-time {
+    letter-spacing: normal;
+  }
+  .calendar-more {
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
   }
 }
 [data-calendar-tone="blue"] {

@@ -116,8 +116,17 @@ export function WorkspaceMonthCalendar({
           : lessonCalendarEntries(records.items as SessionWithPayment[]),
     [records.items, kind, month],
   );
+  const entriesByDate = useMemo(() => {
+    const days = new Map<string, CalendarEntry[]>();
+    for (const entry of entries) {
+      const day = days.get(entry.date);
+      if (day) day.push(entry);
+      else days.set(entry.date, [entry]);
+    }
+    return days;
+  }, [entries]);
   const selectedDate = selection.startsWith(month) ? selection : bounds.from;
-  const selected = entries.filter((entry) => entry.date === selectedDate);
+  const selected = entriesByDate.get(selectedDate) ?? [];
   const dateFormat = new Intl.DateTimeFormat(
     locale === "en" ? "en-GB" : "vi-VN",
     { dateStyle: "full", timeZone: "UTC" },
@@ -137,7 +146,7 @@ export function WorkspaceMonthCalendar({
         <h3 aria-live="polite" className="text-lg font-bold capitalize">
           {monthTitle}
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
           <Button
             size="icon"
             variant="outline"
@@ -230,7 +239,7 @@ export function WorkspaceMonthCalendar({
               </div>
             ))}
             {monthCells(month).map((date) => {
-              const dayEntries = entries.filter((entry) => entry.date === date);
+              const dayEntries = entriesByDate.get(date) ?? [];
               const inMonth = date.startsWith(month);
               return (
                 <button
@@ -242,7 +251,7 @@ export function WorkspaceMonthCalendar({
                   aria-current={date === today ? "date" : undefined}
                   aria-label={`${dateFormat.format(new Date(`${date}T00:00:00Z`))} · ${t("{0} mục", { "0": dayEntries.length })}`}
                   onClick={() => setSelection(date)}
-                  className={`calendar-day flex min-w-0 flex-col items-stretch justify-start border-b border-r border-border p-1.5 text-left align-top transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring sm:p-2 ${inMonth ? "hover:bg-muted" : "bg-muted/40 text-muted-foreground"} ${selectedDate === date ? "bg-accent-soft ring-2 ring-inset ring-primary" : ""}`}
+                  className={`calendar-day flex min-w-0 flex-col items-stretch justify-start border-b border-r border-border px-0.5 py-1 text-left align-top transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring sm:p-2 ${inMonth ? "hover:bg-muted" : "bg-muted/40 text-muted-foreground"} ${selectedDate === date ? "bg-accent-soft ring-2 ring-inset ring-primary" : ""}`}
                 >
                   <span
                     className={`inline-flex size-7 items-center justify-center rounded-full text-sm font-bold ${date === today ? "bg-primary text-primary-foreground" : ""}`}
@@ -250,43 +259,28 @@ export function WorkspaceMonthCalendar({
                     {Number(date.slice(8))}
                   </span>
                   {!!dayEntries.length && (
-                    <>
-                      <span className="mt-1 block text-center text-xs font-bold sm:hidden">
-                        {dayEntries.length}
-                        <span className="sr-only"> {t("mục")}</span>
-                      </span>
-                      <span className="mt-1 hidden space-y-1 sm:block">
-                        {dayEntries.slice(0, 2).map((entry) => (
-                          <span
-                            key={entry.id}
-                            data-calendar-tone={entryTone(entry)}
-                            className="block truncate rounded-md border border-border bg-surface px-1 py-0.5 text-xs"
-                          >
-                            <span className="font-bold">
-                              {entry.time ?? "—"}
-                            </span>{" "}
+                    <span className="mt-1 grid min-w-0 gap-0.5 sm:gap-1">
+                      {dayEntries.slice(0, 2).map((entry) => (
+                        <span
+                          key={entry.id}
+                          data-slot="calendar-event"
+                          data-calendar-tone={entryTone(entry)}
+                          className="calendar-event block min-w-0 truncate rounded-md border border-border bg-surface"
+                        >
+                          <span className="calendar-event-time font-bold tabular-nums">
+                            {entry.time ?? "—"}
+                          </span>{" "}
+                          <span className="calendar-event-title">
                             {entry.title ?? t("Buổi nhóm tự chọn")}
                           </span>
-                        ))}
-                        {dayEntries.length > 2 && (
-                          <span className="block text-xs font-semibold">
-                            +{dayEntries.length - 2}
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        aria-hidden="true"
-                        className="mt-1 flex justify-center gap-1 sm:hidden"
-                      >
-                        {[...new Set(dayEntries.map(entryTone))].map((tone) => (
-                          <span
-                            key={tone}
-                            data-calendar-tone={tone}
-                            className="size-1.5 rounded-full border border-foreground"
-                          />
-                        ))}
-                      </span>
-                    </>
+                        </span>
+                      ))}
+                      {dayEntries.length > 2 && (
+                        <span className="calendar-more block truncate font-semibold tabular-nums">
+                          +{dayEntries.length - 2}
+                        </span>
+                      )}
+                    </span>
                   )}
                 </button>
               );
