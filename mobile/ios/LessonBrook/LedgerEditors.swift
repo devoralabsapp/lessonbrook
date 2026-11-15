@@ -146,14 +146,13 @@ struct ClassEditor: View {
                 }
                 WorkspaceSection(store.t("Weekly schedule")) {
                     ForEach($slots) { $slot in
-                        HStack {
+                        HStack(alignment: .bottom, spacing: 12) {
                             WorkspaceChoice(label: store.t("Day"), selection: $slot.weekday,
-                                options: (1...7).map { ($0, weekday($0, locale: store.language)) }, compact: true)
+                                options: (1...7).map { ($0, weekday($0, locale: store.language)) })
                             WorkspaceDatePicker(store.t("Start time"), selection: $slot.time, displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                            Spacer()
                             Button(role: .destructive) { slots.removeAll { $0.id == slot.id } } label: {
                                 Image(systemName: "minus.circle")
+                                    .frame(width: 44, height: 44)
                             }.buttonStyle(.borderless).accessibilityLabel(store.t("Remove time"))
                         }
                     }

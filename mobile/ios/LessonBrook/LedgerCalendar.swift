@@ -91,10 +91,15 @@ struct LedgerMonth: View {
                 ForEach(days, id: \.self) { date in
                     let day = LedgerDate.text(date)
                     let inMonth = LedgerDate.calendar.isDate(date, equalTo: month, toGranularity: .month)
+                    let isSelected = selected == day
                     let entries = schedule[day] ?? []
                     Button { selected = day } label: {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(date.formatted(.dateTime.day().locale(store.language))).font(.caption.bold())
+                            Text(date.formatted(.dateTime.day().locale(store.language)))
+                                .font(.caption.bold())
+                                .frame(minWidth: 22, minHeight: 20)
+                                .foregroundStyle(isSelected ? store.palette.onAccent : store.palette.foreground.opacity(inMonth ? 1 : 0.55))
+                                .background(isSelected ? store.palette.accent : .clear, in: Capsule())
                             ForEach(Array(entries.prefix(2))) { event in
                                 VStack(alignment: .leading, spacing: 0) {
                                     Text(event.time.isEmpty ? "—" : event.time).font(.system(size: 10).monospacedDigit().bold())
@@ -109,13 +114,19 @@ struct LedgerMonth: View {
                         }
                         .padding(2)
                         .frame(maxWidth: .infinity, minHeight: 94, alignment: .topLeading)
-                        .foregroundStyle(store.palette.foreground.opacity(inMonth ? 1 : 0.55))
-                        .background(selected == day ? store.palette.recordAccent.opacity(0.38) : store.palette.surface)
+                        .foregroundStyle(isSelected ? store.palette.dashboardInk : store.palette.foreground.opacity(inMonth ? 1 : 0.55))
+                        .background(isSelected ? Color.white : store.palette.surface)
+                        .overlay {
+                            if isSelected {
+                                Rectangle().strokeBorder(store.palette.controlTint, lineWidth: 2)
+                            }
+                        }
                     }
                     .disabled(!inMonth).buttonStyle(.plain)
                     .accessibilityLabel(date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(store.language))
                         + " · \(entries.count) " + store.t("events"))
-                    .accessibilityAddTraits(selected == day ? .isSelected : [])
+                    .accessibilityIdentifier("calendar-day-\(day)")
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
             .background(store.palette.border.opacity(0.5))

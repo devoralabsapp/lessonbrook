@@ -70,7 +70,7 @@ struct NativeSettings: View {
     @State private var exporting = false
 
     var body: some View {
-        WorkspaceScroll {
+        WorkspaceScroll(eager: true) {
             WorkspaceSection(store.t("Teacher profile")) {
                 WorkspaceField(store.t("Display name"), text: $displayName)
                 if let email = profile?.string("email") { Text(email).foregroundStyle(.secondary) }
@@ -89,24 +89,26 @@ struct NativeSettings: View {
                         (!bankBin.isEmpty && !Self.banks.contains(where: { $0.0 == bankBin }) ? [(bankBin, bankBin)] : []))
                 WorkspaceField(store.t("Account number"), text: $account).keyboardType(.numberPad)
                 WorkspaceField(store.t("Account holder"), text: $accountName)
-                Button(store.t("Save bank details")) {
-                    Task {
-                        await perform {
-                            _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: [
-                                "bankTransfer": .object(["bankBin": .string(bankBin), "accountNumber": .string(account),
-                                                         "accountName": .string(accountName)])
-                            ])
+                WorkspaceActionRows {
+                    Button(store.t("Save bank details")) {
+                        Task {
+                            await perform {
+                                _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: [
+                                    "bankTransfer": .object(["bankBin": .string(bankBin), "accountNumber": .string(account),
+                                                             "accountName": .string(accountName)])
+                                ])
+                            }
                         }
-                    }
-                }.disabled(store.saving || bankBin.count != 6 || account.count < 6 || accountName.isEmpty)
-                Button(store.t("Remove bank details"), role: .destructive) {
-                    Task {
-                        await perform {
-                            _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: ["bankTransfer": .null])
-                            bankBin = ""; account = ""; accountName = ""
+                    }.disabled(store.saving || bankBin.count != 6 || account.count < 6 || accountName.isEmpty)
+                    Button(store.t("Remove bank details"), role: .destructive) {
+                        Task {
+                            await perform {
+                                _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: ["bankTransfer": .null])
+                                bankBin = ""; account = ""; accountName = ""
+                            }
                         }
-                    }
-                }.disabled(store.saving || profile?.object("bankTransfer") == nil)
+                    }.disabled(store.saving || profile?.object("bankTransfer") == nil)
+                }
             }
             if !store.demo {
                 WorkspaceSection(store.t("Payment notifications")) { BankShortcutForm(accountNumber: account) }
@@ -116,19 +118,23 @@ struct NativeSettings: View {
                                 options: [("en", "English"), ("vi", "Tiếng Việt")])
             }
             WorkspaceSection(store.t("Your data")) {
-                Button(store.t(exporting ? "Preparing export…" : "Export all data")) { Task { await exportData() } }
-                    .disabled(exporting || store.saving)
-                Link(store.t("Help & support"), destination: MobileSignIn.origin.appending(path: "help"))
-                Link(store.t("Data & privacy"), destination: MobileSignIn.origin.appending(path: "privacy"))
+                WorkspaceActionRows {
+                    Button(store.t(exporting ? "Preparing export…" : "Export all data")) { Task { await exportData() } }
+                        .disabled(exporting || store.saving)
+                    Link(store.t("Help & support"), destination: MobileSignIn.origin.appending(path: "help"))
+                    Link(store.t("Data & privacy"), destination: MobileSignIn.origin.appending(path: "privacy"))
+                }
             }
             WorkspaceSection {
-                if store.demo {
-                    Button(store.t("Sign in")) { Task { await store.beginSignIn(open: openURL) } }
-                    Button(store.t("Exit demo")) { Task { await store.signOut() } }
-                } else {
-                    Button(store.t("Sign out")) { Task { await store.signOut() } }
-                    Button(store.t("Sign out on all devices")) { disconnectAll = true }
-                    Button(store.t("Delete account"), role: .destructive) { confirmation = ""; deleting = true }
+                WorkspaceActionRows {
+                    if store.demo {
+                        Button(store.t("Sign in")) { Task { await store.beginSignIn(open: openURL) } }
+                        Button(store.t("Exit demo")) { Task { await store.signOut() } }
+                    } else {
+                        Button(store.t("Sign out")) { Task { await store.signOut() } }
+                        Button(store.t("Sign out on all devices")) { disconnectAll = true }
+                        Button(store.t("Delete account"), role: .destructive) { confirmation = ""; deleting = true }
+                    }
                 }
             }
             if let error { Text(error).foregroundStyle(.red) }
@@ -136,7 +142,6 @@ struct NativeSettings: View {
         }
         .scrollContentBackground(.hidden)
         .background(store.palette.background)
-        .navigationTitle(store.t("Account settings"))
         .task { await load() }
         .confirmationDialog(store.t("Sign out on all devices"), isPresented: $disconnectAll) {
             Button(store.t("Sign out"), role: .destructive) { Task { await store.signOut(allDevices: true) } }
@@ -247,16 +252,20 @@ struct BankShortcutForm: View {
         if let key {
             Text(store.t("Save this Shortcut authorization key now. It is shown once.")).font(.caption)
             Text(key).font(.caption.monospaced()).textSelection(.enabled).privacySensitive()
-            ShareLink(item: key) { Text(store.t("Save Shortcut key")) }
-            Button(store.t("Hide key")) { self.key = nil }
+            WorkspaceActionRows {
+                ShareLink(item: key) { Text(store.t("Save Shortcut key")) }
+                Button(store.t("Hide key")) { self.key = nil }
+            }
         }
-        Button(store.t(connection == nil ? "Connect Shortcut" : "Replace Shortcut key")) { Task { await connect() } }
-            .disabled(accountNumber.count < 6 || store.saving)
-        if connection != nil {
-            Button(store.t("Disconnect Shortcut"), role: .destructive) { disconnect = true }
+        WorkspaceActionRows {
+            Button(store.t(connection == nil ? "Connect Shortcut" : "Replace Shortcut key")) { Task { await connect() } }
+                .disabled(accountNumber.count < 6 || store.saving)
+            if connection != nil {
+                Button(store.t("Disconnect Shortcut"), role: .destructive) { disconnect = true }
+            }
+            Link(store.t("Shortcut setup"), destination: MobileSignIn.origin.appending(path: "help"))
         }
         if let error { Text(error).font(.footnote).foregroundStyle(.red) }
-        Link(store.t("Shortcut setup"), destination: MobileSignIn.origin.appending(path: "help"))
         EmptyView().task { await load() }
             .confirmationDialog(store.t("Disconnect Shortcut"), isPresented: $disconnect) {
                 Button(store.t("Disconnect"), role: .destructive) {

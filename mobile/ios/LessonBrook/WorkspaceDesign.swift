@@ -214,12 +214,37 @@ struct WorkspaceCheckbox: ToggleStyle {
     }
 }
 
+/// Keeps actions on one line when they fit, with a stacked fallback.
+struct WorkspaceActionRows<Content: View>: View {
+    var centered = false
+    var spacing: CGFloat = 8
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: spacing, content: content)
+                .fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: centered ? .center : .leading, spacing: spacing, content: content)
+        }
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+    }
+}
+
 struct WorkspaceScroll<Content: View>: View {
     @EnvironmentObject private var store: WorkspaceStore
+    var eager = false
     @ViewBuilder let content: () -> Content
     var body: some View {
-        ScrollView { LazyVStack(alignment: .leading, spacing: 16) { content() }.padding(12) }
-            .font(store.palette.font()).foregroundStyle(store.palette.foreground).background(store.palette.background)
+        ScrollView {
+            Group {
+                if eager {
+                    VStack(alignment: .leading, spacing: 16, content: content)
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 16, content: content)
+                }
+            }.padding(12)
+        }
+        .font(store.palette.font()).foregroundStyle(store.palette.foreground).background(store.palette.background)
     }
 }
 

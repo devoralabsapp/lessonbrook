@@ -542,12 +542,12 @@ struct LedgerRow: View {
                 }
             }.frame(maxWidth: .infinity, alignment: note ? .center : .leading)
             if note { Divider().overlay(p.border) }
-            HStack(spacing: 7) {
+            WorkspaceActionRows(centered: note, spacing: 7) {
                 LedgerBadge(code: item.text("status"))
                 if let payment { LedgerBadge(code: payment) }
                 Button(store.t("Edit"), action: edit).buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                     .disabled(item.string("billedStatementId") != nil || store.saving)
-            }.frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
     private var statement: some View {

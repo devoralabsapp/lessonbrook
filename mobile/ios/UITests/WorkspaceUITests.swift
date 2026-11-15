@@ -142,6 +142,66 @@ final class WorkspaceUITests: XCTestCase {
     }
 
     @MainActor
+    func testWorkspaceChromeWeeklyFieldsAndCalendarSelection() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-workspace.locale", "en"]
+        app.launch()
+        XCTAssertTrue(app.buttons["View demo"].waitForExistence(timeout: 20))
+        app.buttons["View demo"].tap()
+        let dashboard = app.buttons["workspace-tab-dashboard"]
+        XCTAssertTrue(dashboard.waitForExistence(timeout: 20))
+
+        app.buttons["Account settings"].tap()
+        let profile = app.staticTexts["Teacher profile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts.matching(identifier: "Account settings").count, 1)
+        XCTAssertEqual(app.buttons.matching(identifier: "Back").count, 1)
+        let exit = app.buttons["Exit demo"]
+        for _ in 0..<6 where !exit.isHittable { app.swipeUp() }
+        XCTAssertTrue(exit.isHittable)
+        XCTAssertLessThanOrEqual(exit.frame.maxY, dashboard.frame.minY)
+        let signIn = app.buttons["Sign in"]
+        XCTAssertEqual(exit.frame.midY, signIn.frame.midY, accuracy: 2)
+        app.buttons["Back"].tap()
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = app.buttons["calendar-day-" + formatter.string(from: Date())]
+        for tab in ["students", "classes", "lessons", "statements"] {
+            app.buttons["workspace-tab-" + tab].tap()
+            let scroll = app.scrollViews.firstMatch
+            XCTAssertTrue(scroll.waitForExistence(timeout: 10))
+            XCTAssertLessThanOrEqual(scroll.frame.maxY, dashboard.frame.minY)
+            if tab == "classes" {
+                app.buttons["Add class"].tap()
+                tapVisible(app.buttons["Add weekly time"], app: app)
+                let day = app.buttons["Day"].firstMatch
+                let time = app.buttons["Start time"].firstMatch
+                XCTAssertTrue(day.waitForExistence(timeout: 10))
+                XCTAssertTrue(time.exists)
+                XCTAssertEqual(day.frame.midY, time.frame.midY, accuracy: 2)
+                tapVisible(app.buttons["Cancel"].firstMatch, app: app)
+                app.buttons["Discard changes"].tap()
+            }
+            if tab == "classes" || tab == "lessons" {
+                let calendar = app.buttons["Month calendar"]
+                XCTAssertTrue(calendar.waitForExistence(timeout: 10))
+                for _ in 0..<4 where !calendar.isHittable { app.swipeDown() }
+                calendar.tap()
+                for _ in 0..<6 where !today.isHittable { app.swipeUp() }
+                XCTAssertTrue(today.isHittable)
+                XCTAssertTrue(today.isSelected)
+                let shot = XCTAttachment(screenshot: app.screenshot())
+                shot.name = "Highlighted current day in " + tab
+                shot.lifetime = .keepAlways
+                add(shot)
+            }
+        }
+    }
+
+    @MainActor
     func testAllThemesAndVietnameseUseNativeScreens() {
         let app = XCUIApplication()
         app.launchArguments = ["-workspace.locale", "vi"]

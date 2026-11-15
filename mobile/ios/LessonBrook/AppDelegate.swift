@@ -97,19 +97,26 @@ struct WorkspaceTabs: View {
     private let logger = Logger(subsystem: "tech.devoralabs.lessonbrook", category: "performance")
 
     var body: some View {
-        TabView(selection: $selection) {
-            ForEach(WorkspaceTab.allCases, id: \.self) { tab in
-                VStack(spacing: 0) {
-                header(tab)
-                NavigationStack(path: Binding(get: { paths[tab] ?? [] }, set: { paths[tab] = $0 })) {
-                    screen(tab)
-                        .toolbar(.hidden, for: .navigationBar)
-                        .navigationDestination(for: WorkspaceRoute.self, destination: destination)
+        VStack(spacing: 0) {
+            TabView(selection: $selection) {
+                ForEach(WorkspaceTab.allCases, id: \.self) { tab in
+                    VStack(spacing: 0) {
+                        header(tab)
+                        NavigationStack(path: Binding(get: { paths[tab] ?? [] }, set: { paths[tab] = $0 })) {
+                            screen(tab)
+                                .navigationDestination(for: WorkspaceRoute.self) { route in
+                                    destination(route).toolbar(.hidden, for: .navigationBar)
+                                }
+                                .toolbar(.hidden, for: .navigationBar)
+                        }
+                    }
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(tab)
                 }
-                .toolbar(.hidden, for: .tabBar)
-                }
-                .tag(tab)
             }
+            .frame(maxHeight: .infinity)
+            .clipped()
+            tabs
         }
         .sheet(isPresented: $appearance) { NativeAppearance() }
         .tint(store.palette.controlTint)
@@ -123,7 +130,6 @@ struct WorkspaceTabs: View {
         .onChange(of: selection) { tab in
             if tab == .dashboard { Task { await store.refreshDashboard() } }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { tabs }
         .task {
             while !Task.isCancelled {
                 do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { return }
@@ -150,8 +156,10 @@ struct WorkspaceTabs: View {
                     HStack(spacing: 6) {
                         Button { appearance = true } label: { Image(systemName: "paintpalette").frame(width: 20, height: 20) }
                             .accessibilityLabel(store.t("Choose a theme"))
-                        Button { push(.settings, in: tab) } label: { Image(systemName: "gearshape").frame(width: 20, height: 20) }
-                            .accessibilityLabel(store.t("Account settings"))
+                        if paths[tab]?.last != .settings {
+                            Button { push(.settings, in: tab) } label: { Image(systemName: "gearshape").frame(width: 20, height: 20) }
+                                .accessibilityLabel(store.t("Account settings"))
+                        }
                     }.buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true)).disabled(store.saving)
                 }
             }.frame(height: 52).padding(.horizontal, 12)
