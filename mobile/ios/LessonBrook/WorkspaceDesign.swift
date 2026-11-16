@@ -9,6 +9,7 @@ extension WorkspacePalette {
     }
     var fieldRadius: CGFloat { min(radius, 16) }
     var secondaryInk: Color { foreground.opacity(dark ? 0.82 : 0.78) }
+    var destructiveInk: Color { Self.color(dark ? 0xff9298 : 0xa72731) }
 }
 
 struct WorkspaceOutlineButton: ButtonStyle {

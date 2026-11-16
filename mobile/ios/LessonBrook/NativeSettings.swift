@@ -188,16 +188,23 @@ struct NativeSettings: View {
                     }
                 }
             }
-            WorkspaceSection {
-                WorkspaceActionRows {
-                    if store.demo {
+            if store.demo {
+                WorkspaceSection {
+                    WorkspaceActionRows {
                         Button(store.t("Sign in")) { Task { await store.beginSignIn(open: openURL) } }
                         Button(store.t("Exit demo")) { Task { await store.signOut() } }
-                    } else {
-                        Button(store.t("Sign out")) { Task { await store.signOut() } }
-                        Button(store.t("Sign out on all devices")) { disconnectAll = true }
                     }
                 }
+            } else {
+                WorkspaceActionRows {
+                    Button(role: .destructive) { Task { await store.signOut() } } label: {
+                        signOutLabel("Sign out")
+                    }
+                    Button(role: .destructive) { disconnectAll = true } label: {
+                        signOutLabel("Sign out on all devices")
+                    }
+                }
+                .buttonStyle(.plain)
             }
         }
         .scrollContentBackground(.hidden)
@@ -256,6 +263,16 @@ struct NativeSettings: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity)
+    }
+
+    private func signOutLabel(_ title: String) -> some View {
+        let p = store.palette
+        return Text(store.t(title))
+            .font(p.font(14, .bold))
+            .foregroundStyle(p.destructiveInk)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(p.destructiveInk.opacity(p.dark ? 0.14 : 0.08))
     }
 
     private func infoLink(_ title: String, url: URL) -> some View {
@@ -343,6 +360,7 @@ struct BankShortcutForm: View {
     @State private var working = false
     @State private var manage = false
     @State private var disconnect = false
+    private let setupURL = MobileSignIn.origin.appending(path: "help")
 
     var body: some View {
         let p = store.palette
@@ -373,23 +391,26 @@ struct BankShortcutForm: View {
                 .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                 .accessibilityValue(store.t(manage ? "Expanded" : "Collapsed"))
                 if manage {
-                    WorkspaceActionRows {
-                        Button(store.t("Replace Shortcut key")) { Task { await connect() } }
-                            .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
-                            .disabled(accountNumber.count < 6 || working || store.saving)
-                        setupLink
-                    }
-                    Button(store.t("Disconnect Shortcut"), role: .destructive) { disconnect = true }
-                        .font(p.font(14, .semibold)).foregroundStyle(.red)
-                        .frame(minHeight: 44, alignment: .leading)
+                    HStack(spacing: 8) {
+                        Button { Task { await connect() } } label: {
+                            managementLabel("Replace Shortcut key")
+                        }
+                        .disabled(accountNumber.count < 6 || working || store.saving)
+                        Link(destination: setupURL) { managementLabel("Shortcut setup") }
+                        Button(role: .destructive) { disconnect = true } label: {
+                            managementLabel("Disconnect Shortcut").foregroundStyle(p.destructiveInk)
+                        }
                         .disabled(working || store.saving)
+                    }
+                    .buttonStyle(.plain)
                 }
             } else if loaded {
                 WorkspaceActionRows {
                     Button(store.t("Connect Shortcut")) { Task { await connect() } }
                         .buttonStyle(WorkspaceActionButton(palette: p))
                         .disabled(accountNumber.count < 6 || working || store.saving)
-                    setupLink
+                    Link(store.t("Shortcut setup"), destination: setupURL)
+                        .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                 }
             } else if error == nil || working {
                 ProgressView().tint(p.controlTint)
@@ -408,9 +429,14 @@ struct BankShortcutForm: View {
         }
     }
 
-    private var setupLink: some View {
-        Link(store.t("Shortcut setup"), destination: MobileSignIn.origin.appending(path: "help"))
-            .buttonStyle(WorkspaceOutlineButton(palette: store.palette, compact: true))
+    private func managementLabel(_ title: String) -> some View {
+        Text(store.t(title))
+            .font(store.palette.font(13, .semibold))
+            .underline()
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(Rectangle())
     }
 
     private func keySheet(_ key: String) -> some View {

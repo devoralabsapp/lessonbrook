@@ -6,6 +6,8 @@ Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) f
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
 
+- **iOS 0.5.10, build 28**. The three connected Shortcut actions appear as underlined links in one row. Sign-out actions have a square-cornered red tint and sit outside the settings cards.
+
 - **iOS 0.5.9, build 27**. Classes and Lessons Notes sit straight. Class cards match the height of their neighbor in each row. Lesson and payment states start on the left with an Edit action using the same capsule outline.
 
 - **iOS 0.5.8, build 26**. Dashboard and the full schedule share the same themed lesson rows. Bank transfer actions sit side by side, and Delete account appears alongside Export all data for signed-in teachers, with typed confirmation and Google reauthentication.
