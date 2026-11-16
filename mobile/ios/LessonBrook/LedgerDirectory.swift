@@ -523,7 +523,7 @@ private struct LedgerBadgeFrame: ViewModifier {
 
     func body(content: Content) -> some View {
         content.font(palette.font(compact ? 11 : 12, .bold))
-            .padding(.horizontal, compact ? 5 : 7).padding(.vertical, compact ? 2 : 3)
+            .padding(.horizontal, compact ? 4 : 7).padding(.vertical, compact ? 2 : 3)
             .foregroundStyle(ink)
             .background(fill, in: Capsule())
             .overlay(Capsule().stroke(palette.border, lineWidth: palette.outline))
@@ -657,20 +657,29 @@ struct LedgerRow: View {
     @ViewBuilder private var lesson: some View {
         if compactLessonNote {
             VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .top, spacing: 4) {
+                    lessonName
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    lessonEdit
+                }
+                lessonGroupLink
                 HStack(alignment: .center, spacing: 6) {
                     LessonDateBadge(date: item.text("sessionDate"), compact: true)
-                    lessonName
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(dateText(item.text("sessionDate"))).font(p.font(11))
+                        if !item.text("startTime").isEmpty {
+                            Text(item.text("startTime")).font(p.font(11, .semibold))
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     lessonSelection
                 }
-                lessonGroupLink
-                Text(lessonDateTime).font(p.font(11)).fixedSize(horizontal: false, vertical: true)
                 lessonPriceAndDuration(size: 11)
                 Spacer(minLength: 0)
                 Divider().overlay(p.border)
                 HStack(spacing: 3) {
-                    VStack(alignment: .leading, spacing: 3) { lessonBadges(compact: true) }
-                    lessonEdit
+                    lessonBadges(compact: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .contain)
@@ -774,12 +783,14 @@ struct LedgerRow: View {
             Button(action: edit) {
                 Text(store.t("Edit"))
                     .modifier(LedgerBadgeFrame(palette: p, fill: p.surface, ink: p.foreground, compact: compactLessonNote))
-                    .frame(minWidth: 44, minHeight: 44)
+                    .frame(minWidth: compactLessonNote ? 28 : 44, minHeight: 44, alignment: compactLessonNote ? .topTrailing : .center)
+                    .padding(.top, compactLessonNote ? 2 : 0)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .opacity(editDisabled ? 0.45 : 1)
             .disabled(editDisabled)
+            .accessibilityIdentifier("lesson-note-edit-\(item.id)")
         } else {
             Button(action: edit) { Text(store.t("Edit")).frame(minWidth: 36) }
                 .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true, cornerRadius: min(8, p.fieldRadius)))

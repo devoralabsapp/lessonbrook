@@ -228,16 +228,36 @@ final class WorkspaceUITests: XCTestCase {
         for _ in 0..<4 where !status.isHittable { app.swipeUp() }
         XCTAssertTrue(status.isHittable)
         let payment = actions.staticTexts.matching(NSPredicate(format: "label IN %@", ["Paid", "Unpaid", "No charge"])).firstMatch
-        let edit = actions.buttons["Edit"]
+        let id = String(actions.identifier.dropFirst("lesson-note-actions-".count))
+        let note = notes["ledger-note-" + id]
+        let edit = app.buttons["lesson-note-edit-" + id]
         XCTAssertTrue(payment.exists)
         XCTAssertTrue(edit.exists)
         XCTAssertEqual(status.frame.minX, actions.frame.minX, accuracy: 8)
-        XCTAssertEqual(status.frame.minX, payment.frame.minX, accuracy: 2)
-        XCTAssertLessThan(status.frame.maxY, payment.frame.minY)
-        XCTAssertLessThanOrEqual(max(status.frame.maxX, payment.frame.maxX), edit.frame.minX)
+        XCTAssertEqual(status.frame.midY, payment.frame.midY, accuracy: 2)
+        XCTAssertLessThanOrEqual(status.frame.maxX, payment.frame.minX)
+        XCTAssertLessThan(edit.frame.maxY, actions.frame.minY)
         XCTAssertGreaterThanOrEqual(edit.frame.height, 44)
         XCTAssertLessThanOrEqual(edit.frame.maxX, actions.frame.maxX)
+        XCTAssertTrue(note.exists)
         capture("Compact lesson note actions", app: app)
+
+        app.buttons["Language"].tap()
+        app.buttons["Tiếng Việt"].tap()
+        let localizedActions = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "lesson-note-actions-"))
+            .containing(.staticText, identifier: "Đã dạy").firstMatch
+        let localizedStatus = localizedActions.staticTexts["Đã dạy"]
+        XCTAssertTrue(localizedStatus.waitForExistence(timeout: 15))
+        for _ in 0..<4 where !localizedStatus.isHittable { app.swipeUp() }
+        let localizedPayment = localizedActions.staticTexts.matching(NSPredicate(format: "label IN %@", ["Đã thu đủ", "Chưa thu", "Không tính phí"])).firstMatch
+        let localizedID = String(localizedActions.identifier.dropFirst("lesson-note-actions-".count))
+        let localizedEdit = app.buttons["lesson-note-edit-" + localizedID]
+        XCTAssertTrue(localizedPayment.exists)
+        XCTAssertEqual(localizedStatus.frame.midY, localizedPayment.frame.midY, accuracy: 2)
+        XCTAssertLessThanOrEqual(localizedStatus.frame.maxX, localizedPayment.frame.minX)
+        XCTAssertLessThan(localizedEdit.frame.maxY, localizedActions.frame.minY)
+        capture("Vietnamese compact lesson notes", app: app)
     }
 
     @MainActor
