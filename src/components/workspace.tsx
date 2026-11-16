@@ -1179,7 +1179,13 @@ export function Workspace({
                             : formatVnd(s.rateVnd, locale)}
                       </strong>
                       {s.durationMinutes ? (
-                        <span className="ml-1 inline-block">
+                        <span
+                          className={
+                            showNotes
+                              ? "ml-1 inline-block whitespace-nowrap"
+                              : "ml-1 inline-block"
+                          }
+                        >
                           {t(" · {0} phút", { "0": s.durationMinutes })}
                         </span>
                       ) : null}

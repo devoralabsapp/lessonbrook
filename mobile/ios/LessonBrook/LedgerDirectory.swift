@@ -769,15 +769,31 @@ struct LedgerRow: View {
         [dateText(item.text("sessionDate")), item.text("startTime")].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
-    private func lessonPriceAndDuration(size: CGFloat) -> some View {
+    @ViewBuilder private func lessonPriceAndDuration(size: CGFloat) -> some View {
         let price = item.flag("billable") ? store.money(item.int(item.text("status") == "completed" ? "amountVnd" : "rateVnd")) : store.t("Free")
         let amount = Text(compactLessonNote ? price : "· " + price).font(p.font(size, .bold))
         let duration = item.int("durationMinutes")
-        return HStack(spacing: 3) {
-            amount.fixedSize(horizontal: compactLessonNote, vertical: false)
-            if duration > 0 {
-                Text("· \(duration) " + store.t("minutes")).font(p.font(size))
-                    .fixedSize(horizontal: false, vertical: compactLessonNote)
+        let durationLabel = "· \(duration) " + store.t("minutes")
+        if compactLessonNote && p.fontDesign == .monospaced && duration > 0 {
+            let metadata = HStack(spacing: 3) {
+                Text(price).bold()
+                Text(durationLabel)
+            }.fixedSize(horizontal: true, vertical: false)
+            ViewThatFits(in: .horizontal) {
+                metadata.font(p.font(size))
+                metadata.font(p.font(size - 3))
+                VStack(alignment: .leading, spacing: 1) {
+                    amount
+                    Text(durationLabel).font(p.font(size)).lineLimit(1).minimumScaleFactor(0.8)
+                }
+            }
+        } else {
+            HStack(spacing: 3) {
+                amount.fixedSize(horizontal: compactLessonNote, vertical: false)
+                if duration > 0 {
+                    Text(durationLabel).font(p.font(size))
+                        .fixedSize(horizontal: false, vertical: compactLessonNote)
+                }
             }
         }
     }

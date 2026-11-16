@@ -87,6 +87,31 @@ test("notes share filters, actions and selection with the four workspace lists",
       await expect(complete).toBeEnabled();
       await complete.click();
       await expect(papers).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Clear filters", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Choose a theme", exact: true })
+        .click();
+      await page.getByRole("radio", { name: "Mono OS" }).check();
+      await page
+        .getByRole("button", { name: "Save appearance", exact: true })
+        .click();
+      await page.getByRole("button", { name: "Close", exact: true }).click();
+      await page.setViewportSize({ width: 320, height: 800 });
+      const duration = papers
+        .getByText("· 60 minutes", { exact: true })
+        .first();
+      await expect(duration).toBeVisible();
+      await expect(duration).toHaveCSS("white-space", "nowrap");
+      expect(
+        await duration.evaluate((span) => {
+          const text = document.createRange();
+          text.selectNodeContents(span);
+          return text.getClientRects().length;
+        }),
+      ).toBe(1);
+      await page.setViewportSize({ width: 360, height: 800 });
     }
     if (tab === "statements") {
       const first = papers.first();

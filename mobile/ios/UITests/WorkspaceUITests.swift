@@ -277,6 +277,27 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(nameGap, -1)
         XCTAssertLessThanOrEqual(nameGap, 6)
         capture("Vietnamese student and class names in lesson notes", app: app)
+
+        app.buttons["Ngôn ngữ"].tap()
+        app.buttons["English"].tap()
+        app.buttons["Choose a theme"].tap()
+        let panel = app.scrollViews["workspace-appearance"]
+        panel.buttons["theme-option-mono-os"].tap()
+        let saveTheme = panel.buttons["Save appearance"]
+        for _ in 0..<4 where !saveTheme.isHittable { panel.swipeUp() }
+        saveTheme.tap()
+        panel.buttons["Close"].tap()
+        let monoNote = notes.containing(.staticText, identifier: "· 60 minutes")
+            .containing(.staticText, identifier: "₫200,000").firstMatch
+        let duration = monoNote.staticTexts["· 60 minutes"]
+        XCTAssertTrue(duration.waitForExistence(timeout: 15))
+        for _ in 0..<6 where !duration.isHittable { app.swipeUp() }
+        XCTAssertTrue(duration.isHittable)
+        let tuition = monoNote.staticTexts["₫200,000"]
+        XCTAssertEqual(duration.frame.midY, tuition.frame.midY, accuracy: 2)
+        XCTAssertLessThan(duration.frame.height, 21)
+        XCTAssertLessThan(duration.frame.maxX, monoNote.frame.maxX)
+        capture("Mono OS duration fits on one line in lesson notes", app: app)
     }
 
     @MainActor

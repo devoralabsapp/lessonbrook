@@ -6,6 +6,8 @@ Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) f
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
 
+- **iOS 0.5.18, build 36, and web**. Mono OS lesson Notes fit ordinary tuition and duration values on the same line in a two-column iOS grid. Longer combinations keep the duration together on the next line. The web Notes also keep each duration together.
+
 - **iOS 0.5.17, build 35, and web**. Mark as complete opens a prefilled Record lesson editor for planned lessons. Saving updates the original lesson. Group completion keeps individual billing settings and prior attendance outcomes. When a statement locks the shared lesson, unbilled planned attendance can still be completed individually.
 
 - **iOS 0.5.16, build 34, and web**. Close in the theme picker discards the current preview. Student detail groups its three actions in one row at standard text sizes. Lesson attendance shows the amount under the student name and uses matching rectangular controls above the statement link.
