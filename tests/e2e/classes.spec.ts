@@ -741,12 +741,14 @@ test("phone lesson detail and student actions align in the demo", async ({
   await assertRow();
 
   await page.goto("/demo/appearance");
+  const defaultTheme = page.locator(
+    '[data-workspace][data-theme="playful-retro"]',
+  );
+  await expect(defaultTheme).toBeVisible();
   await page.getByRole("radio", { name: "Afterhours FM" }).check();
   await page.getByRole("button", { name: "Đóng", exact: true }).click();
   await expect(page).toHaveURL(/\/demo$/);
-  await expect(
-    page.locator('[data-workspace][data-theme="mono-os"]'),
-  ).toBeVisible();
+  await expect(defaultTheme).toBeVisible();
 });
 
 test("Playful Retro: consistent panels, forms and navigation at phone/desktop widths, reduced motion and light statement boundary", async ({
