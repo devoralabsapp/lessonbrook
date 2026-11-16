@@ -73,7 +73,6 @@ struct LedgerMonth: View {
 
     var body: some View {
         let schedule = events
-        let line = 1 / displayScale
         let p = store.palette
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -92,66 +91,80 @@ struct LedgerMonth: View {
             if kind == .sessions {
                 HStack { ForEach(["planned", "completed", "cancelled"], id: \.self) { LedgerBadge(code: $0) } }
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: line), count: 7), spacing: line) {
-                ForEach(1...7, id: \.self) { index in
-                    Text(weekday(index, locale: store.language)).font(.caption.bold())
-                        .lineLimit(1).minimumScaleFactor(0.65)
-                        .frame(maxWidth: .infinity).padding(.vertical, 6)
-                        .background { Rectangle().fill(store.palette.background) }
-                }
-                ForEach(days, id: \.self) { date in
-                    let day = LedgerDate.text(date)
-                    let inMonth = LedgerDate.calendar.isDate(date, equalTo: month, toGranularity: .month)
-                    let isSelected = selected == day
-                    let entries = schedule[day] ?? []
-                    Button { selected = day } label: {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(String(LedgerDate.calendar.component(.day, from: date)))
-                                .font(.caption.bold())
-                                .lineLimit(1)
-                                .padding(.horizontal, 2)
-                            ForEach(Array(entries.prefix(2))) { event in
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text(event.time.isEmpty ? "—" : event.time).font(.system(size: 10).monospacedDigit().bold())
-                                    Text(event.title).font(.system(size: 10))
-                                }
-                                .lineLimit(1).minimumScaleFactor(0.85)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(2)
-                                .foregroundStyle(store.palette.dashboardInk)
-                                .background(eventColor(event.tone).opacity(0.42), in: RoundedRectangle(cornerRadius: 3))
-                                .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 3))
-                                .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(p.border.opacity(0.65), lineWidth: line))
-                            }
-                            if entries.count > 2 { Text("+\(entries.count - 2)").font(.system(size: 9)) }
-                        }
-                        .padding(2)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .frame(height: dayHeight, alignment: .topLeading)
-                        .contentShape(Rectangle())
-                    }
-                    .foregroundStyle(isSelected ? store.palette.dashboardInk : store.palette.foreground.opacity(inMonth ? 1 : 0.55))
-                    .buttonStyle(.plain)
-                    .disabled(!inMonth)
-                    .background {
-                        Rectangle().fill(isSelected ? store.palette.calendarSelection :
-                                            inMonth ? store.palette.surface : store.palette.background)
-                    }
-                    .accessibilityLabel(LedgerDate.localized(date, locale: store.language, style: .dateTime.weekday(.wide).day().month(.wide))
-                        + " · \(entries.count) " + store.t("events"))
-                    .accessibilityIdentifier("calendar-day-\(day)")
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                }
-            }
-            .padding(line)
-            .background { Rectangle().fill(p.border) }
-            .overlay { Rectangle().strokeBorder(p.border, lineWidth: max(1, p.outline)).allowsHitTesting(false) }
+            calendarGrid(schedule, palette: p)
             dayAgenda(schedule[selected] ?? [], palette: p)
         }
         .padding(10)
         .modifier(WorkspacePanel(palette: p, fill: p.surface))
         .onAppear { selectVisibleMonth() }
         .onChange(of: month) { _ in selectVisibleMonth() }
+    }
+
+    private func calendarGrid(_ agenda: [String: [Event]], palette p: WorkspacePalette) -> some View {
+        let dates = days
+        let line = 1 / displayScale
+        return VStack(spacing: line) {
+            HStack(spacing: line) {
+                ForEach(1...7, id: \.self) { index in
+                    Text(weekday(index, locale: store.language)).font(.caption.bold())
+                        .lineLimit(1).minimumScaleFactor(0.65)
+                        .frame(minWidth: 0, maxWidth: .infinity).padding(.vertical, 6)
+                        .background(p.background)
+                }
+            }
+            ForEach(0..<(dates.count / 7), id: \.self) { week in
+                let first = week * 7
+                HStack(spacing: line) {
+                    ForEach(dates[first..<(first + 7)], id: \.self) { date in
+                        dayCell(date, entries: agenda[LedgerDate.text(date)] ?? [], palette: p)
+                    }
+                }
+            }
+        }
+        .padding(line)
+        .background(p.border)
+        .overlay { Rectangle().strokeBorder(p.border, lineWidth: max(1, p.outline)).allowsHitTesting(false) }
+    }
+
+    private func dayCell(_ date: Date, entries: [Event], palette p: WorkspacePalette) -> some View {
+        let day = LedgerDate.text(date)
+        let inMonth = LedgerDate.calendar.isDate(date, equalTo: month, toGranularity: .month)
+        let isSelected = selected == day
+        let fill = isSelected ? p.calendarSelection : inMonth ? p.surface : p.background
+        let spokenDate = LedgerDate.localized(date, locale: store.language, style: .dateTime.weekday(.wide).day().month(.wide))
+        return Button { selected = day } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(String(LedgerDate.calendar.component(.day, from: date)))
+                    .font(.caption.bold()).lineLimit(1).padding(.horizontal, 2)
+                ForEach(Array(entries.prefix(2))) { event in
+                    let shape = RoundedRectangle(cornerRadius: 3)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(event.time.isEmpty ? "—" : event.time).font(.system(size: 10).monospacedDigit().bold())
+                        Text(event.title).font(.system(size: 10))
+                    }
+                    .lineLimit(1).minimumScaleFactor(0.85)
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                    .padding(2)
+                    .foregroundStyle(p.dashboardInk)
+                    .background(eventColor(event.tone).opacity(0.42), in: shape)
+                    .background(.white.opacity(0.94), in: shape)
+                    .overlay(shape.strokeBorder(p.border.opacity(0.65), lineWidth: 1 / displayScale))
+                }
+                if entries.count > 2 { Text("+\(entries.count - 2)").font(.system(size: 9)) }
+            }
+            .padding(2)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
+            .frame(height: dayHeight, alignment: .topLeading)
+            .clipped()
+            .contentShape(Rectangle())
+        }
+        .foregroundStyle(isSelected ? p.dashboardInk : p.foreground.opacity(inMonth ? 1 : 0.55))
+        .buttonStyle(.plain)
+        .disabled(!inMonth)
+        .background { Rectangle().fill(fill) }
+        .accessibilityLabel(spokenDate + " · \(entries.count) " + store.t("events"))
+        .accessibilityIdentifier("calendar-day-\(day)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func dayAgenda(_ entries: [Event], palette p: WorkspacePalette) -> some View {

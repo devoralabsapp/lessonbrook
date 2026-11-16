@@ -200,10 +200,12 @@ final class WorkspaceUITests: XCTestCase {
         let dayOfWeek = calendar.component(.weekday, from: date)
         let day = calendar.component(.day, from: date)
         let monthLength = calendar.range(of: .day, in: .month, for: date)!.count
+        let endOfMonth = calendar.date(byAdding: .day, value: monthLength - day, to: date)!
         let offset = dayOfWeek != 1 && day < monthLength ? 1 : -1
         let neighborDate = calendar.date(byAdding: .day, value: offset, to: date)!
         let today = app.buttons["calendar-day-" + formatter.string(from: date)]
         let neighbor = app.buttons["calendar-day-" + formatter.string(from: neighborDate)]
+        let lastDay = app.buttons["calendar-day-" + formatter.string(from: endOfMonth)]
         for tab in ["students", "classes", "lessons", "statements"] {
             app.buttons["workspace-tab-" + tab].tap()
             let scroll = app.scrollViews.firstMatch
@@ -256,6 +258,13 @@ final class WorkspaceUITests: XCTestCase {
                     XCTAssertTrue(neighbor.isSelected)
                     XCTAssertFalse(today.isSelected)
                 }
+                let agenda = app.staticTexts["calendar-agenda-title"]
+                for _ in 0..<4 where !agenda.isHittable { app.swipeUp() }
+                XCTAssertTrue(agenda.isHittable)
+                let footerGap = agenda.frame.minY - lastDay.frame.maxY
+                XCTAssertGreaterThan(footerGap, 0)
+                XCTAssertLessThanOrEqual(footerGap, 28)
+                capture("Calendar bottom edge in " + tab, app: app)
             }
         }
     }
