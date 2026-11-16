@@ -30,6 +30,7 @@ export function LessonForm({
   initialMode = "group",
   scheduledSlot,
   record,
+  completePlanned = false,
   onSaved,
   onCancel,
 }: {
@@ -37,6 +38,7 @@ export function LessonForm({
   initialMode?: string;
   scheduledSlot?: { date: string; time: string };
   record?: LessonDetailData;
+  completePlanned?: boolean;
   onSaved?: () => void;
   onCancel?: () => void;
 }) {
@@ -44,7 +46,7 @@ export function LessonForm({
   const router = useRouter();
   const workspaceHref = useWorkspaceHref();
   const mutation = useStatementMutation();
-  const draft = useMobileDraft(mutation.busy);
+  const draft = useMobileDraft(mutation.busy, completePlanned);
   const [mode, setMode] = useState(
     initialClassId || record?.classId || initialMode === "class"
       ? "class"
@@ -97,6 +99,7 @@ export function LessonForm({
             ? false
             : billable
           : null,
+        ...(completePlanned ? { completePlanned: true } : {}),
         privateNote: String(form.get("privateNote")),
       },
     );
@@ -108,6 +111,9 @@ export function LessonForm({
   }
   return (
     <Card className="p-5 sm:p-6">
+      {completePlanned && (
+        <h2 className="serif mb-4 text-xl">{t("Ghi buổi dạy")}</h2>
+      )}
       <form onSubmit={submit} {...draft.form} className="space-y-5">
         <fieldset disabled={mutation.busy} className="min-w-0 space-y-5">
           {!record && (
@@ -217,7 +223,7 @@ export function LessonForm({
               : ""}{" "}
             {t("Giá được giữ riêng cho buổi này.")}
           </p>
-          {record && (
+          {record && !completePlanned && (
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -266,15 +272,19 @@ export function LessonForm({
               {t(" / người")}
             </p>
             <p className="mt-2 font-semibold">
-              {applyStatus
-                ? t("Tổng {0}: {1}", {
-                    "0": status === "planned" ? t("dự kiến") : t("học phí"),
-                    "1": formatVnd(
-                      billable && status !== "cancelled" ? count * rate : 0,
-                      locale,
-                    ),
-                  })
-                : t("Trạng thái và miễn phí từng học viên được giữ nguyên.")}
+              {completePlanned
+                ? t(
+                    "Các buổi dự kiến sẽ chuyển sang Đã dạy. Giữ nguyên cài đặt tính phí của từng học viên.",
+                  )
+                : applyStatus
+                  ? t("Tổng {0}: {1}", {
+                      "0": status === "planned" ? t("dự kiến") : t("học phí"),
+                      "1": formatVnd(
+                        billable && status !== "cancelled" ? count * rate : 0,
+                        locale,
+                      ),
+                    })
+                  : t("Trạng thái và miễn phí từng học viên được giữ nguyên.")}
             </p>
           </div>
           <label className="field-label">

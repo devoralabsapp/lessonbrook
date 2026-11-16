@@ -21,6 +21,10 @@ import {
   type GroupLesson,
   type WeeklySlot,
 } from "@/domain/classes";
+import {
+  canCompleteSession,
+  noPlannedAttendance,
+} from "@/domain/session-completion";
 import { nextWeeklyLesson, vietnamLessonTime } from "@/domain/weekly-schedule";
 import { classDocumentSchema, lessonDocumentSchema } from "@/domain/firestore";
 import { normalizeSearch, searchSchema } from "@/domain/list-filters";
@@ -350,6 +354,8 @@ export async function saveLesson(
           409,
           "Đã có học viên được lập bảng kê. Không thể sửa thông tin chung của buổi.",
         );
+      if (input.completePlanned && !previous.some(canCompleteSession))
+        throw new AppError(409, noPlannedAttendance);
       const className =
         current?.className ?? teachingClass?.displayName ?? null;
       writeLesson(tx, root, {
@@ -396,7 +402,7 @@ function writeLesson(
     requestId,
     update,
   } = args;
-  const { status, billable, ...shared } = input;
+  const { status, billable, completePlanned, ...shared } = input;
   for (const [index, student] of students.entries()) {
     const old = previous[index];
     const row = sessionInputSchema.parse({
@@ -404,7 +410,10 @@ function writeLesson(
       sessionDate: input.sessionDate,
       startTime: input.startTime,
       durationMinutes: input.durationMinutes,
-      status: status ?? old?.status,
+      status:
+        completePlanned && old && canCompleteSession(old)
+          ? "completed"
+          : (status ?? old?.status),
       billable: billable ?? old?.billable,
       rateVnd: input.rateVnd,
       privateNote: old?.privateNote ?? "",

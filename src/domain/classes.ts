@@ -71,6 +71,11 @@ const lessonFields = z
   })
   .strict();
 export const lessonInputSchema = lessonFields
+  .extend({ completePlanned: z.literal(true).optional() })
+  .refine(
+    (v) => !v.completePlanned || (v.status === null && v.billable === null),
+    "Trạng thái và tính phí không được ghi đè khi hoàn thành buổi dự kiến.",
+  )
   .refine(
     (v) => (v.status === null) === (v.billable === null),
     "Chọn cả trạng thái và tính phí, hoặc giữ nguyên cả hai.",

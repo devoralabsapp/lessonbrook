@@ -4,6 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useState } from "react";
 import Link from "@/components/workspace-link";
 import { formatVnd, statusLabels, type TeachingSession } from "@/domain";
+import { canCompleteSession } from "@/domain/session-completion";
 import { LessonPaymentStatus } from "@/components/lesson-payment-status";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,8 +17,11 @@ export function LessonDetail({ id }: { id: string }) {
   const resource = useResource<LessonDetailData>(
     `/api/lessons/${encodeURIComponent(id)}`,
   );
-  const [editing, setEditing] = useState(false);
-  const [participant, setParticipant] = useState<TeachingSession | null>(null);
+  const [editing, setEditing] = useState<"edit" | "complete" | null>(null);
+  const [participant, setParticipant] = useState<{
+    record: TeachingSession;
+    complete?: true;
+  } | null>(null);
   const [message, setMessage] = useState("");
   const item = resource.data;
   if (resource.error)
@@ -47,13 +51,20 @@ export function LessonDetail({ id }: { id: string }) {
             {t(" học viên")}
           </p>
         </div>
-        <Button
-          variant="outline"
-          disabled={locked || editing}
-          onClick={() => setEditing(true)}
-        >
-          {t("Sửa thông tin chung")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {!locked && item.sessions.some(canCompleteSession) && (
+            <Button disabled={!!editing} onClick={() => setEditing("complete")}>
+              {t("Đánh dấu hoàn thành")}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            disabled={locked || !!editing}
+            onClick={() => setEditing("edit")}
+          >
+            {t("Sửa thông tin chung")}
+          </Button>
+        </div>
       </div>
       <p className="text-sm leading-6 text-muted-foreground">
         {t("Đơn giá đã lưu: ")}
@@ -78,9 +89,10 @@ export function LessonDetail({ id }: { id: string }) {
       {editing && (
         <LessonForm
           record={item}
-          onCancel={() => setEditing(false)}
+          completePlanned={editing === "complete"}
+          onCancel={() => setEditing(null)}
           onSaved={() => {
-            setEditing(false);
+            setEditing(null);
             setMessage(t("Đã lưu thông tin chung của buổi."));
             resource.reload();
           }}
@@ -120,11 +132,20 @@ export function LessonDetail({ id }: { id: string }) {
                   className="status bg-card hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                   aria-label={t("Sửa {0}", { "0": s.studentName })}
                   disabled={s.billedStatementId !== null}
-                  onClick={() => setParticipant(s)}
+                  onClick={() => setParticipant({ record: s })}
                 >
                   {t("Sửa")}
                 </button>
               </div>
+              {locked && canCompleteSession(s) && (
+                <button
+                  type="button"
+                  className="text-right text-xs text-primary underline"
+                  onClick={() => setParticipant({ record: s, complete: true })}
+                >
+                  {t("Đánh dấu hoàn thành")}
+                </button>
+              )}
               {s.billedStatementId ? (
                 <Link
                   href={`/app/statements/${s.billedStatementId}`}
@@ -157,7 +178,8 @@ export function LessonDetail({ id }: { id: string }) {
       {participant && (
         <RecordForm
           kind="session"
-          record={participant}
+          record={participant.record}
+          initialStatus={participant.complete ? "completed" : undefined}
           onClose={() => setParticipant(null)}
           onSaved={(message) => {
             setParticipant(null);

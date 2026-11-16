@@ -309,7 +309,7 @@ export function RecordForm({
               ? s
                 ? t("Sửa học viên")
                 : t("Thêm học viên")
-              : lesson
+              : lesson && initialStatus !== "completed"
                 ? t("Sửa buổi dạy")
                 : t("Ghi buổi dạy")}
           </h2>

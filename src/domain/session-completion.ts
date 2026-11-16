@@ -19,6 +19,9 @@ export const sessionCompletionSchema = z
 export const canCompleteSession = (session: TeachingSession) =>
   session.status === "planned" && session.billedStatementId === null;
 
+export const noPlannedAttendance =
+  "Không còn học viên có buổi dự kiến. Hãy tải lại buổi học.";
+
 export function completedSessionFields(session: TeachingSession) {
   const status = "completed" as const;
   return { status, amountVnd: sessionAmount({ ...session, status }) };

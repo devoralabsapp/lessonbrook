@@ -133,7 +133,8 @@
 "List" = "Danh sách";
 "Load more" = "Tải thêm";
 "Mark completed" = "Đánh dấu hoàn thành";
-"Mark complete" = "Đánh dấu hoàn thành";
+"Mark as complete" = "Đánh dấu hoàn thành";
+"Planned attendance will be marked Completed. Each student's billing setting stays the same." = "Các buổi dự kiến sẽ chuyển sang Đã dạy. Giữ nguyên cài đặt tính phí của từng học viên.";
 "Custom group lesson" = "Buổi nhóm tự chọn";
 "Edit shared details" = "Sửa thông tin chung";
 "Back to class" = "Về lớp học";

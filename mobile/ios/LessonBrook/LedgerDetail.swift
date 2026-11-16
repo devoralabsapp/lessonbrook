@@ -229,7 +229,7 @@ struct LedgerRecordDetail: View {
             if let payment = ledgerSessionPayment(record) { LedgerBadge(code: payment) }
             WorkspaceActionRows {
                 if record.text("status") == "planned" && !locked {
-                    Button(store.t("Mark complete")) { lessonEdit = LessonEdit(record: record, complete: true) }
+                    Button(store.t("Mark as complete")) { lessonEdit = LessonEdit(record: record, complete: true) }
                         .buttonStyle(WorkspaceActionButton(palette: p))
                 }
                 Button(store.t("Edit lesson")) { lessonEdit = LessonEdit(record: record) }
@@ -263,6 +263,11 @@ struct LedgerRecordDetail: View {
             Text(meta.filter { !$0.isEmpty }.joined(separator: " · "))
                 .font(p.font(14)).foregroundStyle(p.secondaryInk)
             WorkspaceActionRows(spacing: 14) {
+                if !locked && sessions.contains(where: isPlannedAttendance) {
+                    Button(store.t("Mark as complete")) { lessonEdit = LessonEdit(record: record, group: true, complete: true) }
+                        .buttonStyle(WorkspaceActionButton(palette: p))
+                        .disabled(store.saving)
+                }
                 Button(store.t("Edit shared details")) { lessonEdit = LessonEdit(record: record, group: true) }
                     .buttonStyle(WorkspaceOutlineButton(palette: p))
                     .disabled(locked || store.saving)
@@ -280,7 +285,7 @@ struct LedgerRecordDetail: View {
         WorkspaceListCard {
             ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
                 if index > 0 { Divider().overlay(p.border) }
-                attendanceRow(session)
+                attendanceRow(session, canCompleteIndividually: locked && isPlannedAttendance(session))
             }
         }
         .accessibilityElement(children: .contain)
@@ -288,7 +293,11 @@ struct LedgerRecordDetail: View {
         .accessibilityIdentifier("lesson-attendance")
     }
 
-    private func attendanceRow(_ session: LedgerRecord) -> some View {
+    private func isPlannedAttendance(_ session: LedgerRecord) -> Bool {
+        session.text("status") == "planned" && session.string("billedStatementId") == nil
+    }
+
+    private func attendanceRow(_ session: LedgerRecord, canCompleteIndividually: Bool) -> some View {
         let p = store.palette
         let status = session.text("status")
         let name = session.text("studentName")
@@ -322,6 +331,14 @@ struct LedgerRecordDetail: View {
                     .accessibilityLabel(store.t("Edit") + " " + name)
                     .opacity(statementID != nil || store.saving ? 0.45 : 1)
                     .disabled(statementID != nil || store.saving)
+                }
+                if canCompleteIndividually {
+                    Button { lessonEdit = LessonEdit(record: session, complete: true) } label: {
+                        Text(store.t("Mark as complete")).font(p.font(14)).underline()
+                            .padding(.vertical, 8).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(store.saving)
                 }
                 if let statementID {
                     detailLink("Open statement", to: .statement(statementID))

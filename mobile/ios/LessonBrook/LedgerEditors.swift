@@ -461,6 +461,7 @@ struct LessonEditor: View {
     @Environment(\.dynamicTypeSize) private var textSize
     let record: LedgerRecord?
     let editingGroup: Bool
+    let markingComplete: Bool
     @State private var target: Target
     @State private var student: String
     @State private var classID: String
@@ -484,6 +485,7 @@ struct LessonEditor: View {
          record: LedgerRecord? = nil, editingGroup: Bool = false, markingComplete: Bool = false) {
         self.record = record
         self.editingGroup = editingGroup
+        self.markingComplete = markingComplete
         let initialClass = classID ?? record?.string("classId")
         _target = State(initialValue: editingGroup ? (initialClass == nil ? .group : .teachingClass) :
                         record != nil || initialClass == nil ? .student : .teachingClass)
@@ -522,7 +524,7 @@ struct LessonEditor: View {
         let durationField = WorkspaceField(store.t("Duration (minutes)"), text: $duration).keyboardType(.numberPad).disabled(lockedDate)
         let rateField = WorkspaceField(store.t(target == .student ? "Lesson price (VND)" : "Tuition per student (VND)"), text: $rate)
             .keyboardType(.numberPad).disabled(lockedDate)
-        let title = editingGroup ? "Edit shared details" : record == nil ? "Record lesson" : "Edit lesson"
+        let title = markingComplete || record == nil ? "Record lesson" : editingGroup ? "Edit shared details" : "Edit lesson"
         LedgerEditorForm(title: title, valid: valid,
                          draftKey: [target.rawValue, student, classID, participants.sorted().joined(), LedgerDate.text(date), String(hasTime), lessonTime(time), rate, duration, status, String(applySharedStatus), String(billable), note].joined(separator: "\u{0}"),
                          layout: .record, save: save) {
@@ -574,10 +576,15 @@ struct LessonEditor: View {
                         durationField
                         rateField
                     }
-                    Toggle(store.t("Update status and billing for every student"), isOn: $applySharedStatus)
-                    if applySharedStatus {
-                        statusField
-                        if status != "cancelled" { Toggle(store.t("Charge for this lesson"), isOn: $billable) }
+                    if markingComplete {
+                        Text(store.t("Planned attendance will be marked Completed. Each student's billing setting stays the same."))
+                            .font(p.font(13)).foregroundStyle(p.secondaryInk)
+                    } else {
+                        Toggle(store.t("Update status and billing for every student"), isOn: $applySharedStatus)
+                        if applySharedStatus {
+                            statusField
+                            if status != "cancelled" { Toggle(store.t("Charge for this lesson"), isOn: $billable) }
+                        }
                     }
                 } else {
                     WorkspaceFieldColumns {
@@ -655,7 +662,8 @@ struct LessonEditor: View {
         if let price = Int(rate) { input["rateVnd"] = .number(price) }
         if group {
             input["classId"] = target == .teachingClass ? .string(classID) : .null
-            input["studentIds"] = .strings(participants.sorted())
+            input["studentIds"] = .strings(record?.strings("studentIds") ?? participants.sorted())
+            if markingComplete { input["completePlanned"] = .flag(true) }
         } else {
             input["studentId"] = .string(student)
         }

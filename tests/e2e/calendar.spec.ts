@@ -22,8 +22,9 @@ test("360px: monthly classes and lessons load all pages, filter automatically, a
       })
     ).ok(),
   ).toBe(true);
-  async function create(path: string, data: unknown) {
-    const response = await context.request.post(path, {
+  async function create(path: string, data: unknown, method = "POST") {
+    const response = await context.request.fetch(path, {
+      method,
       headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
       data,
     });
@@ -186,6 +187,67 @@ test("360px: monthly classes and lessons load all pages, filter automatically, a
       status: "completed",
       amountVnd: 200000,
     });
+    const third = await create("/api/students", {
+      displayName: "Calendar Casey",
+    });
+    const planned = await create("/api/lessons", {
+      studentIds: [second.id, student.id, third.id],
+      rateVnd: 210000,
+      sessionDate: today,
+      startTime: "15:30",
+      durationMinutes: 45,
+      status: "planned",
+      billable: true,
+    });
+    const detailPath = `/api/lessons/${planned.id}`;
+    const before = await (await context.request.get(detailPath)).json();
+    for (const [index, status] of ["planned", "cancelled"].entries()) {
+      const session = before.sessions[index + 1];
+      await create(
+        `/api/sessions/${session.id}`,
+        {
+          studentId: session.studentId,
+          sessionDate: today,
+          startTime: "15:30",
+          durationMinutes: 45,
+          status,
+          rateVnd: 210000,
+          billable: false,
+        },
+        "PATCH",
+      );
+    }
+    await page.goto(`/app/lessons/${planned.id}`);
+    const markComplete = page.getByRole("button", {
+      name: "Đánh dấu hoàn thành",
+      exact: true,
+    });
+    await markComplete.click();
+    await expect(
+      page.getByRole("heading", { name: "Ghi buổi dạy" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Ngày dạy *", { exact: true })).toHaveValue(
+      today,
+    );
+    await expect(page.locator('[name="startTime"]')).toHaveValue("15:30");
+    await expect(page.locator('[name="durationMinutes"]')).toHaveValue("45");
+    await expect(page.getByLabel("Học phí / người (VND) *")).toHaveValue(
+      "210000",
+    );
+    await page.getByRole("button", { name: "Để sau", exact: true }).click();
+    await expect(markComplete).toBeEnabled();
+    await markComplete.click();
+    await page
+      .getByRole("button", { name: "Lưu thay đổi buổi", exact: true })
+      .click();
+    await expect(markComplete).toHaveCount(0);
+    const after = await (await context.request.get(detailPath)).json();
+    expect(after.sessionIds).toEqual(before.sessionIds);
+    expect(after.sessions).toMatchObject([
+      { status: "completed", billable: true, amountVnd: 210000 },
+      { status: "completed", billable: false, amountVnd: 0 },
+      { status: "cancelled", billable: false, amountVnd: 0 },
+    ]);
   } finally {
     await db.terminate();
   }

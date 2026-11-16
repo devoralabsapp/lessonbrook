@@ -203,8 +203,15 @@ test("native workspace opens account tools, planned lessons and filtered stateme
     await page.goto(`${origin}/app/schedule`);
     await page.getByRole("link", { name: /Alex Schedule/ }).click();
     await expect(page).toHaveURL(`${origin}/app/sessions/${lesson.id}`);
-    await page.getByRole("button", { name: "Mark complete" }).click();
+    await page.getByRole("button", { name: "Mark as complete" }).click();
     const dialog = page.getByRole("dialog");
+    await expect(
+      dialog.getByRole("heading", { name: "Record lesson" }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByLabel("Lesson date *", { exact: true }),
+    ).toHaveValue(vietnamToday());
+    await expect(dialog.locator('[name="startTime"]')).toHaveValue("09:00");
     await expect(dialog.locator("form")).toHaveAttribute(
       "data-mobile-draft",
       "dirty",

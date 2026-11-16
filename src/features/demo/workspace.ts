@@ -19,6 +19,7 @@ import { appearanceInputSchema } from "@/domain/appearance";
 import {
   canCompleteSession,
   completedSessionFields,
+  noPlannedAttendance,
   sessionCompletionSchema,
 } from "@/domain/session-completion";
 import {
@@ -526,9 +527,8 @@ function read(
 }
 
 function recordLesson(state: DemoWorkspace, command: DemoCommand, id?: string) {
-  const { status, billable, ...details } = lessonInputSchema.parse(
-    command.body,
-  );
+  const { status, billable, completePlanned, ...details } =
+    lessonInputSchema.parse(command.body);
   const current = id ? find(state.lessons, id) : null;
   const classRecord = details.classId
     ? find(state.classes, details.classId)
@@ -537,6 +537,8 @@ function recordLesson(state: DemoWorkspace, command: DemoCommand, id?: string) {
   const prior = current?.sessionIds.map((sid) => find(state.sessions, sid));
   if (prior?.some((s) => s.billedStatementId))
     throw new AppError(409, "Buổi đã lập bảng kê không thể sửa.");
+  if (completePlanned && !prior?.some(canCompleteSession))
+    throw new AppError(409, noPlannedAttendance);
   if (
     current &&
     (current.classId !== details.classId ||
@@ -565,7 +567,10 @@ function recordLesson(state: DemoWorkspace, command: DemoCommand, id?: string) {
   students.forEach((student, index) => {
     const old = prior?.[index];
     const tuition = {
-      status: status ?? old?.status ?? "completed",
+      status:
+        completePlanned && old && canCompleteSession(old)
+          ? "completed"
+          : (status ?? old?.status ?? "completed"),
       billable: billable ?? old?.billable ?? true,
       rateVnd: details.rateVnd,
     };

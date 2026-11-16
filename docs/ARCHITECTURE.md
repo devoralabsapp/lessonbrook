@@ -85,6 +85,8 @@ On iOS, the Lessons directory owns the selected calendar date so navigating into
 
 Weekly class slots use Vietnam time. The upcoming schedule projects the next seven days. While the signed-in workspace is open, it checks for due slots and records them as planned lessons with one row per active participant. It catches up when the teacher returns. A saved class lesson at the same time takes precedence. A planned lesson enters billing after the teacher marks it complete and chargeable. The manifest provides a launch shortcut.
 
+Mark as complete opens the existing lesson editor with the saved fields loaded. Saving updates the original record IDs. For group details, the completion intent in the group PATCH promotes only currently planned attendance inside the transaction, preserves each student's billing setting, and rejects stale requests when no planned attendance remains. If a statement has locked the group, the action moves to each remaining unbilled planned attendee and uses the participant editor. Demo follows the same transition and lock rules.
+
 ## Bank transfer reconciliation
 
 Issuing a statement freezes the configured bank details on that statement. The teacher and the recipient can scan the same VietQR while there is an outstanding balance. The app renders it locally with the outstanding amount and a transfer reference that fits the NAPAS 25-character memo field. Existing issued statements retain their transfer references and any legacy text instructions.
