@@ -78,8 +78,14 @@ final class WorkspaceUITests: XCTestCase {
         let selectAll = app.descendants(matching: .any)["select-all-eligible-lessons"].firstMatch
         XCTAssertTrue(selectAll.waitForExistence(timeout: 15), app.debugDescription)
         tapVisible(selectAll, app: app)
-        tapVisible(app.buttons["Save"], app: app)
-        XCTAssertTrue(selectAll.waitForNonExistence(timeout: 15))
+        let create = app.buttons["Save"]
+        let canCreate = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: create)
+        wait(for: [canCreate], timeout: 10)
+        tapVisible(create, app: app)
+        guard selectAll.waitForNonExistence(timeout: 15) else {
+            capture("native-create-statement-failed", app: app)
+            return XCTFail("The issued statement did not open")
+        }
         XCTAssertTrue(app.staticTexts["Payment history"].waitForExistence(timeout: 15))
         capture("native-statement-detail", app: app)
         tapVisible(app.buttons["Share"], app: app)
@@ -98,6 +104,9 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(receivedAmount.waitForExistence(timeout: 10))
         tapVisible(receivedAmount, app: app)
         receivedAmount.typeText("30000")
+        let viewport = app.scrollViews.firstMatch
+        viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.4))
+            .press(forDuration: 0.05, thenDragTo: viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.15)))
         tapVisible(app.buttons["Save"], app: app)
         XCTAssertTrue(app.textFields["Amount received (VND)"].waitForNonExistence(timeout: 15))
         app.swipeUp()

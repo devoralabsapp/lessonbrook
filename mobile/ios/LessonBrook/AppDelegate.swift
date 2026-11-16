@@ -363,8 +363,8 @@ struct WorkspaceTabs: View {
         case .schedule: NativeSchedule()
         case .createStatement(let studentID):
             StatementEditor(studentID: studentID) { id in
-                guard let existing = paths[tab], existing.last == route else { return }
-                paths[tab] = Array(existing.dropLast()) + [.statement(id)]
+                guard paths[tab]?.last == route else { return }
+                push(.statement(id), in: tab)
             }
         case .settings: NativeSettings()
         case .onboarding:

@@ -564,6 +564,7 @@ struct WorkspaceActionButton: ButtonStyle {
             .background(palette.accent, in: shape)
             .overlay(shape.stroke(palette.border, lineWidth: palette.outline))
             .background(shape.fill(palette.border).offset(x: palette.shadowOffset, y: palette.shadowOffset))
+            .contentShape(shape)
             .opacity(enabled ? 1 : 0.45)
             .offset(x: configuration.isPressed ? 2 : 0, y: configuration.isPressed ? 2 : 0)
     }

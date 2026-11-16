@@ -462,6 +462,7 @@ struct WorkspaceScroll<Content: View>: View {
                 }
             }.padding(12)
         }
+        .scrollDismissesKeyboard(.interactively)
         .font(store.palette.font()).foregroundStyle(store.palette.foreground).background(store.palette.background)
     }
 }

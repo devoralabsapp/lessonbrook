@@ -121,7 +121,7 @@ struct StatementEditor: View {
                                value: store.money(eligible.filter { selected.contains($0.id) }.reduce(0) { $0 + $1.int("amountVnd") }))
         }
         .toggleStyle(WorkspaceCheckbox())
-        .task(id: key) { await load() }
+        .task(id: key + "#\(store.revision)") { await load() }
     }
 
     private func selectPeriod(_ next: LedgerPeriod) {
