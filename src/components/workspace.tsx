@@ -490,7 +490,14 @@ export function Workspace({
                   : t("Ghi từng buổi, theo dõi đúng học phí.")}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div
+          data-layout={student ? "student-detail-actions" : undefined}
+          className={
+            student
+              ? "grid w-full grid-cols-3 gap-1.5 sm:w-auto"
+              : "flex flex-wrap gap-2"
+          }
+        >
           {!studentId && mode !== "students" && (
             <Button asChild variant="outline">
               <Link href="/app/schedule">
@@ -509,9 +516,26 @@ export function Workspace({
               setModal({ kind: mode === "students" ? "student" : "session" })
             }
           >
-            <Plus />
+            {!student && <Plus />}
             {mode === "students" ? t("Thêm học viên") : t("Ghi buổi dạy")}
           </Button>
+          {student && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setModal({ kind: "student", record: student })}
+              >
+                {t("Sửa học viên")}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!!actionBusy}
+                onClick={() => archive(student)}
+              >
+                {student.archivedAt ? t("Khôi phục") : t("Lưu trữ học viên")}
+              </Button>
+            </>
+          )}
         </div>
       </div>
       {notice && (
@@ -621,21 +645,6 @@ export function Workspace({
       )}
       {student && (
         <div className="mb-5 flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setModal({ kind: "student", record: student })}
-          >
-            {t("Sửa học viên")}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={!!actionBusy}
-            onClick={() => archive(student)}
-          >
-            {student.archivedAt ? t("Khôi phục") : t("Lưu trữ học viên")}
-          </Button>
           <Link href="/app/students" className="ml-auto text-xs text-primary">
             {t("Tất cả học viên ")}
             <ArrowRight size={13} className="inline" />

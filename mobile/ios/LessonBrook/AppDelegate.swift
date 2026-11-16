@@ -125,7 +125,7 @@ struct WorkspaceTabs: View {
                             .accessibilityHidden(true)
                         switch headerMenu {
                         case .appearance:
-                            NativeAppearance()
+                            NativeAppearance(onClose: dismissHeaderMenu)
                                 .frame(maxWidth: 490)
                                 .padding(.horizontal, 17).padding(.top, 7).padding(.bottom, 13)
                         case .language:

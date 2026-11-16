@@ -10,11 +10,13 @@ import {
   useState,
 } from "react";
 import { Palette } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { DEFAULT_THEME, themes } from "@/domain/appearance";
 import { useStatementMutation } from "@/features/statements/shared";
 import type { useAppearancePreview } from "@/lib/use-appearance-preview";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
+import { useWorkspaceHref } from "./workspace-link";
 export const AppearanceContext = createContext<
   ReturnType<typeof useAppearancePreview>
 >({
@@ -26,6 +28,8 @@ export const AppearanceContext = createContext<
 });
 export function AppearancePicker({ inline = false }: { inline?: boolean }) {
   const { t } = useI18n();
+  const router = useRouter();
+  const workspaceHref = useWorkspaceHref();
   const {
     theme: choice,
     savedTheme,
@@ -160,6 +164,21 @@ export function AppearancePicker({ inline = false }: { inline?: boolean }) {
           <div className="mt-4 flex flex-wrap gap-2">
             <Button disabled={mutation.busy || !dirty} onClick={save}>
               {mutation.busy ? t("Đang lưu…") : t("Lưu giao diện")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={mutation.busy}
+              onClick={() => {
+                cancelPreview();
+                if (inline) router.replace(workspaceHref("/app"));
+                else {
+                  setOpen(false);
+                  trigger.current?.focus();
+                }
+              }}
+            >
+              {t("Đóng")}
             </Button>
             {dirty && (
               <Button

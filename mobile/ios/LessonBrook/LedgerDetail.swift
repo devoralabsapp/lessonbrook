@@ -11,6 +11,7 @@ struct LedgerRecordDetail: View {
     let kind: LedgerKind
     let id: String
     @EnvironmentObject private var store: WorkspaceStore
+    @Environment(\.dynamicTypeSize) private var textSize
     @State private var record: LedgerRecord?
     @State private var error: String?
     @State private var editing = false
@@ -73,22 +74,29 @@ struct LedgerRecordDetail: View {
     @ViewBuilder private func student(_ record: LedgerRecord) -> some View {
         let p = store.palette
         let archived = record.string("archivedAt") != nil
+        let actionLayout = textSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+            : AnyLayout(HStackLayout(spacing: 6))
         VStack(alignment: .leading, spacing: 8) {
             Text(store.t("Lesson & tuition ledger").uppercased()).font(p.font(11, .semibold)).tracking(1.8)
             Text(record.name).font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
             Text(store.t(archived ? "Archived" : "Record each lesson and track tuition accurately."))
                 .font(p.font(15)).foregroundStyle(p.secondaryInk)
-            WorkspaceActionRows {
+            actionLayout {
                 if !archived {
                     Button { recordingStudent = true } label: {
-                        Label(store.t("Record lesson"), systemImage: "plus")
+                        studentActionLabel("Record lesson")
                     }
-                    .buttonStyle(WorkspaceActionButton(palette: p))
+                    .buttonStyle(WorkspaceActionButton(palette: p, compact: true))
                 }
-                Button(store.t("Edit student")) { editing = true }
-                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
-                Button(store.t(archived ? "Restore" : "Archive student")) { archive = true }
-                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                Button { editing = true } label: {
+                    studentActionLabel("Edit student")
+                }
+                .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                Button { archive = true } label: {
+                    studentActionLabel(archived ? "Restore" : "Archive student")
+                }
+                .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
             }
         }
         WorkspaceActionRows {
@@ -104,6 +112,18 @@ struct LedgerRecordDetail: View {
                 row("Phone number", record.text("phone"))
                 row("Email", record.text("email"))
             }
+        }
+    }
+
+    @ViewBuilder private func studentActionLabel(_ title: String) -> some View {
+        let label = Text(store.t(title))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: 30)
+        if textSize.isAccessibilitySize {
+            label
+        } else {
+            label.lineLimit(2, reservesSpace: true)
         }
     }
 
@@ -275,29 +295,41 @@ struct LedgerRecordDetail: View {
         let studentID = session.text("studentId")
         let statementID = session.string("billedStatementId")
         let amount = session.flag("billable") ? store.money(session.int(status == "completed" ? "amountVnd" : "rateVnd")) : store.t("Free")
-        return VStack(alignment: .leading, spacing: 8) {
-            NavigationLink(value: WorkspaceRoute.student(studentID)) {
-                Text(name).font(p.font(16, .bold)).fixedSize(horizontal: false, vertical: true)
+        return HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                NavigationLink(value: WorkspaceRoute.student(studentID)) {
+                    Text(name).font(p.font(16, .bold)).fixedSize(horizontal: false, vertical: true)
+                }
+                .buttonStyle(.plain)
+                Text(amount)
+                    .font(p.font(14, .bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("lesson-attendance-amount")
             }
-            .buttonStyle(.plain)
-            if let payment = ledgerSessionPayment(session) { LedgerBadge(code: payment) }
-            HStack {
-                LedgerBadge(code: status)
-                Spacer(minLength: 8)
-                Text(amount).font(p.font(14, .bold)).multilineTextAlignment(.trailing)
-            }
-            HStack {
-                Button(store.t("Edit")) { lessonEdit = LessonEdit(record: session) }
-                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .trailing, spacing: 2) {
+                HStack(spacing: 4) {
+                    LedgerBadge(code: status, compact: true, attendance: true)
+                    if let payment = ledgerSessionPayment(session) {
+                        LedgerBadge(code: payment, compact: true, attendance: true)
+                    }
+                    Button { lessonEdit = LessonEdit(record: session) } label: {
+                        Text(store.t("Edit"))
+                            .modifier(LedgerBadgeFrame(palette: p, fill: p.surface, ink: p.foreground, compact: true, attendance: true))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                     .accessibilityLabel(store.t("Edit") + " " + name)
+                    .opacity(statementID != nil || store.saving ? 0.45 : 1)
                     .disabled(statementID != nil || store.saving)
-                Spacer(minLength: 8)
+                }
                 if let statementID {
                     detailLink("Open statement", to: .statement(statementID))
                 } else if status == "completed" && session.flag("billable") {
                     detailLink("Create statement", to: .createStatement(studentID))
                 }
             }
+            .layoutPriority(1)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -599,6 +599,15 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
     .click();
   await expect(shell("playful-retro")).toBeVisible();
   await expect(save).toBeDisabled();
+  const close = page.getByRole("button", { name: "Đóng", exact: true });
+  await expect(close).toBeVisible();
+  await page.getByRole("radio", { name: "Mono OS", exact: false }).check();
+  await close.click();
+  await expect(chooseTheme).toBeFocused();
+  await expect(save).toHaveCount(0);
+  await expect(shell("playful-retro")).toBeVisible();
+  expect(writes).toBe(0);
+  await chooseTheme.click();
   await page.getByRole("radio", { name: "Mono OS", exact: false }).check();
   await expect(shell("mono-os")).toBeVisible();
   await page
@@ -660,6 +669,84 @@ test("theme preview is local until Save, resets on cancel/navigation/reload, and
   await expect(save).toHaveCount(0);
   await chooseTheme.click();
   await expect(save).toBeDisabled();
+});
+
+test("phone lesson detail and student actions align in the demo", async ({
+  page,
+}) => {
+  await page.goto("/demo/lessons/lesson-15");
+  const row = page
+    .locator('[data-slot="lesson-participant"]')
+    .filter({
+      has: page.getByRole("link", { name: "Mở bảng kê", exact: true }),
+    })
+    .first();
+  const student = row.getByRole("link").first();
+  const amount = row.locator("strong");
+  const controls = row.locator(".lesson-participant-actions");
+  const badges = controls.locator("span.status");
+  const edit = controls.getByRole("button");
+  const statement = row.getByRole("link", { name: "Mở bảng kê", exact: true });
+  await expect(edit).toBeDisabled();
+  await expect(badges).toHaveCount(2);
+  const [nameBox, amountBox, actionBox, editBox, statementBox] =
+    await Promise.all(
+      [student, amount, controls, edit, statement].map((element) =>
+        element.boundingBox(),
+      ),
+    );
+  expect(amountBox!.y).toBeGreaterThan(nameBox!.y);
+  expect(Math.abs(amountBox!.x - nameBox!.x)).toBeLessThan(2);
+  expect(actionBox!.x).toBeGreaterThan(nameBox!.x + nameBox!.width);
+  expect(statementBox!.y).toBeGreaterThan(editBox!.y + editBox!.height);
+  expect(
+    Math.abs(
+      statementBox!.x + statementBox!.width - editBox!.x - editBox!.width,
+    ),
+  ).toBeLessThan(2);
+  await expect(edit).toHaveCSS("border-radius", "7px");
+  await expect(badges.first()).toHaveCSS("border-radius", "7px");
+  await expect(
+    page.getByRole("link", { name: "Lập bảng kê", exact: true }).first(),
+  ).toBeVisible();
+  await student.click();
+  const studentActions = page.locator('[data-layout="student-detail-actions"]');
+  const record = studentActions.getByRole("button", { name: "Ghi buổi dạy" });
+  const editStudent = studentActions.getByRole("button", {
+    name: "Sửa học viên",
+  });
+  const archive = studentActions.getByRole("button", {
+    name: "Lưu trữ học viên",
+  });
+  const assertRow = async () => {
+    await expect(record).toBeEnabled();
+    const [first, second, third] = await Promise.all(
+      [record, editStudent, archive].map((element) => element.boundingBox()),
+    );
+    expect(first!.y).toBe(second!.y);
+    expect(second!.y).toBe(third!.y);
+    expect(first!.x).toBeLessThan(second!.x);
+    expect(second!.x).toBeLessThan(third!.x);
+  };
+  await assertRow();
+  await page.getByRole("button", { name: "Chọn theme", exact: true }).click();
+  await page.getByRole("radio", { name: "Mono OS" }).check();
+  await page
+    .getByRole("button", { name: "Lưu giao diện", exact: true })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Đã lưu giao diện." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Đóng", exact: true }).click();
+  await assertRow();
+
+  await page.goto("/demo/appearance");
+  await page.getByRole("radio", { name: "Afterhours FM" }).check();
+  await page.getByRole("button", { name: "Đóng", exact: true }).click();
+  await expect(page).toHaveURL(/\/demo$/);
+  await expect(
+    page.locator('[data-workspace][data-theme="mono-os"]'),
+  ).toBeVisible();
 });
 
 test("Playful Retro: consistent panels, forms and navigation at phone/desktop widths, reduced motion and light statement boundary", async ({

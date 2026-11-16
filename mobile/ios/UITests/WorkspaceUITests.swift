@@ -446,6 +446,17 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 15))
         let roster = app.descendants(matching: .any)["lesson-attendance"]
         XCTAssertTrue(roster.exists)
+        let firstEdit = roster.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Edit ")).firstMatch
+        let firstRow = roster.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "lesson-attendance-"))
+            .containing(.button, identifier: firstEdit.label).firstMatch
+        let studentName = firstRow.buttons.firstMatch
+        let amount = firstRow.staticTexts["lesson-attendance-amount"]
+        XCTAssertTrue(amount.exists)
+        XCTAssertEqual(studentName.frame.minX, amount.frame.minX, accuracy: 2)
+        XCTAssertGreaterThan(amount.frame.minY, studentName.frame.minY)
+        XCTAssertGreaterThan(firstEdit.frame.minX, studentName.frame.maxX)
+        XCTAssertEqual(firstEdit.frame.midY, firstRow.staticTexts["Planned"].frame.midY, accuracy: 2)
         let editShared = app.buttons["Edit shared details"]
         XCTAssertTrue(editShared.isHittable)
         capture("Group lesson opened from calendar", app: app)
@@ -658,7 +669,13 @@ final class WorkspaceUITests: XCTestCase {
         capture("native-appearance", app: app)
         panel.buttons["theme-option-mono-os"].tap()
         XCTAssertTrue(panel.buttons["theme-option-mono-os"].isSelected)
-        appearance.tap()
+        let closeAppearance = panel.buttons["Close"]
+        for _ in 0..<4 where !closeAppearance.isHittable { panel.swipeUp() }
+        let saveAppearance = panel.buttons["Save appearance"]
+        XCTAssertTrue(closeAppearance.isHittable)
+        XCTAssertGreaterThan(closeAppearance.frame.minX, saveAppearance.frame.minX)
+        XCTAssertEqual(closeAppearance.frame.midY, saveAppearance.frame.midY, accuracy: 2)
+        closeAppearance.tap()
         XCTAssertTrue(panel.waitForNonExistence(timeout: 10))
         appearance.tap()
         XCTAssertTrue(panel.buttons["theme-option-playful-retro"].isSelected)
@@ -774,6 +791,20 @@ final class WorkspaceUITests: XCTestCase {
             options.lifetime = .keepAlways
             add(options)
             active.tap()
+            let student = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "ledger-person-")).firstMatch
+            tapVisible(student, app: app)
+            let recordLesson = app.buttons["Ghi buổi dạy"]
+            let editStudent = app.buttons["Sửa học viên"]
+            let archiveStudent = app.buttons["Lưu trữ học viên"]
+            XCTAssertTrue(recordLesson.waitForExistence(timeout: 10))
+            XCTAssertTrue(editStudent.isHittable)
+            XCTAssertTrue(archiveStudent.isHittable)
+            XCTAssertEqual(recordLesson.frame.midY, editStudent.frame.midY, accuracy: 2, theme)
+            XCTAssertEqual(editStudent.frame.midY, archiveStudent.frame.midY, accuracy: 2, theme)
+            XCTAssertLessThan(recordLesson.frame.maxX, editStudent.frame.minX, theme)
+            XCTAssertLessThan(editStudent.frame.maxX, archiveStudent.frame.minX, theme)
+            capture("Vietnamese student detail actions — " + theme, app: app)
+            app.buttons["workspace-tab-students"].tap()
             if theme == "Afterhours FM" || theme == "Playful Retro Neo-Brutalism" {
                 XCTAssertTrue(active.waitForNonExistence(timeout: 10))
                 app.buttons["Thêm học viên"].tap()

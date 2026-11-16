@@ -90,55 +90,57 @@ export function LessonDetail({ id }: { id: string }) {
         {item.sessions.map((s) => (
           <div
             key={s.id}
-            className="grid grid-cols-2 items-start gap-3 p-5 sm:flex sm:flex-wrap sm:items-center"
+            data-slot="lesson-participant"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 p-5 sm:gap-x-4"
           >
-            <div className="col-span-2 min-w-0 sm:basis-40 sm:flex-1">
+            <div className="min-w-0 space-y-1">
               <Link
                 className="break-words font-semibold text-primary"
                 href={`/app/students/${s.studentId}`}
               >
                 {s.studentName}
               </Link>
-              <div className="mt-1 empty:hidden">
-                <LessonPaymentStatus session={s} />
-              </div>
+              <strong className="block break-words text-sm">
+                {s.billable
+                  ? formatVnd(
+                      s.status === "completed" ? s.amountVnd : s.rateVnd,
+                      locale,
+                    )
+                  : t("Miễn phí")}
+              </strong>
             </div>
-            <span className={`status justify-self-start status-${s.status}`}>
-              {t(statusLabels[s.status])}
-            </span>
-            <strong className="justify-self-end text-sm">
-              {s.billable
-                ? formatVnd(
-                    s.status === "completed" ? s.amountVnd : s.rateVnd,
-                    locale,
-                  )
-                : t("Miễn phí")}
-            </strong>
-            <Button
-              className="justify-self-start"
-              aria-label={t("Sửa {0}", { "0": s.studentName })}
-              size="sm"
-              variant="ghost"
-              disabled={s.billedStatementId !== null}
-              onClick={() => setParticipant(s)}
-            >
-              {t("Sửa")}
-            </Button>
-            {s.billedStatementId ? (
-              <Link
-                href={`/app/statements/${s.billedStatementId}`}
-                className="justify-self-end text-xs text-primary underline"
-              >
-                {t("Mở bảng kê")}
-              </Link>
-            ) : s.status === "completed" && s.billable ? (
-              <Link
-                href={`/app/statements/new?studentId=${s.studentId}`}
-                className="justify-self-end text-xs text-primary underline"
-              >
-                {t("Lập bảng kê")}
-              </Link>
-            ) : null}
+            <div className="flex flex-col items-end gap-2">
+              <div className="lesson-participant-actions flex items-center gap-1">
+                <span className={`status status-${s.status}`}>
+                  {t(statusLabels[s.status])}
+                </span>
+                <LessonPaymentStatus session={s} />
+                <button
+                  type="button"
+                  className="status bg-card hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                  aria-label={t("Sửa {0}", { "0": s.studentName })}
+                  disabled={s.billedStatementId !== null}
+                  onClick={() => setParticipant(s)}
+                >
+                  {t("Sửa")}
+                </button>
+              </div>
+              {s.billedStatementId ? (
+                <Link
+                  href={`/app/statements/${s.billedStatementId}`}
+                  className="text-right text-xs text-primary underline"
+                >
+                  {t("Mở bảng kê")}
+                </Link>
+              ) : s.status === "completed" && s.billable ? (
+                <Link
+                  href={`/app/statements/new?studentId=${s.studentId}`}
+                  className="text-right text-xs text-primary underline"
+                >
+                  {t("Lập bảng kê")}
+                </Link>
+              ) : null}
+            </div>
           </div>
         ))}
       </Card>

@@ -550,6 +550,7 @@ struct NativeAppearance: View {
     @State private var error: String?
     @State private var saving = false
     @State private var saved = false
+    let onClose: () -> Void
 
     var body: some View {
         let p = store.palette
@@ -581,15 +582,18 @@ struct NativeAppearance: View {
                     }
                     .buttonStyle(WorkspaceActionButton(palette: p))
                     .disabled(!changed || saving)
-                    if changed {
-                        Button(store.t("Cancel preview")) {
-                            store.previewTheme = nil
-                            error = nil
-                            saved = false
-                        }
-                        .buttonStyle(.plain)
+                    Button(store.t("Close"), action: onClose)
+                        .buttonStyle(WorkspaceOutlineButton(palette: p))
                         .disabled(saving)
+                }
+                if changed {
+                    Button(store.t("Cancel preview")) {
+                        store.previewTheme = nil
+                        error = nil
+                        saved = false
                     }
+                    .buttonStyle(.plain)
+                    .disabled(saving)
                 }
                 if changed || saved {
                     Text(store.t(changed ? "Previewing — not saved yet." : "Appearance saved. It applies to your account across devices."))

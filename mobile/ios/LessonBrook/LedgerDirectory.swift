@@ -503,11 +503,12 @@ struct LedgerBadge: View {
     let code: String
     var compact = false
     var fontIncrease: CGFloat = 0
+    var attendance = false
     var body: some View {
         let color = code == "paid" || code == "completed" ? store.palette.mint :
             ["unpaid", "cancelled", "void", "overdue"].contains(code) ? Color(red: 0.98, green: 0.62, blue: 0.67) : store.palette.yellow
         Text(store.t(ledgerStatus(code)))
-            .modifier(LedgerBadgeFrame(palette: store.palette, fill: color, ink: store.palette.dashboardInk, compact: compact, fontIncrease: fontIncrease))
+            .modifier(LedgerBadgeFrame(palette: store.palette, fill: color, ink: store.palette.dashboardInk, compact: compact, fontIncrease: fontIncrease, attendance: attendance))
     }
 }
 
@@ -516,21 +517,24 @@ func ledgerSessionPayment(_ record: LedgerRecord) -> String? {
     return record.text("status") == "planned" && record.flag("billable") ? nil : "no_charge"
 }
 
-private struct LedgerBadgeFrame: ViewModifier {
+struct LedgerBadgeFrame: ViewModifier {
     let palette: WorkspacePalette
     let fill: Color
     let ink: Color
     var compact = false
     var fontIncrease: CGFloat = 0
+    var attendance = false
 
     func body(content: Content) -> some View {
-        content.font(palette.font((compact ? 11 : 12) + fontIncrease, .bold))
+        let shape = attendance ? AnyShape(RoundedRectangle(cornerRadius: 7)) : AnyShape(Capsule())
+        return content.font(palette.font((compact ? 11 : 12) + fontIncrease, .bold))
             .lineLimit(compact ? 1 : nil)
             .minimumScaleFactor(compact ? 0.8 : 1)
             .padding(.horizontal, compact ? 4 : 7).padding(.vertical, compact ? 2 : 3)
+            .frame(minHeight: attendance ? 30 : nil)
             .foregroundStyle(ink)
-            .background(fill, in: Capsule())
-            .overlay(Capsule().stroke(palette.border, lineWidth: palette.outline))
+            .background(fill, in: shape)
+            .overlay(shape.stroke(palette.border, lineWidth: palette.outline))
             .fixedSize(horizontal: false, vertical: true)
     }
 }
