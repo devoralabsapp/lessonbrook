@@ -10,6 +10,9 @@ test("Android theme picker keeps readable actions on a narrow screen", async ({
     userAgent: androidWorkspaceAgent,
     viewport: { width: 320, height: 620 },
   });
+  await context.addCookies([
+    { name: "chotcong_locale", value: "en", domain: "localhost", path: "/" },
+  ]);
   try {
     const page = await context.newPage();
     await page.goto("/demo/settings");
