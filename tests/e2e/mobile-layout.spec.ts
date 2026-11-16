@@ -1,11 +1,77 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
+
+const androidWorkspaceAgent =
+  "Mozilla/5.0 LessonBrookApp/Android NativeWorkspace/1 MobileActions/1 NativeChrome/1 WorkspaceHeader/1";
+
+test("Android theme picker keeps readable actions on a narrow screen", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    userAgent: androidWorkspaceAgent,
+    viewport: { width: 320, height: 620 },
+  });
+  try {
+    const page = await context.newPage();
+    await page.goto("/demo/settings");
+    const picker = page.locator('[data-slot="appearance-picker"]');
+    const trigger = picker.getByRole("button", { name: "Choose a theme" });
+    await trigger.click();
+    await expect(trigger).toHaveCSS("width", "40px");
+    const save = picker.getByRole("button", { name: "Save appearance" });
+    const close = picker.getByRole("button", { name: "Close", exact: true });
+    await expect(save).toBeDisabled();
+
+    async function expectReadableActions(buttons: Locator[]) {
+      for (const button of buttons) {
+        await expect(button).toBeVisible();
+        expect(
+          await button.evaluate((element) => {
+            const text = document.createRange();
+            text.selectNodeContents(element);
+            const box = element.getBoundingClientRect();
+            const label = text.getBoundingClientRect();
+            return (
+              box.width > 40 &&
+              text.getClientRects().length === 1 &&
+              label.left >= box.left &&
+              label.right <= box.right
+            );
+          }),
+        ).toBe(true);
+      }
+    }
+
+    await expectReadableActions([save, close]);
+    await picker.getByRole("radio", { name: "Afterhours FM" }).check();
+    await expectReadableActions([
+      save,
+      close,
+      picker.getByRole("button", { name: "Cancel preview" }),
+    ]);
+    await save.click();
+    await expect(save).toBeDisabled();
+    await close.click();
+    await expect(
+      page.locator('[data-android-workspace][data-theme="afterhours-fm"]'),
+    ).toBeVisible();
+
+    await page.getByRole("combobox", { name: "Language" }).click();
+    await page.getByRole("option", { name: "Tiếng Việt" }).click();
+    await picker.getByRole("button", { name: "Chọn theme" }).click();
+    await expectReadableActions([
+      picker.getByRole("button", { name: "Lưu giao diện" }),
+      picker.getByRole("button", { name: "Đóng", exact: true }),
+    ]);
+  } finally {
+    await context.close();
+  }
+});
 
 test("Android workspace shares the mobile header, compact notes and saved lesson flow", async ({
   browser,
 }) => {
   const context = await browser.newContext({
-    userAgent:
-      "Mozilla/5.0 LessonBrookApp/Android NativeWorkspace/1 MobileActions/1 NativeChrome/1 WorkspaceHeader/1",
+    userAgent: androidWorkspaceAgent,
     viewport: { width: 390, height: 780 },
   });
   await context.addCookies([

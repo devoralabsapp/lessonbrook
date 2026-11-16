@@ -6,6 +6,8 @@ Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) f
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
 
+- **Android theme picker**. The Android header sizes its icon controls explicitly so theme form actions keep their usual text-button dimensions. The installed Android app receives this fix from the web deployment.
+
 - **Android 0.5.18, build 36**. The installed app uses the branded workspace header, compact dashboard and schedule, and two-column notes with the iOS layout. Native bottom tabs retain the current workspace document and restore the last visited route per tab. Account sign-in and protected account tools still use the system browser. Build and sign the release APK with the same certificate as the previous GitHub APK.
 
 - **iOS 0.5.18, build 36, and web**. Mono OS lesson Notes fit ordinary tuition and duration values on the same line in a two-column iOS grid. Longer combinations keep the duration together on the next line. The web Notes also keep each duration together.

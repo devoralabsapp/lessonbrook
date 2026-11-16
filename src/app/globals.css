@@ -1397,13 +1397,22 @@ dialog::backdrop {
   color: var(--primary-foreground);
 }
 [data-android-workspace][data-theme="playful-retro"]
-  .android-workspace-header-actions > a > span {
+  .android-workspace-header-actions
+  > a
+  > span {
   background: var(--retro-yellow);
   color: var(--retro-ink);
 }
 [data-android-workspace]
   .android-workspace-header-actions
-  :is([data-slot="button"], [data-compact]) {
+  > [data-slot="button"],
+[data-android-workspace]
+  .android-workspace-header-actions
+  > [data-slot="appearance-picker"]
+  > [data-slot="button"],
+[data-android-workspace]
+  .android-workspace-header-actions
+  .themed-select-trigger[data-compact] {
   min-width: 38px;
   width: 40px;
   min-height: 40px;
