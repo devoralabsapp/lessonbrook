@@ -208,7 +208,7 @@ struct NativeStatementDetail: View {
     }
 
     var body: some View {
-        WorkspaceScroll {
+        WorkspaceScroll(eager: true) {
             WorkspaceBackLink("Statement list", tab: .statements)
             if let record {
                 VStack(alignment: .leading, spacing: 10) {
@@ -349,11 +349,10 @@ struct NativeStatementDetail: View {
             Divider().overlay(store.palette.border)
             VStack(alignment: .leading, spacing: 10) {
                 Text(store.t("Bank transfer details")).font(store.palette.font(18, .heavy))
-                if let qr = VietQRImage.image(bank: bank, amount: remaining, reference: reference) {
-                    Image(decorative: qr, scale: 1).interpolation(.none).resizable().scaledToFit()
-                        .frame(maxWidth: 190, maxHeight: 190).padding(12).background(.white)
+                if let payload = VietQRImage.payload(bank: bank, amount: remaining, reference: reference) {
+                    VietQRCode(payload: payload, size: 190, label: "VietQR")
+                        .padding(12).background(.white)
                         .frame(maxWidth: .infinity)
-                        .accessibilityLabel("VietQR")
                 }
                 WorkspaceKeyValue(store.t("Bank"), value: bank.text("bankName"))
                 WorkspaceKeyValue(store.t("Account number"), value: bank.text("accountNumber")).textSelection(.enabled)
@@ -681,10 +680,8 @@ struct NativeStatementPreview: View {
                 Text(store.t("Account number") + " " + bank.text("accountNumber")).textSelection(.enabled)
                 Text(store.t("Account holder name") + " " + bank.text("accountName"))
                 Text(store.t("Transfer reference") + " " + reference).textSelection(.enabled)
-                if let image = VietQRImage.image(bank: bank, amount: outstanding, reference: reference) {
-                    Image(decorative: image, scale: 1).interpolation(.none).resizable().scaledToFit()
-                        .frame(width: 148, height: 148)
-                        .accessibilityLabel(store.t("Sample QR code"))
+                if let payload = VietQRImage.payload(bank: bank, amount: outstanding, reference: reference) {
+                    VietQRCode(payload: payload, size: 148, label: store.t("Sample QR code"))
                     Text(store.t("This is a sample QR code.")).font(.system(size: 12))
                 }
             }.padding(14)
@@ -700,6 +697,38 @@ struct NativeStatementPreview: View {
     }
 
     private func date(_ value: String) -> String { LedgerDate.localized(value, locale: store.language) }
+}
+
+private struct VietQRCode: View {
+    struct Rendered {
+        let payload: String
+        let image: CGImage
+    }
+
+    let payload: String
+    let size: CGFloat
+    let label: String
+    @State private var rendered: Rendered?
+
+    var body: some View {
+        Group {
+            if let rendered, rendered.payload == payload {
+                Image(decorative: rendered.image, scale: 1)
+                    .interpolation(.none).resizable().scaledToFit()
+                    .accessibilityLabel(label)
+            } else {
+                Color.white.accessibilityHidden(true)
+            }
+        }
+        .frame(width: size, height: size)
+        .task(id: payload) {
+            let image = await Task.detached(priority: .utility) {
+                VietQRImage.image(payload: payload)
+            }.value
+            guard !Task.isCancelled else { return }
+            rendered = image.map { Rendered(payload: payload, image: $0) }
+        }
+    }
 }
 
 enum VietQRImage {
@@ -718,8 +747,7 @@ enum VietQRImage {
         return payload + String(format: "%04X", crc)
     }
 
-    static func image(bank: LedgerRecord, amount: Int, reference: String) -> CGImage? {
-        guard let payload = payload(bank: bank, amount: amount, reference: reference) else { return nil }
+    static func image(payload: String) -> CGImage? {
         let filter = CIFilter.qrCodeGenerator()
         filter.message = Data(payload.utf8)
         guard let image = filter.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)) else { return nil }
