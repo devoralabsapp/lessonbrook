@@ -277,20 +277,32 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(nameGap, -1)
         XCTAssertLessThanOrEqual(nameGap, 6)
         capture("Vietnamese student and class names in lesson notes", app: app)
+    }
 
-        app.buttons["Ngôn ngữ"].tap()
-        app.buttons["English"].tap()
+    @MainActor
+    func testMonoOSLessonNoteKeepsDurationOnOneLine() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-workspace.locale", "en"]
+        app.launch()
+        XCTAssertTrue(app.buttons["View demo"].waitForExistence(timeout: 20))
+        app.buttons["View demo"].tap()
+        let lessons = app.buttons["workspace-tab-lessons"]
+        XCTAssertTrue(lessons.waitForExistence(timeout: 15))
+        lessons.tap()
+        tapVisible(app.buttons["Clear filters"], app: app)
         app.buttons["Choose a theme"].tap()
         let panel = app.scrollViews["workspace-appearance"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 10))
         panel.buttons["theme-option-mono-os"].tap()
         let saveTheme = panel.buttons["Save appearance"]
         for _ in 0..<4 where !saveTheme.isHittable { panel.swipeUp() }
         saveTheme.tap()
+        XCTAssertTrue(panel.staticTexts["Appearance saved. It applies to your account across devices."].waitForExistence(timeout: 10))
         panel.buttons["Close"].tap()
-        let monoNote = notes.containing(.staticText, identifier: "· 60 minutes")
-            .containing(.staticText, identifier: "₫200,000").firstMatch
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 10))
+        let monoNote = app.descendants(matching: .any)["ledger-note-session-14-24"]
         let duration = monoNote.staticTexts["· 60 minutes"]
-        XCTAssertTrue(duration.waitForExistence(timeout: 15))
         for _ in 0..<6 where !duration.isHittable { app.swipeUp() }
         XCTAssertTrue(duration.isHittable)
         let tuition = monoNote.staticTexts["₫200,000"]
