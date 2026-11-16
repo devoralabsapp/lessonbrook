@@ -14,16 +14,18 @@ extension WorkspacePalette {
 struct WorkspaceOutlineButton: ButtonStyle {
     let palette: WorkspacePalette
     var compact = false
+    var cornerRadius: CGFloat? = nil
     @Environment(\.isEnabled) private var enabled
+
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(palette.font(compact ? 13 : 15, .bold))
+        let shape = RoundedRectangle(cornerRadius: cornerRadius ?? (palette.retroRows ? 99 : palette.fieldRadius))
+        return configuration.label.font(palette.font(compact ? 13 : 15, .bold))
             .foregroundStyle(palette.foreground)
             .padding(.horizontal, compact ? 9 : 12).padding(.vertical, compact ? 7 : 9)
             .frame(minHeight: compact ? 36 : 44)
-            .background(palette.surface, in: RoundedRectangle(cornerRadius: palette.retroRows ? 99 : palette.fieldRadius))
-            .overlay(RoundedRectangle(cornerRadius: palette.retroRows ? 99 : palette.fieldRadius).stroke(palette.border, lineWidth: palette.outline))
-            .background(RoundedRectangle(cornerRadius: palette.retroRows ? 99 : palette.fieldRadius)
-                .fill(palette.border).offset(x: palette.shadowOffset, y: palette.shadowOffset))
+            .background(palette.surface, in: shape)
+            .overlay(shape.stroke(palette.border, lineWidth: palette.outline))
+            .background(shape.fill(palette.border).offset(x: palette.shadowOffset, y: palette.shadowOffset))
             .offset(x: configuration.isPressed ? 2 : 0, y: configuration.isPressed ? 2 : 0)
             .opacity(enabled ? 1 : 0.45)
     }

@@ -597,41 +597,65 @@ struct LedgerRow: View {
             }
             .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).stroke(p.controlTint, lineWidth: 2))
     }
-    private var lesson: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 9) {
-                if selecting && item.text("status") == "planned" {
-                    Button(action: select) { Image(systemName: checked ? "checkmark.square.fill" : "square").font(.system(size: 21)).frame(width: 24, height: 44) }
-                        .buttonStyle(.plain).accessibilityLabel(store.t("Select"))
+    @ViewBuilder private var lesson: some View {
+        if note {
+            VStack(alignment: .leading, spacing: 8) {
+                lessonSummary.frame(maxWidth: .infinity)
+                Divider().overlay(p.border)
+                WorkspaceActionRows(centered: true, spacing: 7) {
+                    lessonActions
                 }
-                LessonDateBadge(date: item.text("sessionDate"))
-                VStack(alignment: .leading, spacing: 4) {
-                    NavigationLink(value: item.string("studentId").map(WorkspaceRoute.student) ?? kind.route(item)) {
-                        Text(item.string("studentName") ?? item.string("className") ?? store.t("Group lesson"))
-                            .font(p.font(15, .bold))
-                    }.buttonStyle(.plain)
-                    if let lessonID = item.string("lessonId") {
-                        NavigationLink(value: WorkspaceRoute.lesson(lessonID)) {
-                            Text(item.string("className") ?? store.t("Custom student group")).font(p.font(12)).underline()
-                        }.buttonStyle(.plain)
-                    }
-                    Text([dateText(item.text("sessionDate")), item.text("startTime")].filter { !$0.isEmpty }.joined(separator: " · "))
-                        .font(p.font(13)).lineLimit(1).minimumScaleFactor(0.8)
-                    HStack(spacing: 3) {
-                        Text("· " + (item.flag("billable") ? store.money(item.int(item.text("status") == "completed" ? "amountVnd" : "rateVnd")) : store.t("Free"))).font(p.font(13, .bold))
-                        if item.int("durationMinutes") > 0 { Text("· \(item.int("durationMinutes")) " + store.t("minutes")).font(p.font(13)) }
-                    }
+            }
+        } else {
+            HStack(alignment: .center, spacing: 10) {
+                lessonSummary.frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .trailing, spacing: 5) {
+                    lessonActions
                 }
-            }.frame(maxWidth: .infinity, alignment: note ? .center : .leading)
-            if note { Divider().overlay(p.border) }
-            WorkspaceActionRows(centered: note, spacing: 7) {
-                LedgerBadge(code: item.text("status"))
-                if let payment { LedgerBadge(code: payment) }
-                Button(store.t("Edit"), action: edit).buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
-                    .disabled(item.string("billedStatementId") != nil || store.saving)
+                .fixedSize(horizontal: !textSize.isAccessibilitySize, vertical: false)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("lesson-list-actions-\(item.id)")
             }
         }
     }
+
+    private var lessonSummary: some View {
+        HStack(alignment: .center, spacing: 9) {
+            if selecting && item.text("status") == "planned" {
+                Button(action: select) { Image(systemName: checked ? "checkmark.square.fill" : "square").font(.system(size: 21)).frame(width: 24, height: 44) }
+                    .buttonStyle(.plain).accessibilityLabel(store.t("Select"))
+            }
+            LessonDateBadge(date: item.text("sessionDate"))
+            VStack(alignment: .leading, spacing: 4) {
+                NavigationLink(value: item.string("studentId").map(WorkspaceRoute.student) ?? kind.route(item)) {
+                    Text(item.string("studentName") ?? item.string("className") ?? store.t("Group lesson"))
+                        .font(p.font(15, .bold))
+                }.buttonStyle(.plain)
+                if let lessonID = item.string("lessonId") {
+                    NavigationLink(value: WorkspaceRoute.lesson(lessonID)) {
+                        Text(item.string("className") ?? store.t("Custom student group")).font(p.font(12)).underline()
+                    }.buttonStyle(.plain)
+                }
+                Text([dateText(item.text("sessionDate")), item.text("startTime")].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(p.font(13)).lineLimit(1).minimumScaleFactor(0.8)
+                HStack(spacing: 3) {
+                    Text("· " + (item.flag("billable") ? store.money(item.int(item.text("status") == "completed" ? "amountVnd" : "rateVnd")) : store.t("Free"))).font(p.font(13, .bold))
+                    if item.int("durationMinutes") > 0 { Text("· \(item.int("durationMinutes")) " + store.t("minutes")).font(p.font(13)) }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var lessonActions: some View {
+        LedgerBadge(code: item.text("status"))
+        if let payment { LedgerBadge(code: payment) }
+        Button(action: edit) {
+            Text(store.t("Edit")).frame(minWidth: note ? 0 : 36)
+        }
+        .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true, cornerRadius: note ? nil : min(8, p.fieldRadius)))
+        .disabled(item.string("billedStatementId") != nil || store.saving)
+    }
+
     private var statement: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {

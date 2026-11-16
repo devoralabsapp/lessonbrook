@@ -227,7 +227,7 @@ final class WorkspaceUITests: XCTestCase {
             app.buttons["workspace-tab-" + tab].tap()
             let scroll = app.scrollViews.firstMatch
             XCTAssertTrue(scroll.waitForExistence(timeout: 10))
-            XCTAssertLessThanOrEqual(scroll.frame.maxY, dashboard.frame.minY)
+            XCTAssertGreaterThanOrEqual(dashboard.frame.minY - scroll.frame.maxY, 5)
             if tab == "classes" {
                 app.buttons["Add class"].tap()
                 XCTAssertTrue(app.textFields["Class name"].waitForExistence(timeout: 10))
@@ -311,6 +311,21 @@ final class WorkspaceUITests: XCTestCase {
             XCTAssertEqual(edit.frame.midY, archive.frame.midY, accuracy: 2)
             XCTAssertEqual(edit.frame.midY, identity.frame.midY, accuracy: 2)
             capture("List actions in " + tab, app: app)
+            if tab == "students" {
+                identity.tap()
+                let recordLesson = app.buttons["Record lesson"]
+                let editStudent = app.buttons["Edit student"]
+                let archiveStudent = app.buttons["Archive student"]
+                XCTAssertTrue(recordLesson.waitForExistence(timeout: 10))
+                XCTAssertTrue(editStudent.isHittable)
+                XCTAssertTrue(archiveStudent.isHittable)
+                XCTAssertEqual(recordLesson.frame.midY, editStudent.frame.midY, accuracy: 2)
+                XCTAssertEqual(editStudent.frame.midY, archiveStudent.frame.midY, accuracy: 2)
+                XCTAssertGreaterThan(editStudent.frame.midX, recordLesson.frame.midX)
+                XCTAssertGreaterThan(archiveStudent.frame.midX, editStudent.frame.midX)
+                XCTAssertFalse(app.buttons["All students"].exists)
+                capture("Student detail actions", app: app)
+            }
         }
 
         identity.tap()
@@ -328,7 +343,29 @@ final class WorkspaceUITests: XCTestCase {
 
         app.buttons["workspace-tab-lessons"].tap()
         XCTAssertFalse(app.buttons["Back"].exists)
-        app.buttons["Upcoming lessons"].tap()
+        app.buttons["List"].tap()
+        tapVisible(app.buttons["Clear filters"], app: app)
+        let lessonActions = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "lesson-list-actions-"))
+            .containing(.staticText, identifier: "Completed").firstMatch
+        let status = lessonActions.staticTexts["Completed"]
+        for _ in 0..<4 where !status.isHittable { app.swipeUp() }
+        XCTAssertTrue(status.isHittable)
+        let payment = lessonActions.staticTexts.matching(NSPredicate(format: "label IN %@", ["Paid", "Unpaid", "No charge"])).firstMatch
+        let editLesson = lessonActions.buttons["Edit"]
+        XCTAssertTrue(payment.exists)
+        XCTAssertTrue(editLesson.exists)
+        XCTAssertLessThan(status.frame.midY, payment.frame.midY)
+        XCTAssertLessThan(payment.frame.midY, editLesson.frame.midY)
+        XCTAssertEqual(status.frame.maxX, payment.frame.maxX, accuracy: 2)
+        // Badge accessibility frames measure the text inside the pill.
+        XCTAssertEqual(payment.frame.maxX, editLesson.frame.maxX, accuracy: 14)
+        XCTAssertGreaterThan(editLesson.frame.width, editLesson.frame.height)
+        XCTAssertGreaterThanOrEqual(editLesson.frame.maxX, app.frame.maxX - 40)
+        capture("Trailing lesson list actions", app: app)
+        let upcoming = app.buttons["Upcoming lessons"]
+        for _ in 0..<4 where !upcoming.isHittable { app.swipeDown() }
+        upcoming.tap()
         XCTAssertTrue(app.staticTexts["upcoming-date-range"].waitForExistence(timeout: 15))
         let lessons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "upcoming-lesson-"))
         XCTAssertGreaterThan(lessons.count, 8)

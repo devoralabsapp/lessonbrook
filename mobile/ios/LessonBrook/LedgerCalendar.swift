@@ -95,7 +95,7 @@ struct LedgerMonth: View {
             dayAgenda(schedule[selected] ?? [], palette: p)
         }
         .padding(10)
-        .modifier(WorkspacePanel(palette: p, fill: p.surface))
+        .modifier(WorkspacePanel(palette: p, fill: p.surface, cornerRadius: 0))
         .onAppear { selectVisibleMonth() }
         .onChange(of: month) { _ in selectVisibleMonth() }
     }
@@ -109,7 +109,7 @@ struct LedgerMonth: View {
                     Text(weekday(index, locale: store.language)).font(.caption.bold())
                         .lineLimit(1).minimumScaleFactor(0.65)
                         .frame(minWidth: 0, maxWidth: .infinity).padding(.vertical, 6)
-                        .background(p.background)
+                        .background(Rectangle().fill(p.background))
                 }
             }
             ForEach(0..<(dates.count / 7), id: \.self) { week in

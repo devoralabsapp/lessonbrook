@@ -77,17 +77,18 @@ struct LedgerRecordDetail: View {
             Text(record.name).font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
             Text(store.t(archived ? "Archived" : "Record each lesson and track tuition accurately."))
                 .font(p.font(15)).foregroundStyle(p.secondaryInk)
-            if !archived {
-                Button { recordingStudent = true } label: {
-                    Label(store.t("Record lesson"), systemImage: "plus")
+            WorkspaceActionRows {
+                if !archived {
+                    Button { recordingStudent = true } label: {
+                        Label(store.t("Record lesson"), systemImage: "plus")
+                    }
+                    .buttonStyle(WorkspaceActionButton(palette: p))
                 }
-                .buttonStyle(WorkspaceActionButton(palette: p))
+                Button(store.t("Edit student")) { editing = true }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                Button(store.t(archived ? "Restore" : "Archive student")) { archive = true }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
             }
-        }
-        WorkspaceActionRows {
-            Button(store.t("Edit student")) { editing = true }
-            Button(store.t(archived ? "Restore" : "Archive student")) { archive = true }
-            WorkspaceBackLink("All students", tab: .students)
         }
         WorkspaceActionRows {
             NavigationLink(value: WorkspaceRoute.studentHistory(.statements, id)) {

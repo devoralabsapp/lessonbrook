@@ -320,7 +320,8 @@ struct WorkspaceTabs: View {
                 .accessibilityIdentifier("workspace-tab-\(String(describing: tab))")
             }
         }
-        .padding(.vertical, 1)
+        .padding(.top, store.palette.outline + 5)
+        .padding(.bottom, 1)
         .background(store.palette.surface.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) { Rectangle().fill(store.palette.border).frame(height: store.palette.outline) }
     }

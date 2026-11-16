@@ -396,8 +396,10 @@ struct NativeDashboard: View {
 struct WorkspacePanel: ViewModifier {
     let palette: WorkspacePalette
     let fill: Color
+    var cornerRadius: CGFloat? = nil
+
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: palette.radius)
+        let shape = RoundedRectangle(cornerRadius: cornerRadius ?? palette.radius)
         content
             .background(fill, in: shape)
             .overlay(shape.stroke(palette.border, lineWidth: palette.outline))
