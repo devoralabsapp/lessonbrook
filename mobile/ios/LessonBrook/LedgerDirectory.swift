@@ -221,11 +221,10 @@ struct LedgerDirectory: View {
             else if items.isEmpty { Text(store.t("No records found.")).padding(16) }
             else {
                 Group {
-                    if layout == .notes && kind == .classes && !textSize.isAccessibilitySize {
-                        classNotes
+                    if pairedNotes {
+                        notePairs
                     } else {
-                        let columns = layout == .notes && kind == .students ? 2 : 1
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top), count: columns), spacing: layout == .notes ? 16 : 0) {
+                        LazyVStack(spacing: layout == .notes ? 16 : 0) {
                             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in row(item, index: index) }
                         }
                     }
@@ -239,7 +238,9 @@ struct LedgerDirectory: View {
         }.modifier(WorkspacePanel(palette: store.palette, fill: store.palette.surface))
     }
 
-    private var classNotes: some View {
+    private var pairedNotes: Bool { layout == .notes && kind != .statements && !textSize.isAccessibilitySize }
+
+    private var notePairs: some View {
         let rows = stride(from: 0, to: items.count, by: 2).map { $0 }
         return LazyVStack(spacing: 16) {
             ForEach(rows, id: \.self) { index in
@@ -413,7 +414,7 @@ struct LedgerDirectory: View {
     }
 
     @ViewBuilder private func row(_ item: LedgerRecord, index: Int) -> some View {
-        LedgerRow(kind: kind, item: item, note: layout == .notes, index: index,
+        LedgerRow(kind: kind, item: item, note: layout == .notes, index: index, paired: pairedNotes,
                   selecting: selecting, checked: selected.contains(item.id),
                   select: {
                     if selected.contains(item.id) { selected.remove(item.id) }
@@ -500,11 +501,12 @@ func ledgerStatus(_ code: String) -> String {
 struct LedgerBadge: View {
     @EnvironmentObject private var store: WorkspaceStore
     let code: String
+    var compact = false
     var body: some View {
         let color = code == "paid" || code == "completed" ? store.palette.mint :
             ["unpaid", "cancelled", "void", "overdue"].contains(code) ? Color(red: 0.98, green: 0.62, blue: 0.67) : store.palette.yellow
         Text(store.t(ledgerStatus(code)))
-            .modifier(LedgerBadgeFrame(palette: store.palette, fill: color, ink: store.palette.dashboardInk))
+            .modifier(LedgerBadgeFrame(palette: store.palette, fill: color, ink: store.palette.dashboardInk, compact: compact))
     }
 }
 
@@ -517,10 +519,11 @@ private struct LedgerBadgeFrame: ViewModifier {
     let palette: WorkspacePalette
     let fill: Color
     let ink: Color
+    var compact = false
 
     func body(content: Content) -> some View {
-        content.font(palette.font(12, .bold))
-            .padding(.horizontal, 7).padding(.vertical, 3)
+        content.font(palette.font(compact ? 11 : 12, .bold))
+            .padding(.horizontal, compact ? 5 : 7).padding(.vertical, compact ? 2 : 3)
             .foregroundStyle(ink)
             .background(fill, in: Capsule())
             .overlay(Capsule().stroke(palette.border, lineWidth: palette.outline))
@@ -534,18 +537,25 @@ struct LedgerRow: View {
     let item: LedgerRecord
     let note: Bool
     let index: Int
+    var paired = false
     var selecting = false
     var checked = false
     var select: () -> Void = {}
     var edit: () -> Void = {}
     var archive: () -> Void = {}
-    @State private var hovering = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var textSize
     private var people: Bool { kind == .students || kind == .classes }
-    private var alignedNote: Bool { kind == .classes || kind == .sessions || kind == .lessons }
     private var p: WorkspacePalette { store.palette }
     private var paper: Color { workspacePaperColor(item.id) }
+    private var paperIntensity: Double {
+        switch kind {
+        case .students: return p.dark ? 0.30 : 0.56
+        case .classes: return p.dark ? 0.13 : 0.18
+        case .statements: return p.dark ? 0.37 : 0.94
+        case .sessions, .lessons: return p.dark ? 0.25 : 0.70
+        }
+    }
+    private var compactLessonNote: Bool { paired && !people }
     private var pinPositions: [CGFloat] { [0.28, 0.78, 0.43, 0.66, 0.5] }
     private var payment: String? {
         if kind == .statements { return item.text("status") == "issued" ? (item.int("totalVnd") == item.int("paidVnd") ? "paid" : "unpaid") : nil }
@@ -554,15 +564,8 @@ struct LedgerRow: View {
     var body: some View {
         Group {
             if note {
-                if alignedNote {
-                    noteCard.accessibilityElement(children: .contain)
-                        .accessibilityIdentifier("ledger-note-\(item.id)")
-                } else {
-                    noteCard
-                        .rotationEffect(.degrees(reduceMotion || hovering ? 0 : [-1.1,1.3,-0.8,1.0][index % 4]))
-                        .scaleEffect(hovering && !reduceMotion ? 1.01 : 1)
-                        .animation(.easeOut(duration: 0.2), value: hovering).onHover { hovering = $0 }
-                }
+                noteCard.accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("ledger-note-\(item.id)")
             } else {
                 content.padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .modifier(WorkspaceListTone(palette: p, color: listColor))
@@ -571,11 +574,12 @@ struct LedgerRow: View {
         }.foregroundStyle(p.foreground).font(p.font(14))
     }
     private var noteCard: some View {
-        content.padding(.horizontal, people ? 7 : 12).padding(.top, 24).padding(.bottom, people ? 6 : 10)
-            .frame(maxWidth: .infinity, maxHeight: kind == .classes ? .infinity : nil, alignment: .topLeading)
+        content.padding(.horizontal, paired ? 7 : 12).padding(.top, compactLessonNote ? 19 : 24)
+            .padding(.bottom, paired ? 6 : 10)
+            .frame(maxWidth: .infinity, maxHeight: paired ? .infinity : nil, alignment: .topLeading)
             .background {
                 let shape = WorkspacePaperShape(radius: min(16, p.radius))
-                shape.fill(p.surface).overlay(shape.fill(paper.opacity(people ? (p.dark ? 0.13 : 0.18) : (p.dark ? 0.25 : 0.70))))
+                shape.fill(p.surface).overlay(shape.fill(paper.opacity(paperIntensity)))
                     .overlay(shape.stroke(p.dark ? paper.opacity(0.65) : p.border, lineWidth: p.outline))
                     .background(shape.fill(p.border).offset(x: p.shadowOffset, y: p.shadowOffset))
             }
@@ -651,7 +655,28 @@ struct LedgerRow: View {
             .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).stroke(p.controlTint, lineWidth: 2))
     }
     @ViewBuilder private var lesson: some View {
-        if note {
+        if compactLessonNote {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .center, spacing: 6) {
+                    LessonDateBadge(date: item.text("sessionDate"), compact: true)
+                    lessonName
+                    Spacer(minLength: 0)
+                    lessonSelection
+                }
+                lessonGroupLink
+                Text(lessonDateTime).font(p.font(11)).fixedSize(horizontal: false, vertical: true)
+                lessonPriceAndDuration(size: 11)
+                Spacer(minLength: 0)
+                Divider().overlay(p.border)
+                HStack(spacing: 3) {
+                    VStack(alignment: .leading, spacing: 3) { lessonBadges(compact: true) }
+                    lessonEdit
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("lesson-note-actions-\(item.id)")
+            }
+        } else if note {
             VStack(alignment: .leading, spacing: 8) {
                 lessonSummary.frame(maxWidth: .infinity)
                 Divider().overlay(p.border)
@@ -676,39 +701,79 @@ struct LedgerRow: View {
 
     private var lessonSummary: some View {
         HStack(alignment: .center, spacing: 9) {
-            if selecting && item.text("status") == "planned" {
-                Button(action: select) { Image(systemName: checked ? "checkmark.square.fill" : "square").font(.system(size: 21)).frame(width: 24, height: 44) }
-                    .buttonStyle(.plain).accessibilityLabel(store.t("Select"))
-            }
+            lessonSelection
             LessonDateBadge(date: item.text("sessionDate"))
             VStack(alignment: .leading, spacing: 4) {
-                NavigationLink(value: item.string("studentId").map(WorkspaceRoute.student) ?? kind.route(item)) {
-                    Text(item.string("studentName") ?? item.string("className") ?? store.t("Group lesson"))
-                        .font(p.font(15, .bold))
-                }.buttonStyle(.plain)
-                if let lessonID = item.string("lessonId") {
-                    NavigationLink(value: WorkspaceRoute.lesson(lessonID)) {
-                        Text(item.string("className") ?? store.t("Custom student group")).font(p.font(12)).underline()
-                    }.buttonStyle(.plain)
-                }
-                Text([dateText(item.text("sessionDate")), item.text("startTime")].filter { !$0.isEmpty }.joined(separator: " · "))
+                lessonName
+                lessonGroupLink
+                Text(lessonDateTime)
                     .font(p.font(13)).lineLimit(1).minimumScaleFactor(0.8)
-                HStack(spacing: 3) {
-                    Text("· " + (item.flag("billable") ? store.money(item.int(item.text("status") == "completed" ? "amountVnd" : "rateVnd")) : store.t("Free"))).font(p.font(13, .bold))
-                    if item.int("durationMinutes") > 0 { Text("· \(item.int("durationMinutes")) " + store.t("minutes")).font(p.font(13)) }
-                }
+                lessonPriceAndDuration(size: 13)
+            }
+        }
+    }
+
+    @ViewBuilder private var lessonSelection: some View {
+        if selecting && item.text("status") == "planned" {
+            Button(action: select) {
+                Image(systemName: checked ? "checkmark.square.fill" : "square")
+                    .font(.system(size: compactLessonNote ? 17 : 21)).frame(width: 24, height: 44)
+                    .contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityLabel(store.t("Select"))
+        }
+    }
+
+    private var lessonName: some View {
+        NavigationLink(value: item.string("studentId").map(WorkspaceRoute.student) ?? kind.route(item)) {
+            Text(item.string("studentName") ?? item.string("className") ?? store.t("Group lesson"))
+                .font(p.font(compactLessonNote ? 13 : 15, .bold))
+                .fixedSize(horizontal: false, vertical: compactLessonNote)
+        }.buttonStyle(.plain)
+    }
+
+    @ViewBuilder private var lessonGroupLink: some View {
+        if let lessonID = item.string("lessonId") {
+            NavigationLink(value: WorkspaceRoute.lesson(lessonID)) {
+                Text(item.string("className") ?? store.t("Custom student group"))
+                    .font(p.font(compactLessonNote ? 11 : 12)).underline()
+                    .fixedSize(horizontal: false, vertical: compactLessonNote)
+            }.buttonStyle(.plain)
+        }
+    }
+
+    private var lessonDateTime: String {
+        [dateText(item.text("sessionDate")), item.text("startTime")].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    private func lessonPriceAndDuration(size: CGFloat) -> some View {
+        let price = item.flag("billable") ? store.money(item.int(item.text("status") == "completed" ? "amountVnd" : "rateVnd")) : store.t("Free")
+        let amount = Text(compactLessonNote ? price : "· " + price).font(p.font(size, .bold))
+        let duration = item.int("durationMinutes")
+        return HStack(spacing: 3) {
+            amount.fixedSize(horizontal: compactLessonNote, vertical: false)
+            if duration > 0 {
+                Text("· \(duration) " + store.t("minutes")).font(p.font(size))
+                    .fixedSize(horizontal: false, vertical: compactLessonNote)
             }
         }
     }
 
     @ViewBuilder private var lessonActions: some View {
-        LedgerBadge(code: item.text("status"))
-        if let payment { LedgerBadge(code: payment) }
+        lessonBadges()
+        lessonEdit
+    }
+
+    @ViewBuilder private func lessonBadges(compact: Bool = false) -> some View {
+        LedgerBadge(code: item.text("status"), compact: compact)
+        if let payment { LedgerBadge(code: payment, compact: compact) }
+    }
+
+    @ViewBuilder private var lessonEdit: some View {
         let editDisabled = item.string("billedStatementId") != nil || store.saving
         if note {
             Button(action: edit) {
                 Text(store.t("Edit"))
-                    .modifier(LedgerBadgeFrame(palette: p, fill: p.surface, ink: p.foreground))
+                    .modifier(LedgerBadgeFrame(palette: p, fill: p.surface, ink: p.foreground, compact: compactLessonNote))
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
             }
@@ -755,16 +820,19 @@ struct LedgerRow: View {
 struct LessonDateBadge: View {
     @EnvironmentObject private var store: WorkspaceStore
     let date: String
+    var compact = false
     var body: some View {
         let p = store.palette
         let actual = LedgerDate.date(date) ?? .now
         VStack(spacing: 0) {
             Text(actual.formatted(.dateTime.month(.abbreviated).locale(store.language)).uppercased())
-                .font(p.font(11, .bold)).frame(maxWidth: .infinity).padding(.vertical, 4)
+                .font(p.font(compact ? 9 : 11, .bold)).lineLimit(1).minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity).padding(.vertical, compact ? 2 : 4)
                 .background(p.retroRows ? p.yellow : p.accent).foregroundStyle(p.onAccent)
-            Text(String(date.suffix(2))).font(p.font(22, .heavy)).frame(maxWidth: .infinity).padding(.vertical, 4)
+            Text(String(date.suffix(2))).font(p.font(compact ? 15 : 22, .heavy))
+                .frame(maxWidth: .infinity).padding(.vertical, compact ? 2 : 4)
                 .background(p.retroRows ? p.blue : p.recordAccent)
-        }.frame(width: 72).background(p.surface).clipShape(RoundedRectangle(cornerRadius: min(12, p.radius)))
+        }.frame(width: compact ? 38 : 72).background(p.surface).clipShape(RoundedRectangle(cornerRadius: min(compact ? 8 : 12, p.radius)))
             .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).stroke(p.border, lineWidth: p.outline))
             .background(RoundedRectangle(cornerRadius: min(12, p.radius)).fill(p.border).offset(x: p.shadowOffset > 0 ? 2 : 0, y: p.shadowOffset > 0 ? 2 : 0))
             .accessibilityHidden(true)

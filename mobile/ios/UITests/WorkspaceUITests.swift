@@ -184,31 +184,42 @@ final class WorkspaceUITests: XCTestCase {
     }
 
     @MainActor
-    func testClassAndLessonNotesAlignOnPhone() {
+    func testNoteGridsAndCompactLessonActionsOnPhone() {
         let app = XCUIApplication()
         app.launchArguments = ["-workspace.locale", "en"]
         app.launch()
         XCTAssertTrue(app.buttons["View demo"].waitForExistence(timeout: 20))
         app.buttons["View demo"].tap()
         XCTAssertTrue(app.buttons["workspace-tab-classes"].waitForExistence(timeout: 20))
-        app.buttons["workspace-tab-classes"].tap()
-
         let notes = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "ledger-note-"))
-        XCTAssertTrue(notes.element(boundBy: 2).waitForExistence(timeout: 15))
-        let first = notes.element(boundBy: 0).frame
-        let second = notes.element(boundBy: 1).frame
-        let nextRow = notes.element(boundBy: 2).frame
-        XCTAssertEqual(first.minY, second.minY, accuracy: 1)
-        XCTAssertEqual(first.maxY, second.maxY, accuracy: 1)
-        XCTAssertEqual(first.width, second.width, accuracy: 1)
-        XCTAssertLessThan(first.maxX, second.minX)
-        XCTAssertEqual(first.minX, nextRow.minX, accuracy: 1)
-        XCTAssertLessThan(first.maxY, nextRow.minY)
-        capture("Aligned class notes", app: app)
+        for tab in ["students", "classes", "lessons", "statements"] {
+            app.buttons["workspace-tab-" + tab].tap()
+            if tab == "lessons" { tapVisible(app.buttons["Clear filters"], app: app) }
+            if tab == "statements" {
+                tapVisible(app.buttons["Statement date"], app: app)
+                app.buttons["All time"].tap()
+            }
+            XCTAssertTrue(notes.element(boundBy: 2).waitForExistence(timeout: 15))
+            let first = notes.element(boundBy: 0).frame
+            let second = notes.element(boundBy: 1).frame
+            let third = notes.element(boundBy: 2).frame
+            XCTAssertEqual(first.width, second.width, accuracy: 1, tab)
+            if tab == "statements" {
+                XCTAssertEqual(first.minX, second.minX, accuracy: 1)
+                XCTAssertLessThan(first.maxY, second.minY)
+            } else {
+                XCTAssertEqual(first.minY, second.minY, accuracy: 1, tab)
+                XCTAssertEqual(first.maxY, second.maxY, accuracy: 1, tab)
+                XCTAssertLessThan(first.maxX, second.minX, tab)
+                XCTAssertEqual(first.minX, third.minX, accuracy: 1, tab)
+                XCTAssertLessThan(first.maxY, third.minY, tab)
+            }
+            for _ in 0..<3 where !notes.firstMatch.isHittable { app.swipeUp() }
+            capture("Aligned \(tab) notes", app: app)
+        }
 
         app.buttons["workspace-tab-lessons"].tap()
-        tapVisible(app.buttons["Clear filters"], app: app)
         let actions = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "lesson-note-actions-"))
             .containing(.staticText, identifier: "Completed").firstMatch
@@ -221,11 +232,12 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(payment.exists)
         XCTAssertTrue(edit.exists)
         XCTAssertEqual(status.frame.minX, actions.frame.minX, accuracy: 8)
-        XCTAssertEqual(status.frame.midY, payment.frame.midY, accuracy: 2)
-        XCTAssertEqual(payment.frame.midY, edit.frame.midY, accuracy: 2)
-        XCTAssertLessThan(status.frame.maxX, payment.frame.minX)
-        XCTAssertLessThan(payment.frame.maxX, edit.frame.minX)
-        capture("Leading lesson note actions", app: app)
+        XCTAssertEqual(status.frame.minX, payment.frame.minX, accuracy: 2)
+        XCTAssertLessThan(status.frame.maxY, payment.frame.minY)
+        XCTAssertLessThanOrEqual(max(status.frame.maxX, payment.frame.maxX), edit.frame.minX)
+        XCTAssertGreaterThanOrEqual(edit.frame.height, 44)
+        XCTAssertLessThanOrEqual(edit.frame.maxX, actions.frame.maxX)
+        capture("Compact lesson note actions", app: app)
     }
 
     @MainActor

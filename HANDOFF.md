@@ -6,6 +6,8 @@ Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) f
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
 
+- **iOS 0.5.12, build 30**. Lessons Notes use two compact cards per row. Student cards share row heights and Statement cards align in one column. Both use stronger paper tints, and all note cards stay level. The red pins retain their individual angles.
+
 - **iOS 0.5.11, build 29**. Lesson calendar links open the native equivalents of the web individual and group detail pages. Back returns to the selected date. Group details show shared pricing, each participant's statuses and tuition, and direct edit and statement actions. Shared edits keep the original roster and only change attendance and charging for everyone when explicitly selected.
 
 - **iOS 0.5.10, build 28**. The three connected Shortcut actions appear as underlined links in one row. Sign-out actions have a square-cornered red tint and sit outside the settings cards.
