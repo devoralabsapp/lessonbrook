@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { hasNativeChrome } from "@/domain/mobile-sign-in";
-import { MobileDemoDashboard } from "@/features/demo/mobile-dashboard";
+import { MobileDashboard } from "@/features/schedule/mobile-dashboard";
 import { notFound, redirect } from "next/navigation";
 import Dashboard from "@/app/app/page";
 import Students from "@/app/app/students/page";
@@ -57,7 +57,7 @@ export default async function DemoPage({
       );
     }
     return hasNativeChrome((await headers()).get("user-agent")) ? (
-      <MobileDemoDashboard />
+      <MobileDashboard />
     ) : (
       <Dashboard />
     );

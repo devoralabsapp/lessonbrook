@@ -30,3 +30,10 @@ export function hasNativeChrome(userAgent: string | null) {
     hasNativeWorkspace(userAgent) && /\bNativeChrome\/1\b/.test(userAgent ?? "")
   );
 }
+
+export function hasAndroidWorkspace(userAgent: string | null) {
+  return (
+    hasNativeChrome(userAgent) &&
+    /\bLessonBrookApp\/Android\b.*\bWorkspaceHeader\/1\b/.test(userAgent ?? "")
+  );
+}

@@ -10,7 +10,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
-import android.net.Uri;
 import android.view.Gravity;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -21,18 +20,8 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import java.text.NumberFormat;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 final class NativeWorkspace {
     enum Tab {
@@ -50,57 +39,6 @@ final class NativeWorkspace {
             this.title = title;
             this.icon = icon;
             this.path = path;
-        }
-    }
-
-    record Snapshot(
-        String displayName, String theme, String locale, boolean needsOnboarding,
-        long outstanding, long overdue, long unbilled, long unbilledCount, long received, long students,
-        Schedule schedule
-    ) {
-        static Snapshot parse(JSONObject response) throws JSONException {
-            JSONObject totals = response.getJSONObject("summary");
-            return new Snapshot(
-                response.getString("displayName"), response.getString("theme"), response.getString("locale"),
-                response.getBoolean("needsOnboarding"), totals.getLong("outstandingVnd"), totals.getLong("overdueVnd"),
-                totals.getLong("unbilledVnd"), totals.getLong("unbilledCount"),
-                totals.getLong("receivedMonthVnd"), totals.getLong("activeStudents"),
-                Schedule.parse(response.optJSONObject("schedule"))
-            );
-        }
-    }
-
-    record Schedule(String today, List<Lesson> items) {
-        static Schedule parse(JSONObject data) throws JSONException {
-            if (data == null) return null;
-            List<Lesson> lessons = new ArrayList<>();
-            appendLessons(lessons, data.getJSONArray("items"));
-            appendLessons(lessons, data.optJSONArray("recurring"));
-            lessons.sort(Comparator.comparing(Lesson::date)
-                .thenComparing(lesson -> lesson.time() == null ? "24:00" : lesson.time())
-                .thenComparing(Lesson::id));
-            return new Schedule(data.getString("today"), Collections.unmodifiableList(lessons.subList(0, Math.min(8, lessons.size()))));
-        }
-
-        private static void appendLessons(List<Lesson> lessons, JSONArray items) throws JSONException {
-            if (items == null) return;
-            for (int i = 0; i < items.length(); i++) {
-                var row = items.getJSONObject(i);
-                lessons.add(new Lesson(
-                    row.getString("id"), row.getString("kind"),
-                    row.isNull("name") ? null : row.getString("name"), row.getString("date"),
-                    row.isNull("time") ? null : row.getString("time")
-                ));
-            }
-        }
-    }
-
-    record Lesson(String id, String kind, String name, String date, String time) {
-        String path() {
-            if ("recurring".equals(kind))
-                return new Uri.Builder().path("/app/lessons/new").appendQueryParameter("classId", id)
-                    .appendQueryParameter("date", date).appendQueryParameter("time", time).build().toString();
-            return "/app/" + ("group".equals(kind) ? "lessons/" : "sessions/") + id;
         }
     }
 
@@ -200,14 +138,12 @@ final class NativeWorkspace {
 
     private final Context context;
     private final Palette palette;
-    private final NumberFormat numbers;
 
     NativeWorkspace(Context owner, String locale, Palette palette) {
         Locale language = "vi".equals(locale) ? Locale.forLanguageTag("vi-VN") : Locale.US;
         Configuration configuration = new Configuration(owner.getResources().getConfiguration());
         configuration.setLocale(language);
         context = owner.createConfigurationContext(configuration);
-        numbers = NumberFormat.getIntegerInstance(language);
         this.palette = palette;
     }
 
@@ -312,107 +248,6 @@ final class NativeWorkspace {
         return link;
     }
 
-    View today(Snapshot data, Consumer<String> open) {
-        LinearLayout page = page();
-        add(page, heading(text(R.string.teaching_day), 25), 0);
-        add(page, metric(R.string.outstanding_tuition, money(data.outstanding()), 32, palette.yellow(), false), 16);
-
-        LinearLayout unbilled = metric(R.string.unbilled_lessons, money(data.unbilled()), 17, palette.blue(), true);
-        LinearLayout received = metric(R.string.received_this_month, money(data.received()), 17, palette.mint(), true);
-        float fontScale = context.getResources().getConfiguration().fontScale;
-        if (context.getResources().getConfiguration().screenWidthDp >= 350 && fontScale <= 1.3f) {
-            LinearLayout row = new LinearLayout(context);
-            row.addView(unbilled, new LinearLayout.LayoutParams(0, -1, 1));
-            LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, -1, 1);
-            right.setMarginStart(dp(12));
-            row.addView(received, right);
-            add(page, row, 16);
-        } else {
-            add(page, unbilled, 16);
-            add(page, received, 12);
-        }
-        add(page, metric(R.string.active_students, numbers.format(data.students()), 20, null, false), 16);
-        if (data.schedule() != null) add(page, schedule(data.schedule(), open), 16);
-        if (data.needsOnboarding()) {
-            add(page, button(text(R.string.get_started), () -> open.accept("/onboarding"), false), 8);
-        }
-        return scroll(page);
-    }
-
-    private View schedule(Schedule data, Consumer<String> open) {
-        LinearLayout section = column();
-        section.setBackground(panel(palette.surface()));
-        int inset = dp(palette.outline());
-        section.setPadding(inset, inset, inset + dp(palette.shadowOffset()),
-            inset + dp(palette.shadowOffset()));
-        TextView title = heading(text(R.string.upcoming_lessons), 20);
-        title.setPadding(dp(12), dp(10), dp(12), dp(10));
-        add(section, title, 0);
-        scheduleDivider(section);
-        if (data.items().isEmpty()) {
-            TextView empty = label(text(R.string.no_planned_lessons), 14, palette.foreground());
-            empty.setPadding(dp(12), dp(12), dp(12), dp(12));
-            add(section, empty, 0);
-            return section;
-        }
-        int index = 0;
-        var dateFormat = DateTimeFormatter.ofPattern("d MMM yyyy",
-            context.getResources().getConfiguration().getLocales().get(0));
-        for (Lesson lesson : data.items()) {
-            int tone = index++ % 2 == 0 ? palette.blue() : palette.mint();
-            int ink = palette.foreground();
-            String name = lesson.name() == null || lesson.name().isEmpty()
-                ? text(R.string.group_lesson) : lesson.name();
-            String day = data.today().equals(lesson.date()) ? text(R.string.today)
-                : LocalDate.parse(lesson.date()).format(dateFormat);
-            String time = lesson.time() == null ? text(R.string.time_not_set) : lesson.time();
-            String when = day + " · " + time
-                + ("recurring".equals(lesson.kind()) ? " · " + text(R.string.weekly) : "");
-            LinearLayout identity = new LinearLayout(context);
-            identity.setGravity(Gravity.CENTER_VERTICAL);
-            identity.setPadding(dp(9), dp(6), dp(9), dp(6));
-            GradientDrawable frame = shape(tint(palette.surface(), palette.recordAccent(), 0.7f),
-                Math.min(palette.radius(), 14));
-            frame.setStroke(dp(2), palette.controlTint());
-            identity.setBackground(frame);
-            TextView initial = bold(name.substring(0, name.offsetByCodePoints(0, 1))
-                .toUpperCase(context.getResources().getConfiguration().getLocales().get(0)), 15, ink);
-            initial.setGravity(Gravity.CENTER);
-            initial.setBackground(shape(palette.recordAccent(), 3));
-            identity.addView(initial, new LinearLayout.LayoutParams(dp(40), dp(40)));
-            LinearLayout labels = column();
-            add(labels, bold(name, 15, ink), 0);
-            add(labels, label(when, 13, ink), 2);
-            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1);
-            labelParams.setMarginStart(dp(9));
-            identity.addView(labels, labelParams);
-            action(identity, name + ", " + when, () -> open.accept(lesson.path()));
-            LinearLayout row = column();
-            row.setPadding(dp(12), dp(12), dp(12), dp(12));
-            if ("playful-retro".equals(palette.theme())) {
-                LayerDrawable paper = new LayerDrawable(new Drawable[] {
-                    shape(tint(palette.surface(), tone, 0.3f), 0), shape(tone, 0)
-                });
-                paper.setLayerWidth(1, dp(5));
-                paper.setLayerGravity(1, Gravity.LEFT);
-                row.setBackground(paper);
-            }
-            add(row, identity, 0);
-            add(section, row, 0);
-            scheduleDivider(section);
-        }
-        TextView footer = textAction(text(R.string.full_schedule), () -> open.accept("/app/schedule"));
-        footer.setPadding(dp(12), 0, dp(12), 0);
-        add(section, footer, 0);
-        return section;
-    }
-
-    private void scheduleDivider(LinearLayout list) {
-        View divider = new View(context);
-        divider.setBackgroundColor(tint(palette.surface(), palette.border(), 0.4f));
-        list.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
-    }
-
     private static int tint(int base, int color, float strength) {
         float weight = 1f - strength;
         return Color.rgb(
@@ -441,7 +276,7 @@ final class NativeWorkspace {
         LinearLayout row = new LinearLayout(context);
         row.setGravity(Gravity.CENTER);
         row.setBackgroundColor(palette.surface());
-        row.setPadding(dp(6), dp(4), dp(6), dp(3));
+        row.setPadding(dp(3), dp(4), dp(3), dp(3));
         for (Tab tab : Tab.values()) {
             boolean active = tab == selected;
             LinearLayout item = column();
@@ -461,7 +296,12 @@ final class NativeWorkspace {
             add(item, title, 2);
             row.addView(item, new LinearLayout.LayoutParams(0, -1, 1));
         }
-        return row;
+        LinearLayout bar = column();
+        View divider = new View(context);
+        divider.setBackgroundColor(palette.border());
+        bar.addView(divider, new LinearLayout.LayoutParams(-1, dp(palette.outline())));
+        bar.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        return bar;
     }
 
     private void action(View view, String title, Runnable action) {
@@ -475,15 +315,6 @@ final class NativeWorkspace {
                 info.setClassName(Button.class.getName());
             }
         });
-    }
-
-    private LinearLayout metric(int title, String value, int size, Integer fill, boolean compact) {
-        int ink = fill == null ? palette.foreground() : palette.dashboardInk();
-        LinearLayout metric = card(fill == null ? palette.surface() : fill, 12);
-        if (compact) metric.setMinimumHeight(dp(92));
-        add(metric, label(text(title), compact ? 13 : 15, ink), 0);
-        add(metric, bold(value, size, ink), 6);
-        return metric;
     }
 
     private ImageView icon(int drawable, int color) {
@@ -584,9 +415,5 @@ final class NativeWorkspace {
         return label;
     }
 
-    private String money(long vnd) {
-        return "vi".equals(context.getResources().getConfiguration().getLocales().get(0).getLanguage())
-            ? numbers.format(vnd) + "\u00a0₫" : "₫" + numbers.format(vnd);
-    }
     private int dp(int value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }
 }

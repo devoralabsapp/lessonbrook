@@ -4,18 +4,18 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.webkit.CookieManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebMessage;
+import android.webkit.WebMessagePort;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -23,21 +23,17 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 import java.io.IOException;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
-    private enum Screen { WELCOME, TODAY, PAGE }
+    private enum Screen { WELCOME, PAGE }
 
     private static final String SESSION = "chotcong_session";
     private static final String LOCALE = "chotcong_locale";
@@ -45,8 +41,7 @@ public final class MainActivity extends Activity {
     private static final String DRAFT_STATE = """
         ({
             state: document.querySelector('[data-mobile-draft="saving"]') ? 'saving' :
-                document.querySelector('[data-mobile-draft="dirty"]') ? 'dirty' : 'clean',
-            theme: document.querySelector('[data-saved-theme]')?.dataset.savedTheme ?? ''
+                document.querySelector('[data-mobile-draft="dirty"]') ? 'dirty' : 'clean'
         })
         """;
     private static final String SHARE_DATA = """
@@ -58,7 +53,6 @@ public final class MainActivity extends Activity {
 
     private final ExecutorService network = Executors.newFixedThreadPool(2);
     private LinearLayout root;
-    private LinearLayout toolbar;
     private LinearLayout tabs;
     private FrameLayout content;
     private WebView webView;
@@ -66,12 +60,7 @@ public final class MainActivity extends Activity {
     private AlertDialog signInError;
     private Screen screen = Screen.WELCOME;
     private NativeWorkspace.Tab tab = NativeWorkspace.Tab.DASHBOARD;
-    private NativeWorkspace.Snapshot snapshot;
-    // Account-local RAM cache; no tuition data is persisted to disk.
-    private View dashboardView;
-    private NativeWorkspace.Snapshot dashboardSnapshot;
-    private String dashboardTheme;
-    private String dashboardLocale;
+    private WebMessagePort chromePort;
     private String webTheme;
     private String locale = "en";
     private String webRoot;
@@ -80,26 +69,17 @@ public final class MainActivity extends Activity {
     private boolean signingIn;
     private boolean signedIn;
     private boolean demoMode;
-    private boolean scheduleInitialized;
     private boolean webFailed;
     private View webError;
     private boolean checkingDraft;
     private AlertDialog draftAlert;
-    private final Runnable dashboardTick = new Runnable() {
-        @Override
-        public void run() {
-            if (screen == Screen.TODAY && snapshot != null) loadDashboard(++requestVersion, true);
-            root.postDelayed(this, 60_000);
-        }
-    };
-
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         buildView();
         String saved = originCookies();
         updateLocale(saved);
-        if (!cookie(saved, SESSION).isEmpty()) showToday();
+        if (!cookie(saved, SESSION).isEmpty()) showWorkspace();
         else if (!cookie(saved, "chotcong_deletion").isEmpty()) openPage(DELETION);
         else showWelcome(false);
         finishSignIn(getIntent());
@@ -109,19 +89,6 @@ public final class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         finishSignIn(intent);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (screen == Screen.TODAY && snapshot != null) loadDashboard(++requestVersion, true);
-        root.postDelayed(dashboardTick, 60_000);
-    }
-
-    @Override
-    protected void onPause() {
-        root.removeCallbacks(dashboardTick);
-        super.onPause();
     }
 
     private void buildView() {
@@ -136,9 +103,6 @@ public final class MainActivity extends Activity {
             });
         }
         setContentView(root);
-        toolbar = new LinearLayout(this);
-        toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(58)));
         content = new FrameLayout(this);
         root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         tabs = new LinearLayout(this);
@@ -146,7 +110,7 @@ public final class MainActivity extends Activity {
     }
 
     private NativeWorkspace.Palette palette() {
-        String theme = webTheme != null ? webTheme : snapshot == null ? "playful-retro" : snapshot.theme();
+        String theme = webTheme == null ? "playful-retro" : webTheme;
         return NativeWorkspace.Palette.from(theme);
     }
 
@@ -170,72 +134,23 @@ public final class MainActivity extends Activity {
             getWindow().getDecorView().setSystemUiVisibility(colors.dark() ? 0 : light);
         }
 
-        String currentPath = screen == Screen.PAGE ? workspacePath(webPath()) : "/app";
-        boolean mainTab = "/app".equals(currentPath)
-            || java.util.Arrays.stream(NativeWorkspace.Tab.values()).anyMatch(item -> currentPath.equals(item.path));
-        boolean showBack = screen == Screen.PAGE && !mainTab;
-        toolbar.removeAllViews();
-        toolbar.setVisibility(screen == Screen.WELCOME ? View.GONE : View.VISIBLE);
-        toolbar.setBackgroundColor(colors.surface());
-        if (showBack) toolbar.addView(tool(R.drawable.ic_back, R.string.back, this::goBack));
-
-        TextView title = new TextView(this);
-        title.setText(ui.text(screen == Screen.PAGE ? pageTitle(webPath()) : tab.title));
-        title.setTextColor(colors.foreground());
-        title.setTypeface(colors.font(), Typeface.BOLD);
-        title.setTextSize(20);
-        title.setSingleLine(true);
-        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        if (Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
-        title.setPadding(dp(showBack ? 2 : 12), 0, dp(8), 0);
-        toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        if (screen == Screen.TODAY) toolbar.addView(tool(R.drawable.ic_refresh, R.string.reload, this::showToday));
-        if (screen != Screen.WELCOME && !DELETION.equals(webRoot)) {
-            String path = workspacePath(screen == Screen.PAGE ? webPath() : "/app");
-            if (!"/app/appearance".equals(path))
-                toolbar.addView(tool(R.drawable.ic_palette, R.string.choose_theme, () -> openToolbarPage("/app/appearance")));
-            if (!"/app/settings".equals(path))
-                toolbar.addView(tool(R.drawable.ic_settings, R.string.account_settings, () -> openToolbarPage("/app/settings")));
-        }
-
         tabs.removeAllViews();
         boolean showTabs = screen != Screen.WELCOME && !DELETION.equals(webRoot);
         tabs.setVisibility(showTabs ? View.VISIBLE : View.GONE);
         if (showTabs) tabs.addView(ui.tabs(tab, this::selectTab), new LinearLayout.LayoutParams(-1, -2));
     }
 
-    private ImageButton tool(int icon, int label, Runnable action) {
-        ImageButton button = new ImageButton(this);
-        TypedValue background = new TypedValue();
-        getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, background, true);
-        button.setBackgroundResource(background.resourceId);
-        button.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(48)));
-        button.setImageResource(icon);
-        button.setImageTintList(ColorStateList.valueOf(palette().foreground()));
-        button.setContentDescription(workspace().text(label));
-        button.setOnClickListener(view -> action.run());
-        return button;
-    }
-
     private void selectTab(NativeWorkspace.Tab target) {
-        beforeLeavingPage(() -> openTab(target));
-    }
-
-    private void openTab(NativeWorkspace.Tab target) {
-        if (target.path != null || demoMode) switchWebTab(target);
-        else showToday();
+        beforeLeavingPage(() -> switchWebTab(target));
     }
 
     private void switchWebTab(NativeWorkspace.Tab target) {
-        switchWebTab(target, target.path == null ? "/app" : target.path);
-    }
-
-    private void switchWebTab(NativeWorkspace.Tab target, String path) {
+        String path = target.path == null ? "/app" : target.path;
         WebView web = webView;
         String source = web == null ? null : web.getUrl();
         Uri uri = source == null ? null : Uri.parse(source);
         if (webFailed || uri == null || !MobileSignIn.isFirstParty(uri)
-            || uri.getPath() == null || !uri.getPath().startsWith(demoMode ? "/demo" : "/app/")) {
+            || uri.getPath() == null || !(uri.getPath().equals(demoMode ? "/demo" : "/app") || uri.getPath().startsWith(demoMode ? "/demo/" : "/app/"))) {
             openPage(path);
             return;
         }
@@ -253,20 +168,6 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void openToolbarPage(String target) {
-        if (demoMode) {
-            beforeLeavingPage(() -> switchWebTab(tab, target));
-            return;
-        }
-        String path = destination(target);
-        beforeLeavingPage(() -> {
-            String current = webView == null ? null : webView.getUrl();
-            if (current != null && MobileSignIn.isFirstParty(Uri.parse(current))) {
-                if (!path.equals(Uri.parse(current).getPath())) webView.loadUrl(MobileSignIn.ORIGIN + path);
-            } else openPage(path);
-        });
-    }
-
     private void nativeView(View child) {
         closePage();
         content.removeAllViews();
@@ -278,12 +179,6 @@ public final class MainActivity extends Activity {
         int version = ++requestVersion;
         signedIn = false;
         demoMode = false;
-        scheduleInitialized = false;
-        snapshot = null;
-        dashboardView = null;
-        dashboardSnapshot = null;
-        dashboardTheme = null;
-        dashboardLocale = null;
         webTheme = null;
         screen = Screen.WELCOME;
         tab = NativeWorkspace.Tab.DASHBOARD;
@@ -326,11 +221,6 @@ public final class MainActivity extends Activity {
 
     private void showDemo() {
         demoMode = true;
-        snapshot = null;
-        dashboardView = null;
-        dashboardSnapshot = null;
-        dashboardTheme = null;
-        dashboardLocale = null;
         webTheme = null;
         tab = NativeWorkspace.Tab.DASHBOARD;
         openPage("/app");
@@ -350,68 +240,12 @@ public final class MainActivity extends Activity {
         return path;
     }
 
-    private void showToday() {
+    private void showWorkspace() {
         demoMode = false;
-        int version = ++requestVersion;
         signedIn = true;
-        screen = Screen.TODAY;
         tab = NativeWorkspace.Tab.DASHBOARD;
-        if (snapshot != null) renderToday();
-        else {
-            nativeView(new FrameLayout(this));
-            ProgressBar loading = workspace().loading();
-            content.addView(loading, new FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER));
-        }
-        loadDashboard(version, false);
+        openPage("/app");
     }
-
-    private void loadDashboard(int version, boolean quiet) {
-        String saved = originCookies();
-        String credentials = cookie(saved, SESSION);
-        String language = cookie(saved, LOCALE);
-        if (!credentials.isEmpty() && !language.isEmpty()) credentials += "; " + language;
-        String headers = credentials;
-        boolean initialize = !scheduleInitialized;
-        network.execute(() -> {
-            try {
-                var result = NativeWorkspace.Snapshot.parse(MobileSignIn.workspace(headers, initialize));
-                deliver(version, () -> {
-                    scheduleInitialized = true;
-                    snapshot = result;
-                    webTheme = null;
-                    locale = result.locale();
-                    renderToday();
-                });
-            } catch (MobileSignIn.HttpFailure error) {
-                deliver(version, () -> {
-                    if (error.status == 401) expireSession();
-                    else if (error.status == 423) openPage(DELETION);
-                    else if (!quiet) showDashboardError();
-                });
-            } catch (IOException | JSONException error) {
-                if (!quiet) deliver(version, this::showDashboardError);
-            }
-        });
-    }
-
-    private void renderToday() {
-        String theme = webTheme != null ? webTheme : snapshot.theme();
-        boolean changed = dashboardView == null || !snapshot.equals(dashboardSnapshot)
-            || !Objects.equals(theme, dashboardTheme) || !Objects.equals(locale, dashboardLocale);
-        if (!changed && dashboardView.getParent() == content) return;
-        if (changed) {
-            int scroll = dashboardView instanceof ScrollView ? dashboardView.getScrollY() : 0;
-            dashboardView = workspace().today(snapshot, this::openPage);
-            dashboardSnapshot = snapshot;
-            dashboardTheme = theme;
-            dashboardLocale = locale;
-            View restored = dashboardView;
-            if (scroll > 0) restored.post(() -> restored.scrollTo(0, scroll));
-        }
-        nativeView(dashboardView);
-    }
-
-    private void showDashboardError() { nativeView(workspace().error(this::showToday)); }
 
     private void deliver(int version, Runnable display) {
         runOnUiThread(() -> {
@@ -436,6 +270,7 @@ public final class MainActivity extends Activity {
     }
 
     private void closePage() {
+        closeChromeChannel();
         if (webView != null) {
             WebView previous = webView;
             webView = null;
@@ -459,8 +294,9 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " LessonBrookApp/Android NativeWorkspace/1 MobileActions/1 NativeChrome/1");
+        settings.setUserAgentString(settings.getUserAgentString() + " LessonBrookApp/Android NativeWorkspace/1 MobileActions/1 NativeChrome/1 WorkspaceHeader/1");
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
+        web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -485,6 +321,7 @@ public final class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 if (view != webView) return;
+                closeChromeChannel();
                 webFailed = false;
                 view.setVisibility(View.VISIBLE);
                 if (webError != null) {
@@ -498,6 +335,7 @@ public final class MainActivity extends Activity {
                 if (view != webView || webFailed) return;
                 updateLocale(originCookies());
                 track(view, url);
+                connectChrome(view, url);
             }
 
             @Override
@@ -515,6 +353,51 @@ public final class MainActivity extends Activity {
                 if (request.isForMainFrame() && response.getStatusCode() >= 500) showLoadError(view);
             }
         });
+    }
+
+    private void connectChrome(WebView view, String url) {
+        if (view != webView || !url.equals(view.getUrl()) || !MobileSignIn.isFirstParty(Uri.parse(url))) return;
+        closeChromeChannel();
+        view.evaluateJavascript("""
+            (() => {
+                const root = document.querySelector('[data-workspace]');
+                if (!root) return false;
+                window.addEventListener('message', event => {
+                    if (event.data !== 'lessonbrook:appearance' || !event.ports.length) return;
+                    const port = event.ports[0];
+                    const send = () => port.postMessage(root.dataset.theme || '');
+                    new MutationObserver(send).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+                    send();
+                }, { once: true });
+                return true;
+            })()
+            """, ready -> {
+                if (!"true".equals(ready) || view != webView || !url.equals(view.getUrl())) return;
+                WebMessagePort[] ports = view.createWebMessageChannel();
+                chromePort = ports[0];
+                chromePort.setWebMessageCallback(new WebMessagePort.WebMessageCallback() {
+                    @Override
+                    public void onMessage(WebMessagePort port, WebMessage message) {
+                        if (port != chromePort || view != webView) return;
+                        String theme = message.getData();
+                        if (theme == null) return;
+                        String applied = NativeWorkspace.Palette.from(theme).theme();
+                        if (!applied.equals(webTheme)) {
+                            webTheme = applied;
+                            chrome();
+                        }
+                    }
+                });
+                view.postWebMessage(new WebMessage("lessonbrook:appearance", new WebMessagePort[]{ports[1]}),
+                    Uri.parse(MobileSignIn.ORIGIN));
+            });
+    }
+
+    private void closeChromeChannel() {
+        if (chromePort != null) {
+            chromePort.close();
+            chromePort = null;
+        }
     }
 
     private void shareStatement(WebView view, String source) {
@@ -549,9 +432,18 @@ public final class MainActivity extends Activity {
                 tab = NativeWorkspace.Tab.DASHBOARD;
                 chrome();
             }
-            case "/app" -> showToday();
-            case "/" -> { if (signedIn) showToday(); else showWelcome(false); }
-            case "/login" -> { if (uri.getQueryParameter("expired") == null) showWelcome(false); else expireSession(); }
+            case "/app" -> {
+                signedIn = true;
+                tab = NativeWorkspace.Tab.DASHBOARD;
+                chrome();
+            }
+            case "/" -> { if (signedIn) showWorkspace(); else showWelcome(false); }
+            case "/login" -> {
+                boolean startFromDemo = demoMode && "1".equals(uri.getQueryParameter("mobileSignIn"));
+                if (uri.getQueryParameter("expired") == null) showWelcome(false);
+                else expireSession();
+                if (startFromDemo) startSignIn();
+            }
             case DELETION -> {
                 webRoot = DELETION;
                 chrome();
@@ -634,7 +526,7 @@ public final class MainActivity extends Activity {
         progress = null;
         if (saved) {
             network.execute(() -> CookieManager.getInstance().flush());
-            showToday();
+            showWorkspace();
         } else {
             showWelcome(false);
             showSignInError();
@@ -679,6 +571,7 @@ public final class MainActivity extends Activity {
 
     private static NativeWorkspace.Tab pageTab(String path, NativeWorkspace.Tab fallback) {
         path = workspacePath(path);
+        if (path == null) return fallback;
         if (path.startsWith("/app/students")) return NativeWorkspace.Tab.STUDENTS;
         if (path.startsWith("/app/sessions") || path.startsWith("/app/lessons") || path.equals("/app/schedule"))
             return NativeWorkspace.Tab.LESSONS;
@@ -687,31 +580,36 @@ public final class MainActivity extends Activity {
         return fallback;
     }
 
-    private int pageTitle(String path) {
-        return switch (workspacePath(path)) {
-            case "/app/lessons/new" -> R.string.record_lesson;
-            case "/app/schedule" -> R.string.upcoming_lessons;
-            case "/app/classes" -> R.string.classes;
-            case "/app/settings" -> R.string.account_settings;
-            case "/app/appearance" -> R.string.appearance;
-            case DELETION -> R.string.account_deletion;
-            case "/onboarding" -> R.string.get_started;
-            case "/help" -> R.string.help_support;
-            default -> pageTab(path, tab).title;
-        };
-    }
-
     private boolean goBack() {
+        if (screen == Screen.PAGE && signedIn && "/app".equals(webPath())) return false;
         if (screen == Screen.PAGE) {
             beforeLeavingPage(() -> {
-                if (webView != null && webView.canGoBack() && !java.util.Objects.equals(webPath(), webRoot)) webView.goBack();
-                else if (DELETION.equals(webRoot)) showWelcome(false);
-                else if (demoMode) openPage("/app");
-                else showToday();
+                if (DELETION.equals(webRoot)) showWelcome(false);
+                else if (canReturnWithinTab()) webView.goBack();
+                else {
+                    String path = tab.path == null ? "/app" : tab.path;
+                    if (!path.equals(workspacePath(webPath()))) switchWebTab(tab);
+                    else if (tab != NativeWorkspace.Tab.DASHBOARD) switchWebTab(NativeWorkspace.Tab.DASHBOARD);
+                    else showWelcome(false);
+                }
             });
             return true;
         }
         return false;
+    }
+
+    private boolean canReturnWithinTab() {
+        if (webView == null || !webView.canGoBack()) return false;
+        String current = workspacePath(webPath());
+        if (current == null || current.equals(tab.path == null ? "/app" : tab.path)) return false;
+        var history = webView.copyBackForwardList();
+        var previous = history.getItemAtIndex(history.getCurrentIndex() - 1);
+        if (previous == null) return false;
+        Uri url = Uri.parse(previous.getUrl());
+        String path = url.getPath();
+        return MobileSignIn.isFirstParty(url) && path != null
+            && (demoMode ? path.startsWith("/demo/") : path.startsWith("/app/"))
+            && pageTab(path, null) == tab;
     }
 
     private void beforeLeavingPage(Runnable leave) {
@@ -733,8 +631,6 @@ public final class MainActivity extends Activity {
             try {
                 JSONObject result = new JSONObject(value == null ? "{}" : value);
                 state = result.optString("state");
-                String theme = result.optString("theme");
-                if (!theme.isEmpty()) webTheme = theme;
             } catch (JSONException ignored) {
                 // An interrupted page still needs the draft confirmation.
             }

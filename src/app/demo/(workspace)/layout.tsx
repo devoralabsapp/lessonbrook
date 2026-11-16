@@ -1,6 +1,10 @@
 import type { Viewport } from "next";
 import { headers } from "next/headers";
-import { hasNativeChrome, hasNativeWorkspace } from "@/domain/mobile-sign-in";
+import {
+  hasAndroidWorkspace,
+  hasNativeChrome,
+  hasNativeWorkspace,
+} from "@/domain/mobile-sign-in";
 import { AppShell } from "@/components/app-shell";
 import { getGuestTheme } from "@/lib/server/guest-theme";
 import { demoTeacherName } from "@/features/demo/sample-data";
@@ -23,6 +27,7 @@ export default async function DemoLayout({
       initialTheme={await getGuestTheme()}
       embedded={hasNativeWorkspace(agent)}
       nativeChrome={hasNativeChrome(agent)}
+      androidWorkspace={hasAndroidWorkspace(agent)}
     >
       {children}
     </AppShell>

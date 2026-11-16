@@ -12,13 +12,20 @@ const languages = [
   { value: "vi", label: "Tiếng Việt", lang: "vi" },
 ] as const;
 
-export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
+export function LanguageSwitcher({
+  compact = false,
+  canLeave,
+}: {
+  compact?: boolean;
+  canLeave?: () => boolean;
+}) {
   const { locale } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const id = useId();
 
   async function change(value: Locale) {
+    if (canLeave && !canLeave()) return;
     setBusy(true);
     setError(false);
     try {

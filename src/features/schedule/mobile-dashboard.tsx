@@ -1,31 +1,48 @@
 "use client";
 
-import { RecordIdentity, RecordNote } from "@/components/record-note";
+import { useEffect } from "react";
 import Link from "@/components/workspace-link";
 import { Card } from "@/components/ui/card";
 import { formatVnd } from "@/domain";
 import {
   sortUpcomingLessons,
-  upcomingLessonPath,
   type UpcomingSchedule,
 } from "@/domain/upcoming-schedule";
 import { LoadError, useResource } from "@/features/classes/shared";
-import { formatDate } from "@/features/statements/shared";
 import { useI18n } from "@/lib/i18n/client";
+import { UpcomingLessonRows } from "./upcoming";
 
-const tones = ["blue", "mint"] as const;
-
-export function MobileDemoDashboard() {
+export function MobileDashboard() {
   const { t, locale } = useI18n();
   const summaryRequest = useResource<{
     outstandingVnd: number;
     unbilledVnd: number;
     receivedMonthVnd: number;
     activeStudents: number;
-  }>("/api/summary");
-  const scheduleRequest = useResource<UpcomingSchedule>("/api/mobile/schedule");
+  }>("/api/summary", true);
+  const scheduleRequest = useResource<UpcomingSchedule>(
+    "/api/mobile/schedule",
+    true,
+  );
   const summary = summaryRequest.data;
   const schedule = scheduleRequest.data;
+  const reloadSummary = summaryRequest.reload;
+  const reloadSchedule = scheduleRequest.reload;
+  useEffect(() => {
+    function refresh() {
+      if (document.visibilityState !== "visible") return;
+      reloadSummary();
+      reloadSchedule();
+    }
+    window.addEventListener("class-lessons-created", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const timer = window.setInterval(refresh, 60_000);
+    return () => {
+      window.removeEventListener("class-lessons-created", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.clearInterval(timer);
+    };
+  }, [reloadSummary, reloadSchedule]);
   const lessons = schedule
     ? sortUpcomingLessons([
         ...schedule.items,
@@ -35,7 +52,7 @@ export function MobileDemoDashboard() {
   const money = (amount: number | undefined) =>
     amount === undefined ? "…" : formatVnd(amount, locale);
 
-  if (summaryRequest.error)
+  if (summaryRequest.error && !summary)
     return (
       <LoadError message={summaryRequest.error} retry={summaryRequest.reload} />
     );
@@ -73,7 +90,7 @@ export function MobileDemoDashboard() {
         <h2 className="serif border-b border-border px-5 py-4 text-xl font-bold">
           {t("Lịch dạy sắp tới")}
         </h2>
-        {scheduleRequest.error ? (
+        {scheduleRequest.error && !schedule ? (
           <div className="p-4">
             <LoadError
               message={scheduleRequest.error}
@@ -82,32 +99,7 @@ export function MobileDemoDashboard() {
           </div>
         ) : lessons.length ? (
           <>
-            <div className="divide-y divide-border">
-              {lessons.map((lesson, index) => (
-                <RecordNote
-                  key={upcomingLessonPath(lesson)}
-                  recordId={upcomingLessonPath(lesson)}
-                  note={false}
-                  tone={tones[index % tones.length]}
-                  className="flex px-5 py-3"
-                >
-                  <RecordIdentity
-                    note={false}
-                    href={upcomingLessonPath(lesson)}
-                    name={lesson.name ?? t("Buổi nhóm tự chọn")}
-                    detail={[
-                      lesson.date === schedule?.today
-                        ? t("Hôm nay")
-                        : formatDate(lesson.date, locale),
-                      lesson.time ?? t("Chưa đặt giờ"),
-                      lesson.kind === "recurring" ? t("Hằng tuần") : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  />
-                </RecordNote>
-              ))}
-            </div>
+            <UpcomingLessonRows items={lessons} today={schedule?.today ?? ""} />
             <Link
               href="/app/schedule"
               className="block border-t border-border p-4 text-sm font-semibold text-primary underline"

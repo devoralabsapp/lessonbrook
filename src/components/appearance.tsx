@@ -80,10 +80,7 @@ export function AppearancePicker({ inline = false }: { inline?: boolean }) {
     }
   }
   return (
-    <div
-      ref={root}
-      data-mobile-draft={inline && mutation.busy ? "saving" : undefined}
-    >
+    <div ref={root} data-mobile-draft={mutation.busy ? "saving" : undefined}>
       {!inline && (
         <Button
           ref={trigger}

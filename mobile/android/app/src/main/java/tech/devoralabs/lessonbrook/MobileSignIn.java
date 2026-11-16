@@ -74,18 +74,6 @@ final class MobileSignIn {
         }
     }
 
-    static JSONObject workspace(String cookies, boolean initialize) throws IOException, JSONException {
-        HttpURLConnection request = post("/api/mobile/workspace", new JSONObject().put("initialize", initialize), cookies);
-        try {
-            return responseJson(request);
-        } catch (HttpFailure error) {
-            if (error.status == 403) csrfPair = null;
-            throw error;
-        } finally {
-            request.disconnect();
-        }
-    }
-
     private static CsrfPair csrf() throws IOException, JSONException {
         CsrfPair cached = csrfPair;
         long now = SystemClock.elapsedRealtime();

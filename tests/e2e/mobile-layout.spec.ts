@@ -1,5 +1,100 @@
 import { expect, test } from "@playwright/test";
 
+test("Android workspace shares the mobile header, compact notes and saved lesson flow", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    userAgent:
+      "Mozilla/5.0 LessonBrookApp/Android NativeWorkspace/1 MobileActions/1 NativeChrome/1 WorkspaceHeader/1",
+    viewport: { width: 390, height: 780 },
+  });
+  await context.addCookies([
+    { name: "chotcong_locale", value: "en", domain: "localhost", path: "/" },
+  ]);
+  const page = await context.newPage();
+  try {
+    await page.goto("/demo");
+    const header = page.locator('[data-slot="workspace-header"]');
+    await expect(
+      header.getByRole("link", { name: /LessonBrook/ }),
+    ).toBeVisible();
+    await expect(
+      header.getByRole("combobox", { name: "Language" }),
+    ).toBeVisible();
+    await expect(
+      header.getByRole("link", { name: "Sign in", exact: true }),
+    ).toHaveAttribute("href", "/login?mobileSignIn=1");
+    await expect(
+      header.getByRole("link", { name: "Account settings" }),
+    ).toBeVisible();
+    await expect(page.locator('nav[data-position="bottom"]')).toHaveCount(0);
+    await expect(
+      page.getByText("Outstanding tuition", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "View full schedule" }).click();
+    await expect(page.locator('[data-tone="blue"]').first()).toBeVisible();
+
+    async function selectTab(path: string) {
+      expect(
+        await page.evaluate(
+          (detail) =>
+            !window.dispatchEvent(
+              new CustomEvent("lessonbrook:navigate-tab", {
+                cancelable: true,
+                detail,
+              }),
+            ),
+          path,
+        ),
+      ).toBe(true);
+    }
+    await selectTab("/app/classes");
+    await expect(page).toHaveURL(/\/demo\/classes$/);
+    await selectTab("/app/sessions");
+    await expect(page).toHaveURL(/\/demo\/schedule$/);
+    await selectTab("/app/sessions");
+    await expect(page).toHaveURL(/\/demo\/sessions$/);
+    const notes = page.locator(".record-note-lessons > .record-note");
+    await expect(notes.nth(1)).toBeVisible();
+    expect(
+      await notes.nth(0).evaluate((first) => {
+        const second = first.nextElementSibling!.getBoundingClientRect();
+        const rect = first.getBoundingClientRect();
+        return Math.abs(second.top - rect.top) < 2 && second.left > rect.left;
+      }),
+    ).toBe(true);
+    await header.getByRole("button", { name: "Choose a theme" }).click();
+    await page.getByRole("radio", { name: "Mono OS" }).check();
+    await expect(
+      page.locator('[data-android-workspace][data-theme="mono-os"]'),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(
+      page.locator('[data-android-workspace][data-theme="playful-retro"]'),
+    ).toBeVisible();
+    await header.getByRole("combobox", { name: "Language" }).click();
+    await page.getByRole("option", { name: "Tiếng Việt" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Sổ buổi dạy" }),
+    ).toBeVisible();
+    await page.goto("/demo/lessons/lesson-25");
+    await page
+      .getByRole("button", { name: "Đánh dấu hoàn thành", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Ghi buổi dạy" }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Lưu thay đổi buổi", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Đánh dấu hoàn thành", exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
+
 for (const platform of ["iOS", "Android"]) {
   test(`${platform} demo uses native chrome, compact forms and tab navigation without an account`, async ({
     browser,

@@ -4,7 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { LanguageSwitcher } from "./language-switcher";
 import Link, { useDemoWorkspace } from "@/components/workspace-link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LogIn, LogOut, Settings, Sprout } from "lucide-react";
 import { WorkspaceNavigation, workspaceTabs } from "./workspace-navigation";
 import { Brand } from "./brand";
@@ -19,12 +19,14 @@ export function AppShell({
   initialTheme = DEFAULT_THEME,
   embedded = false,
   nativeChrome = false,
+  androidWorkspace = false,
   children,
 }: {
   name: string;
   initialTheme?: Theme;
   embedded?: boolean;
   nativeChrome?: boolean;
+  androidWorkspace?: boolean;
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
@@ -47,18 +49,44 @@ export function AppShell({
           (path.startsWith("/app/lessons") || path === "/app/schedule"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const androidTabLocations = useRef(new Map<string, string>());
   useEffect(() => {
     if (!nativeChrome) return;
     function navigate(event: Event) {
       const target: unknown = (event as CustomEvent).detail;
       if (
         !workspaceTabs.some(
-          ({ href }) => (demo || href !== "/app") && href === target,
+          ({ href }) =>
+            (androidWorkspace || demo || href !== "/app") && href === target,
         ) &&
         !(demo && ["/app/settings", "/app/appearance"].includes(String(target)))
       )
         return;
       event.preventDefault();
+      if (androidWorkspace && typeof target === "string") {
+        const root = workspaceTabs.find(({ href }) =>
+          href === "/app"
+            ? path === href
+            : path === href ||
+              path.startsWith(`${href}/`) ||
+              (href === "/app/sessions" &&
+                (path === "/app/schedule" || path.startsWith("/app/lessons"))),
+        );
+        if (root && root.href !== target)
+          androidTabLocations.current.set(
+            root.href,
+            pathname + window.location.search,
+          );
+        const destination = demo
+          ? target.replace(/^\/app(?=\/|$)/, "/demo")
+          : target;
+        const next =
+          root?.href === target
+            ? destination
+            : (androidTabLocations.current.get(target) ?? destination);
+        if (next !== pathname + window.location.search) router.push(next);
+        return;
+      }
       if (typeof target === "string" && target !== path)
         router.replace(
           demo ? target.replace(/^\/app(?=\/|$)/, "/demo") : target,
@@ -67,7 +95,7 @@ export function AppShell({
     window.addEventListener("lessonbrook:navigate-tab", navigate);
     return () =>
       window.removeEventListener("lessonbrook:navigate-tab", navigate);
-  }, [demo, nativeChrome, path, router]);
+  }, [androidWorkspace, demo, nativeChrome, path, pathname, router]);
   useEffect(() => {
     if (demo) {
       function updateName(event: Event) {
@@ -125,11 +153,19 @@ export function AppShell({
       setBusy(false);
     }
   }
+  function canLeaveAndroidPage() {
+    if (document.querySelector('[data-mobile-draft="saving"]')) return false;
+    return (
+      !document.querySelector('[data-mobile-draft="dirty"]') ||
+      window.confirm(t("Bỏ các thay đổi chưa lưu?"))
+    );
+  }
   return (
     <AppearanceContext.Provider value={appearance}>
       <div
         data-workspace=""
         data-native-chrome={nativeChrome || undefined}
+        data-android-workspace={androidWorkspace || undefined}
         data-theme={appearance.theme}
         data-saved-theme={appearance.savedTheme}
         className="min-h-dvh bg-background text-foreground"
@@ -203,7 +239,7 @@ export function AppShell({
           </aside>
         )}
         <div className={embedded ? undefined : "lg:ml-[242px]"}>
-          {embedded ? (
+          {embedded && !androidWorkspace ? (
             (!nativeChrome || path === "/app/settings") && (
               <header className="relative flex justify-end gap-3 px-5 pt-3 sm:px-9">
                 {path === "/app/settings" && <LanguageSwitcher />}
@@ -213,43 +249,76 @@ export function AppShell({
           ) : (
             <header
               data-slot="workspace-header"
-              className="relative flex h-[82px] items-center justify-between border-b border-border bg-surface/80 px-4 sm:px-9"
+              onClickCapture={
+                androidWorkspace
+                  ? (event) => {
+                      if (
+                        event.target instanceof Element &&
+                        event.target.closest("a[href]") &&
+                        !canLeaveAndroidPage()
+                      ) {
+                        event.preventDefault();
+                      }
+                    }
+                  : undefined
+              }
+              className={
+                androidWorkspace
+                  ? "android-workspace-header"
+                  : "relative flex h-[82px] items-center justify-between border-b border-border bg-surface/80 px-4 sm:px-9"
+              }
             >
-              <div className="lg:hidden">
+              <div className={androidWorkspace ? "min-w-0" : "lg:hidden"}>
                 <Brand compact />
               </div>
-              <p className="hidden text-xs text-muted-foreground lg:block">
-                {t("Không gian dạy học")}{" "}
-                <span className="mx-2 text-muted-foreground">/</span>{" "}
-                <span className="text-foreground">
-                  {path.includes("students")
-                    ? t("Học viên")
-                    : path.includes("classes")
-                      ? t("Lớp học")
-                      : path.includes("sessions") ||
-                          path.includes("lessons") ||
-                          path === "/app/schedule"
-                        ? t("Buổi dạy")
-                        : path.includes("statements")
-                          ? t("Bảng kê")
-                          : path.includes("settings")
-                            ? t("Cài đặt")
-                            : path === "/onboarding"
-                              ? t("Bắt đầu")
-                              : t("Tổng quan")}
-                </span>
-              </p>
-              <div className="ml-auto flex items-center gap-2 sm:gap-3">
-                <LanguageSwitcher compact />
+              {!androidWorkspace && (
+                <p className="hidden text-xs text-muted-foreground lg:block">
+                  {t("Không gian dạy học")}{" "}
+                  <span className="mx-2 text-muted-foreground">/</span>{" "}
+                  <span className="text-foreground">
+                    {path.includes("students")
+                      ? t("Học viên")
+                      : path.includes("classes")
+                        ? t("Lớp học")
+                        : path.includes("sessions") ||
+                            path.includes("lessons") ||
+                            path === "/app/schedule"
+                          ? t("Buổi dạy")
+                          : path.includes("statements")
+                            ? t("Bảng kê")
+                            : path.includes("settings")
+                              ? t("Cài đặt")
+                              : path === "/onboarding"
+                                ? t("Bắt đầu")
+                                : t("Tổng quan")}
+                  </span>
+                </p>
+              )}
+              <div
+                className={
+                  androidWorkspace
+                    ? "android-workspace-header-actions"
+                    : "ml-auto flex items-center gap-2 sm:gap-3"
+                }
+              >
+                <LanguageSwitcher
+                  compact
+                  canLeave={androidWorkspace ? canLeaveAndroidPage : undefined}
+                />
                 <AppearancePicker key={path} />
                 {demo && (
                   <Button
                     asChild
                     variant="outline"
                     size="icon"
-                    className="lg:hidden"
+                    className={androidWorkspace ? undefined : "lg:hidden"}
                   >
-                    <Link href="/login" aria-label={t("Đăng nhập")}>
+                    <Link
+                      href={
+                        androidWorkspace ? "/login?mobileSignIn=1" : "/login"
+                      }
+                      aria-label={t("Đăng nhập")}
+                    >
                       <LogIn />
                     </Link>
                   </Button>
@@ -259,7 +328,11 @@ export function AppShell({
                   aria-label={t("Cài đặt tài khoản")}
                   className="flex items-center gap-3"
                 >
-                  <span className="hidden text-xs sm:block">{displayName}</span>
+                  {!androidWorkspace && (
+                    <span className="hidden text-xs sm:block">
+                      {displayName}
+                    </span>
+                  )}
                   <span className="flex size-9 items-center justify-center rounded-full border border-border bg-accent-soft text-sm font-bold text-primary">
                     {displayName[0]?.toUpperCase()}
                   </span>
@@ -273,7 +346,7 @@ export function AppShell({
                 {t("Firebase Emulator · Chỉ dùng dữ liệu giả")}
               </div>
             )}
-          {embedded && demo && (
+          {embedded && demo && !androidWorkspace && (
             <div
               data-slot="demo-toolbar"
               className="flex items-center justify-between gap-2 border-b border-border px-3 py-1"

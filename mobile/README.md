@@ -1,6 +1,6 @@
 # LessonBrook for iOS and Android
 
-The iOS app uses SwiftUI for sign-in, all five ledger tabs, record details, editors, month calendars, statements, payments, appearance and account settings. It does not embed the web workspace. Android retains its native sign-in, Dashboard and themed navigation with embedded web ledger screens. Both use the existing Node APIs, server-owned Firebase data, six themes and English/Vietnamese locales. An internet connection is required.
+The iOS app uses SwiftUI for sign-in, all five ledger tabs, record details, editors, month calendars, statements, payments, appearance and account settings. Android 0.5.18 uses native sign-in and a themed native tab bar alongside the shared embedded workspace. Both use the existing Node APIs, server-owned Firebase data, six themes and English/Vietnamese locales. An internet connection is required.
 
 On iOS, each tab keeps a separate navigation stack. Students and Classes offer compact two-column Notes and List views; Classes and Lessons also offer a seven-column month calendar with day agendas. Lessons supports automatic filters, per-student attendance and bulk completion. Statements supports direct issue/edit, VietQR for the remaining balance, sharing, email through the existing server policy, editable cash/transfer history and cancellation when the server permits it. Full payment revokes the share on the server. The detail screen checks for incoming payments every 30 seconds while open.
 
@@ -38,6 +38,8 @@ cd android
 ```
 
 The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install it through Android Studio or with `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Android release builds need your own signing configuration.
+
+The signed LessonBrook APK is available on [GitHub Releases](https://github.com/devoralabsapp/lessonbrook/releases). The official APK uses the same signing certificate as the previous GitHub release so it can upgrade an existing GitHub installation. New Android workspace styling also needs the corresponding web deployment when self-hosting.
 
 ## Sign-in and account settings
 

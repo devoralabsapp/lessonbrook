@@ -9,7 +9,7 @@ import { useDebounced } from "@/lib/use-debounced";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Page } from "@/features/statements/shared";
-export function useResource<T>(endpoint: string | null) {
+export function useResource<T>(endpoint: string | null, keepOnRefresh = false) {
   const { t } = useI18n();
   const [revision, setRevision] = useState(0);
   const reload = useCallback(() => setRevision((v) => v + 1), []);
@@ -44,7 +44,11 @@ export function useResource<T>(endpoint: string | null) {
     };
   }, [endpoint, key, t]);
   return {
-    data: result?.key === key ? result.data : null,
+    data:
+      result?.key === key ||
+      (keepOnRefresh && result?.key.startsWith(`${endpoint}:`))
+        ? (result?.data ?? null)
+        : null,
     error: failure?.key === key ? failure.message : "",
     reload,
   };

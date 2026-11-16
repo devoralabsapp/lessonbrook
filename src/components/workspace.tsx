@@ -1138,30 +1138,37 @@ export function Workspace({
                   </span>
                 </time>
                 <div
+                  data-slot="lesson-identity"
                   className={
                     showNotes
                       ? "min-w-0"
                       : "min-w-0 basis-[calc(100%_-_5.75rem)] flex-1 sm:basis-40"
                   }
                 >
-                  <Link
-                    href={`/app/students/${s.studentId}`}
-                    className="break-words text-sm font-semibold"
-                  >
-                    {s.studentName}
-                  </Link>
-                  {s.lessonId && (
+                  <div data-slot="lesson-links">
                     <Link
-                      href={`/app/lessons/${s.lessonId}`}
-                      className="mt-1 block break-words text-[11px] text-primary underline"
+                      href={`/app/students/${s.studentId}`}
+                      className="break-words text-sm font-semibold"
                     >
-                      {s.className
-                        ? t("Lớp {0}", { "0": s.className })
-                        : t("Buổi nhóm tự chọn")}
+                      {s.studentName}
                     </Link>
-                  )}
-                  <p className="mt-1 break-words text-[11px] text-muted-foreground">
+                    {s.lessonId && (
+                      <Link
+                        href={`/app/lessons/${s.lessonId}`}
+                        className="mt-1 block break-words text-[11px] text-primary underline"
+                      >
+                        {s.className
+                          ? t("Lớp {0}", { "0": s.className })
+                          : t("Buổi nhóm tự chọn")}
+                      </Link>
+                    )}
+                  </div>
+                  <p
+                    data-slot="lesson-metadata"
+                    className="mt-1 break-words text-[11px] text-muted-foreground"
+                  >
                     <span
+                      data-slot="lesson-date-time"
                       className={
                         showNotes ? "block whitespace-nowrap" : "inline-block"
                       }
@@ -1169,7 +1176,10 @@ export function Workspace({
                       {formatDate(s.sessionDate, locale)}
                       {s.startTime ? ` · ${s.startTime}` : ""}
                     </span>{" "}
-                    <span className={showNotes ? "block" : undefined}>
+                    <span
+                      data-slot="lesson-tuition-time"
+                      className={showNotes ? "block" : undefined}
+                    >
                       <strong className="inline-block font-bold tabular-nums text-foreground">
                         {"· "}
                         {s.status === "completed" && s.billable
@@ -1193,6 +1203,7 @@ export function Workspace({
                   </p>
                 </div>
                 <div
+                  data-slot="lesson-actions"
                   className={
                     showNotes
                       ? "record-lesson-actions flex w-full flex-wrap items-center justify-start gap-x-2 gap-y-1 border-t border-border pt-2"
