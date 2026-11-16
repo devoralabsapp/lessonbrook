@@ -847,7 +847,7 @@ struct LessonDateBadge: View {
             Text(String(date.suffix(2))).font(p.font((compact ? 15 : 22) + fontIncrease, .heavy))
                 .frame(maxWidth: .infinity).padding(.vertical, compact ? 2 : 4)
                 .background(p.retroRows ? p.blue : p.recordAccent)
-        }.frame(width: compact ? 38 : 72)
+        }.frame(width: compact ? 48 : 72)
             .background(p.retroRows ? p.blue : p.recordAccent)
             .clipShape(shape)
             .overlay(shape.strokeBorder(p.border, lineWidth: p.outline))
