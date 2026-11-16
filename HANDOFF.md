@@ -6,6 +6,8 @@ Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) f
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
 
+- **iOS 0.5.15, build 33**. Lesson Notes text is another two points larger. Student and class links sit together beside Edit, and date and time use a tighter stack. The names on Student and Class Notes use a heavier weight.
+
 - **iOS 0.5.14, build 32**. Lesson Notes text is two points larger and its line spacing is tighter. Date badges use one shape for clipping, fill and outline. Class Notes have stronger paper tints, and note grids across the four directories use smaller horizontal and vertical gaps.
 
 - **iOS 0.5.13, build 31**. Compact lesson Notes put Edit in the upper-right corner and keep the lesson and payment statuses on one row below.

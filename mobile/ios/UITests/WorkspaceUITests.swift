@@ -259,6 +259,24 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertLessThanOrEqual(localizedStatus.frame.maxX, localizedPayment.frame.minX)
         XCTAssertLessThan(localizedEdit.frame.maxY, localizedActions.frame.minY)
         capture("Vietnamese compact lesson notes", app: app)
+
+        let lessonType = app.buttons["Loại buổi dạy"]
+        for _ in 0..<6 where !lessonType.isHittable { app.swipeDown() }
+        XCTAssertTrue(lessonType.isHittable)
+        lessonType.tap()
+        app.buttons["Một lớp học"].tap()
+        let classLink = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "lesson-group-")).firstMatch
+        XCTAssertTrue(classLink.waitForExistence(timeout: 15))
+        for _ in 0..<6 where !classLink.isHittable { app.swipeUp() }
+        XCTAssertTrue(classLink.isHittable)
+        let classLessonID = String(classLink.identifier.dropFirst("lesson-group-".count))
+        let studentLink = app.buttons["lesson-student-" + classLessonID]
+        XCTAssertTrue(studentLink.exists)
+        XCTAssertEqual(studentLink.frame.minX, classLink.frame.minX, accuracy: 1)
+        let nameGap = classLink.frame.minY - studentLink.frame.maxY
+        XCTAssertGreaterThanOrEqual(nameGap, -1)
+        XCTAssertLessThanOrEqual(nameGap, 6)
+        capture("Vietnamese student and class names in lesson notes", app: app)
     }
 
     @MainActor
