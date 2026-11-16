@@ -1,15 +1,21 @@
 import SwiftUI
 
 struct LedgerRecordDetail: View {
+    private struct LessonEdit: Identifiable {
+        let record: LedgerRecord
+        var group = false
+        var complete = false
+        var id: String { record.id }
+    }
+
     let kind: LedgerKind
     let id: String
     @EnvironmentObject private var store: WorkspaceStore
     @State private var record: LedgerRecord?
     @State private var error: String?
     @State private var editing = false
-    @State private var editingParticipant: LedgerRecord?
+    @State private var lessonEdit: LessonEdit?
     @State private var recordingStudent = false
-    @State private var markingComplete = false
     @State private var archive = false
 
     var body: some View {
@@ -38,13 +44,13 @@ struct LedgerRecordDetail: View {
                 switch kind {
                 case .students: StudentEditor(record: record)
                 case .classes: ClassEditor(record: record)
-                case .sessions, .lessons:
-                    LessonEditor(record: record, editingGroup: kind == .lessons, markingComplete: markingComplete)
-                case .statements: EmptyView()
+                case .sessions, .lessons, .statements: EmptyView()
                 }
             }
         }
-        .sheet(item: $editingParticipant) { LessonEditor(record: $0) }
+        .sheet(item: $lessonEdit) { edit in
+            LessonEditor(record: edit.record, editingGroup: edit.group, markingComplete: edit.complete)
+        }
         .sheet(isPresented: $recordingStudent) { LessonEditor(studentID: id) }
         .confirmationDialog(store.t(record?.string("archivedAt") == nil ? "Archive" : "Restore"),
                             isPresented: $archive, titleVisibility: .visible) {
@@ -203,10 +209,10 @@ struct LedgerRecordDetail: View {
             if let payment = ledgerSessionPayment(record) { LedgerBadge(code: payment) }
             WorkspaceActionRows {
                 if record.text("status") == "planned" && !locked {
-                    Button(store.t("Mark complete")) { markingComplete = true; editing = true }
+                    Button(store.t("Mark complete")) { lessonEdit = LessonEdit(record: record, complete: true) }
                         .buttonStyle(WorkspaceActionButton(palette: p))
                 }
-                Button(store.t("Edit lesson")) { markingComplete = false; editing = true }
+                Button(store.t("Edit lesson")) { lessonEdit = LessonEdit(record: record) }
                     .buttonStyle(WorkspaceOutlineButton(palette: p))
                     .disabled(locked)
             }
@@ -237,7 +243,7 @@ struct LedgerRecordDetail: View {
             Text(meta.filter { !$0.isEmpty }.joined(separator: " · "))
                 .font(p.font(14)).foregroundStyle(p.secondaryInk)
             WorkspaceActionRows(spacing: 14) {
-                Button(store.t("Edit shared details")) { editing = true }
+                Button(store.t("Edit shared details")) { lessonEdit = LessonEdit(record: record, group: true) }
                     .buttonStyle(WorkspaceOutlineButton(palette: p))
                     .disabled(locked || store.saving)
                 if let classID = record.string("classId") { detailLink("Back to class", to: .teachingClass(classID)) }
@@ -281,7 +287,7 @@ struct LedgerRecordDetail: View {
                 Text(amount).font(p.font(14, .bold)).multilineTextAlignment(.trailing)
             }
             HStack {
-                Button(store.t("Edit")) { editingParticipant = session }
+                Button(store.t("Edit")) { lessonEdit = LessonEdit(record: session) }
                     .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                     .accessibilityLabel(store.t("Edit") + " " + name)
                     .disabled(statementID != nil || store.saving)

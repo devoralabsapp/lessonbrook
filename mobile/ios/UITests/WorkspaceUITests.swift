@@ -399,11 +399,12 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(editShared.isHittable)
         capture("Group lesson opened from calendar", app: app)
         editShared.tap()
-        let update = app.buttons["Update status and billing for every student"]
+        let update = app.switches["Update status and billing for every student"]
         XCTAssertTrue(update.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["Shared status"].exists)
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Classes", "workspace-tab-classes")).firstMatch.exists)
         XCTAssertEqual(app.buttons["Lesson date"].frame.midY, app.buttons["Start time"].frame.midY, accuracy: 2)
+        XCTAssertEqual(app.textFields["Duration (minutes)"].frame.midY, app.textFields["Tuition per student (VND)"].frame.midY, accuracy: 2)
         capture("Shared lesson editor", app: app)
         app.buttons["Cancel"].firstMatch.tap()
         XCTAssertTrue(roster.waitForExistence(timeout: 10))

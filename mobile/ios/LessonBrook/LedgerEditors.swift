@@ -570,7 +570,7 @@ struct LessonEditor: View {
                         dateField
                         timeField
                     }
-                    WorkspaceFieldColumns(minimum: minimum) {
+                    WorkspaceFieldColumns(minimum: minimum, alignment: .bottom) {
                         durationField
                         rateField
                     }
