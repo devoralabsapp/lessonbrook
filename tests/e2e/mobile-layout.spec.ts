@@ -32,7 +32,11 @@ test("Android workspace shares the mobile header, compact notes and saved lesson
       page.getByText("Outstanding tuition", { exact: true }),
     ).toBeVisible();
     await page.getByRole("link", { name: "View full schedule" }).click();
-    await expect(page.locator('[data-tone="blue"]').first()).toBeVisible();
+    await expect(page).toHaveURL(/\/demo\/schedule$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Upcoming lessons" }),
+    ).toBeVisible();
+    await expect(page.locator('[data-list-tone="blue"]').first()).toBeVisible();
 
     async function selectTab(path: string) {
       expect(

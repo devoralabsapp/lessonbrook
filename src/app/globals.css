@@ -1436,9 +1436,6 @@ dialog::backdrop {
   transform: none;
   animation: none;
 }
-[data-android-workspace] .record-note-grid [data-slot="record-identity"] {
-  min-width: 0;
-}
 [data-workspace][data-android-workspace]
   .record-note-grid.record-note-lessons
   > .record-note {
