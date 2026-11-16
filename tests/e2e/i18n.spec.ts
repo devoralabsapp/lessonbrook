@@ -211,7 +211,9 @@ test("native workspace opens account tools, planned lessons and filtered stateme
     await expect(
       dialog.getByLabel("Lesson date *", { exact: true }),
     ).toHaveValue(vietnamToday());
-    await expect(dialog.locator('[name="startTime"]')).toHaveValue("09:00");
+    await expect(
+      dialog.getByLabel("Start time (optional)", { exact: true }),
+    ).toHaveValue("09:00");
     await expect(dialog.locator("form")).toHaveAttribute(
       "data-mobile-draft",
       "dirty",
