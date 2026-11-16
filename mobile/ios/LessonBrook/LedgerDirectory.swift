@@ -224,11 +224,11 @@ struct LedgerDirectory: View {
                     if pairedNotes {
                         notePairs
                     } else {
-                        LazyVStack(spacing: layout == .notes ? 16 : 0) {
+                        LazyVStack(spacing: layout == .notes ? 10 : 0) {
                             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in row(item, index: index) }
                         }
                     }
-                }.padding(.horizontal, layout == .notes ? 6 : 0).padding(.vertical, layout == .notes ? 20 : 0)
+                }.padding(.horizontal, layout == .notes ? 6 : 0).padding(.vertical, layout == .notes ? 16 : 0)
                 if cursor != nil {
                     Button(store.t("Load more")) { Task { await more() } }
                         .buttonStyle(WorkspaceOutlineButton(palette: store.palette)).disabled(loadingMore)
@@ -242,9 +242,9 @@ struct LedgerDirectory: View {
 
     private var notePairs: some View {
         let rows = stride(from: 0, to: items.count, by: 2).map { $0 }
-        return LazyVStack(spacing: 16) {
+        return LazyVStack(spacing: 10) {
             ForEach(rows, id: \.self) { index in
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     row(items[index], index: index)
                     if index + 1 < items.count {
                         row(items[index + 1], index: index + 1)
@@ -502,11 +502,12 @@ struct LedgerBadge: View {
     @EnvironmentObject private var store: WorkspaceStore
     let code: String
     var compact = false
+    var fontIncrease: CGFloat = 0
     var body: some View {
         let color = code == "paid" || code == "completed" ? store.palette.mint :
             ["unpaid", "cancelled", "void", "overdue"].contains(code) ? Color(red: 0.98, green: 0.62, blue: 0.67) : store.palette.yellow
         Text(store.t(ledgerStatus(code)))
-            .modifier(LedgerBadgeFrame(palette: store.palette, fill: color, ink: store.palette.dashboardInk, compact: compact))
+            .modifier(LedgerBadgeFrame(palette: store.palette, fill: color, ink: store.palette.dashboardInk, compact: compact, fontIncrease: fontIncrease))
     }
 }
 
@@ -520,9 +521,10 @@ private struct LedgerBadgeFrame: ViewModifier {
     let fill: Color
     let ink: Color
     var compact = false
+    var fontIncrease: CGFloat = 0
 
     func body(content: Content) -> some View {
-        content.font(palette.font(compact ? 11 : 12, .bold))
+        content.font(palette.font((compact ? 11 : 12) + fontIncrease, .bold))
             .padding(.horizontal, compact ? 4 : 7).padding(.vertical, compact ? 2 : 3)
             .foregroundStyle(ink)
             .background(fill, in: Capsule())
@@ -550,7 +552,7 @@ struct LedgerRow: View {
     private var paperIntensity: Double {
         switch kind {
         case .students: return p.dark ? 0.30 : 0.56
-        case .classes: return p.dark ? 0.13 : 0.18
+        case .classes: return p.dark ? 0.30 : 0.56
         case .statements: return p.dark ? 0.37 : 0.94
         case .sessions, .lessons: return p.dark ? 0.25 : 0.70
         }
@@ -656,7 +658,7 @@ struct LedgerRow: View {
     }
     @ViewBuilder private var lesson: some View {
         if compactLessonNote {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .top, spacing: 4) {
                     lessonName
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -664,18 +666,18 @@ struct LedgerRow: View {
                 }
                 lessonGroupLink
                 HStack(alignment: .center, spacing: 6) {
-                    LessonDateBadge(date: item.text("sessionDate"), compact: true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(dateText(item.text("sessionDate"))).font(p.font(11))
+                    LessonDateBadge(date: item.text("sessionDate"), compact: true, fontIncrease: 2)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(dateText(item.text("sessionDate"))).font(p.font(13))
                         if !item.text("startTime").isEmpty {
-                            Text(item.text("startTime")).font(p.font(11, .semibold))
+                            Text(item.text("startTime")).font(p.font(13, .semibold))
                         }
                     }
                     .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     lessonSelection
                 }
-                lessonPriceAndDuration(size: 11)
+                lessonPriceAndDuration(size: 13)
                 Spacer(minLength: 0)
                 Divider().overlay(p.border)
                 HStack(spacing: 3) {
@@ -686,7 +688,7 @@ struct LedgerRow: View {
                 .accessibilityIdentifier("lesson-note-actions-\(item.id)")
             }
         } else if note {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 5) {
                 lessonSummary.frame(maxWidth: .infinity)
                 Divider().overlay(p.border)
                 WorkspaceActionRows(spacing: 7) {
@@ -711,13 +713,13 @@ struct LedgerRow: View {
     private var lessonSummary: some View {
         HStack(alignment: .center, spacing: 9) {
             lessonSelection
-            LessonDateBadge(date: item.text("sessionDate"))
-            VStack(alignment: .leading, spacing: 4) {
+            LessonDateBadge(date: item.text("sessionDate"), fontIncrease: note ? 2 : 0)
+            VStack(alignment: .leading, spacing: note ? 2 : 4) {
                 lessonName
                 lessonGroupLink
                 Text(lessonDateTime)
-                    .font(p.font(13)).lineLimit(1).minimumScaleFactor(0.8)
-                lessonPriceAndDuration(size: 13)
+                    .font(p.font(note ? 15 : 13)).lineLimit(1).minimumScaleFactor(0.8)
+                lessonPriceAndDuration(size: note ? 15 : 13)
             }
         }
     }
@@ -735,7 +737,7 @@ struct LedgerRow: View {
     private var lessonName: some View {
         NavigationLink(value: item.string("studentId").map(WorkspaceRoute.student) ?? kind.route(item)) {
             Text(item.string("studentName") ?? item.string("className") ?? store.t("Group lesson"))
-                .font(p.font(compactLessonNote ? 13 : 15, .bold))
+                .font(p.font((compactLessonNote ? 13 : 15) + (note ? 2 : 0), .bold))
                 .fixedSize(horizontal: false, vertical: compactLessonNote)
         }.buttonStyle(.plain)
     }
@@ -744,7 +746,7 @@ struct LedgerRow: View {
         if let lessonID = item.string("lessonId") {
             NavigationLink(value: WorkspaceRoute.lesson(lessonID)) {
                 Text(item.string("className") ?? store.t("Custom student group"))
-                    .font(p.font(compactLessonNote ? 11 : 12)).underline()
+                    .font(p.font((compactLessonNote ? 11 : 12) + (note ? 2 : 0))).underline()
                     .fixedSize(horizontal: false, vertical: compactLessonNote)
             }.buttonStyle(.plain)
         }
@@ -773,8 +775,8 @@ struct LedgerRow: View {
     }
 
     @ViewBuilder private func lessonBadges(compact: Bool = false) -> some View {
-        LedgerBadge(code: item.text("status"), compact: compact)
-        if let payment { LedgerBadge(code: payment, compact: compact) }
+        LedgerBadge(code: item.text("status"), compact: compact, fontIncrease: note ? 2 : 0)
+        if let payment { LedgerBadge(code: payment, compact: compact, fontIncrease: note ? 2 : 0) }
     }
 
     @ViewBuilder private var lessonEdit: some View {
@@ -782,7 +784,7 @@ struct LedgerRow: View {
         if note {
             Button(action: edit) {
                 Text(store.t("Edit"))
-                    .modifier(LedgerBadgeFrame(palette: p, fill: p.surface, ink: p.foreground, compact: compactLessonNote))
+                    .modifier(LedgerBadgeFrame(palette: p, fill: p.surface, ink: p.foreground, compact: compactLessonNote, fontIncrease: 2))
                     .frame(minWidth: compactLessonNote ? 28 : 44, minHeight: 44, alignment: compactLessonNote ? .topTrailing : .center)
                     .padding(.top, compactLessonNote ? 2 : 0)
                     .contentShape(Rectangle())
@@ -832,20 +834,24 @@ struct LessonDateBadge: View {
     @EnvironmentObject private var store: WorkspaceStore
     let date: String
     var compact = false
+    var fontIncrease: CGFloat = 0
     var body: some View {
         let p = store.palette
+        let shape = RoundedRectangle(cornerRadius: min(compact ? 8 : 12, p.radius))
         let actual = LedgerDate.date(date) ?? .now
         VStack(spacing: 0) {
             Text(actual.formatted(.dateTime.month(.abbreviated).locale(store.language)).uppercased())
-                .font(p.font(compact ? 9 : 11, .bold)).lineLimit(1).minimumScaleFactor(0.8)
+                .font(p.font((compact ? 9 : 11) + fontIncrease, .bold)).lineLimit(1).minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity).padding(.vertical, compact ? 2 : 4)
                 .background(p.retroRows ? p.yellow : p.accent).foregroundStyle(p.onAccent)
-            Text(String(date.suffix(2))).font(p.font(compact ? 15 : 22, .heavy))
+            Text(String(date.suffix(2))).font(p.font((compact ? 15 : 22) + fontIncrease, .heavy))
                 .frame(maxWidth: .infinity).padding(.vertical, compact ? 2 : 4)
                 .background(p.retroRows ? p.blue : p.recordAccent)
-        }.frame(width: compact ? 38 : 72).background(p.surface).clipShape(RoundedRectangle(cornerRadius: min(compact ? 8 : 12, p.radius)))
-            .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).stroke(p.border, lineWidth: p.outline))
-            .background(RoundedRectangle(cornerRadius: min(12, p.radius)).fill(p.border).offset(x: p.shadowOffset > 0 ? 2 : 0, y: p.shadowOffset > 0 ? 2 : 0))
+        }.frame(width: compact ? 38 : 72)
+            .background(p.retroRows ? p.blue : p.recordAccent)
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(p.border, lineWidth: p.outline))
+            .background(shape.fill(p.border).offset(x: p.shadowOffset > 0 ? 2 : 0, y: p.shadowOffset > 0 ? 2 : 0))
             .accessibilityHidden(true)
     }
 }

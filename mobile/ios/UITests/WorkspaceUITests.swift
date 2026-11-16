@@ -737,6 +737,15 @@ final class WorkspaceUITests: XCTestCase {
             screenshot.name = "Native Vietnamese " + theme
             screenshot.lifetime = .keepAlways
             add(screenshot)
+            for tab in ["classes", "lessons"] {
+                app.buttons["workspace-tab-" + tab].tap()
+                let notes = app.descendants(matching: .any)
+                    .matching(NSPredicate(format: "identifier BEGINSWITH %@", "ledger-note-"))
+                XCTAssertTrue(notes.firstMatch.waitForExistence(timeout: 15))
+                for _ in 0..<4 where !notes.firstMatch.isHittable { app.swipeUp() }
+                capture("Vietnamese \(tab) notes — \(theme)", app: app)
+            }
+            app.buttons["workspace-tab-students"].tap()
             status.tap()
             let active = app.buttons["Đang hoạt động"]
             XCTAssertTrue(active.waitForExistence(timeout: 10))
