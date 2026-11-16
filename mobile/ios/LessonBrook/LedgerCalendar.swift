@@ -4,10 +4,10 @@ struct LedgerMonth: View {
     let kind: LedgerKind
     let records: [LedgerRecord]
     @Binding var month: Date
+    @Binding var selected: String
     @EnvironmentObject private var store: WorkspaceStore
     @Environment(\.displayScale) private var displayScale
     @ScaledMetric(relativeTo: .caption) private var dayHeight = 94.0
-    @State private var selected = LedgerDate.today
 
     private struct Event: Identifiable {
         let id: String

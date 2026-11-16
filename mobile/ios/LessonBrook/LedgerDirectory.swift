@@ -80,6 +80,7 @@ struct LedgerDirectory: View {
     @State private var error: String?
     @State private var editing = false
     @State private var month = Date()
+    @State private var selectedCalendarDay = LedgerDate.today
     @State private var selecting = false
     @State private var selected: Set<String> = []
     private static let logger = Logger(subsystem: "tech.devoralabs.lessonbrook", category: "performance")
@@ -216,7 +217,7 @@ struct LedgerDirectory: View {
             if kind == .sessions && selecting && layout != .calendar { selectionControls.padding(12) }
             if let error { LedgerError(message: error) { Task { await load(refresh: true) } } }
             if !ready { ProgressView().frame(maxWidth: .infinity, minHeight: 64) }
-            else if layout == .calendar { LedgerMonth(kind: kind, records: items, month: $month).padding(10) }
+            else if layout == .calendar { LedgerMonth(kind: kind, records: items, month: $month, selected: $selectedCalendarDay).padding(10) }
             else if items.isEmpty { Text(store.t("No records found.")).padding(16) }
             else {
                 Group {
@@ -507,6 +508,11 @@ struct LedgerBadge: View {
     }
 }
 
+func ledgerSessionPayment(_ record: LedgerRecord) -> String? {
+    if let status = record.string("paymentStatus") { return status }
+    return record.text("status") == "planned" && record.flag("billable") ? nil : "no_charge"
+}
+
 private struct LedgerBadgeFrame: ViewModifier {
     let palette: WorkspacePalette
     let fill: Color
@@ -543,8 +549,7 @@ struct LedgerRow: View {
     private var pinPositions: [CGFloat] { [0.28, 0.78, 0.43, 0.66, 0.5] }
     private var payment: String? {
         if kind == .statements { return item.text("status") == "issued" ? (item.int("totalVnd") == item.int("paidVnd") ? "paid" : "unpaid") : nil }
-        if let status = item.string("paymentStatus") { return status }
-        return item.text("status") == "planned" && item.flag("billable") ? nil : "no_charge"
+        return ledgerSessionPayment(item)
     }
     var body: some View {
         Group {

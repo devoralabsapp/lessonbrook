@@ -81,6 +81,8 @@ Monthly calendars reuse the authenticated list APIs and follow every pagination 
 
 Classes and Lessons share the same seven-column month grid across desktop, phone browsers and the Android WebView. The SwiftUI iOS calendar implements the same month/day-agenda model against the existing APIs; classes project weekly slots and group attendance rows collapse to one lesson event. Day cells show the first two events with their calendar colors and a count for additional events. At phone widths the time and event title stack and long titles truncate in the grid. Selecting the day shows the full linked agenda below.
 
+On iOS, the Lessons directory owns the selected calendar date so navigating into an event and back preserves it. The individual detail shows the schedule, status, rate and completion/edit actions in one card. The group detail separates shared information from each student's attendance, payment and statement actions. Group edits keep the original roster and send null status and billing changes unless the teacher opts in. The server still enforces statement locks for group and participant edits.
+
 Weekly class slots use Vietnam time. The upcoming schedule projects the next seven days. While the signed-in workspace is open, it checks for due slots and records them as planned lessons with one row per active participant. It catches up when the teacher returns. A saved class lesson at the same time takes precedence. A planned lesson enters billing after the teacher marks it complete and chargeable. The manifest provides a launch shortcut.
 
 ## Bank transfer reconciliation

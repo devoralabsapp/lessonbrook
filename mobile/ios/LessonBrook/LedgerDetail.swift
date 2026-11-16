@@ -7,12 +7,13 @@ struct LedgerRecordDetail: View {
     @State private var record: LedgerRecord?
     @State private var error: String?
     @State private var editing = false
+    @State private var editingParticipant: LedgerRecord?
     @State private var recordingStudent = false
     @State private var markingComplete = false
     @State private var archive = false
 
     var body: some View {
-        WorkspaceScroll(eager: kind == .classes || kind == .students) {
+        WorkspaceScroll(eager: true) {
             if kind != .students {
                 WorkspaceBackLink(backTitle, tab: kind == .classes ? .classes : nil)
             }
@@ -20,7 +21,8 @@ struct LedgerRecordDetail: View {
                 switch kind {
                 case .students: student(record)
                 case .classes: teachingClass(record)
-                case .sessions, .lessons: lesson(record)
+                case .sessions: individualLesson(record)
+                case .lessons: groupLesson(record)
                 case .statements: EmptyView()
                 }
                 if kind != .classes && !record.text("privateNote").isEmpty {
@@ -42,6 +44,7 @@ struct LedgerRecordDetail: View {
                 }
             }
         }
+        .sheet(item: $editingParticipant) { LessonEditor(record: $0) }
         .sheet(isPresented: $recordingStudent) { LessonEditor(studentID: id) }
         .confirmationDialog(store.t(record?.string("archivedAt") == nil ? "Archive" : "Restore"),
                             isPresented: $archive, titleVisibility: .visible) {
@@ -59,14 +62,6 @@ struct LedgerRecordDetail: View {
         case .classes: return "Classes"
         default: return "Lessons"
         }
-    }
-
-    private func editable(_ record: LedgerRecord) -> Bool {
-        if kind == .sessions { return record.string("billedStatementId") == nil }
-        if kind == .lessons {
-            return !record.objects("sessions").contains { $0.string("billedStatementId") != nil }
-        }
-        return true
     }
 
     @ViewBuilder private func student(_ record: LedgerRecord) -> some View {
@@ -195,57 +190,126 @@ struct LedgerRecordDetail: View {
         }
     }
 
-    @ViewBuilder private func lesson(_ record: LedgerRecord) -> some View {
+    @ViewBuilder private func individualLesson(_ record: LedgerRecord) -> some View {
         let p = store.palette
         let date = LedgerDate.localized(record.text("sessionDate"), locale: store.language)
         let time = record.string("startTime") ?? store.t("Time not set")
-        Text(record.string("className") ?? record.string("studentName") ?? store.t("Group lesson"))
-            .font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
-        WorkspaceSection {
-            Text(date + " · " + time).font(p.font(16))
-            if record.int("durationMinutes") > 0 { row("Duration (minutes)", String(record.int("durationMinutes"))) }
-            row("Lesson price (VND)", store.money(record.int("rateVnd")))
-            if kind == .sessions {
-                LedgerBadge(code: record.text("status"))
-                if let payment = record.string("paymentStatus") { LedgerBadge(code: payment) }
-            }
-            if editable(record) {
-                WorkspaceActionRows {
-                    if kind == .sessions && record.text("status") == "planned" {
-                        Button(store.t("Mark completed")) { markingComplete = true; editing = true }
-                            .buttonStyle(WorkspaceActionButton(palette: p)).disabled(store.saving)
-                    }
-                    Button(store.t("Edit lesson")) { markingComplete = false; editing = true }
+        let locked = record.string("billedStatementId") != nil
+        lessonTitle(record.string("studentName") ?? store.t("Student"))
+        WorkspaceSection(padding: 14) {
+            Text(date + " · " + time).font(p.font(16, .semibold))
+            Text(store.t(ledgerStatus(record.text("status"))) + " · " + store.money(record.int("rateVnd")))
+                .font(p.font(15)).foregroundStyle(p.secondaryInk)
+            if let payment = ledgerSessionPayment(record) { LedgerBadge(code: payment) }
+            WorkspaceActionRows {
+                if record.text("status") == "planned" && !locked {
+                    Button(store.t("Mark complete")) { markingComplete = true; editing = true }
+                        .buttonStyle(WorkspaceActionButton(palette: p))
                 }
+                Button(store.t("Edit lesson")) { markingComplete = false; editing = true }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p))
+                    .disabled(locked)
             }
+            .disabled(store.saving)
         }
-        WorkspaceSection {
-            if let classID = record.string("classId") {
-                NavigationLink(value: WorkspaceRoute.teachingClass(classID)) { Text(store.t("Class")) }
-            }
+        WorkspaceActionRows(spacing: 14) {
             if let studentID = record.string("studentId") {
-                NavigationLink(value: WorkspaceRoute.student(studentID)) { Text(store.t("Student")) }
-            }
-            if let statementID = record.string("billedStatementId") {
-                NavigationLink(value: WorkspaceRoute.statement(statementID)) { Text(store.t("Tuition statement")) }
+                detailLink("Student", to: .student(studentID))
             }
             if let lessonID = record.string("lessonId") {
-                NavigationLink(value: WorkspaceRoute.lesson(lessonID)) { Text(store.t("Group lesson")) }
+                detailLink("Group lesson", to: .lesson(lessonID))
+            }
+            if let classID = record.string("classId") { detailLink("Class", to: .teachingClass(classID)) }
+            if let statementID = record.string("billedStatementId") { detailLink("Open statement", to: .statement(statementID)) }
+        }
+    }
+
+    @ViewBuilder private func groupLesson(_ record: LedgerRecord) -> some View {
+        let p = store.palette
+        let sessions = record.objects("sessions")
+        let locked = sessions.contains { $0.string("billedStatementId") != nil }
+        let duration = record.int("durationMinutes")
+        let meta = [LedgerDate.localized(record.text("sessionDate"), locale: store.language), record.text("startTime"),
+                    duration > 0 ? "\(duration) " + store.t("minutes") : "",
+                    "\(sessions.count) " + store.t(sessions.count == 1 ? "student" : "students")]
+        VStack(alignment: .leading, spacing: 10) {
+            lessonTitle(record.string("className") ?? store.t("Custom group lesson"))
+            Text(meta.filter { !$0.isEmpty }.joined(separator: " · "))
+                .font(p.font(14)).foregroundStyle(p.secondaryInk)
+            WorkspaceActionRows(spacing: 14) {
+                Button(store.t("Edit shared details")) { editing = true }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p))
+                    .disabled(locked || store.saving)
+                if let classID = record.string("classId") { detailLink("Back to class", to: .teachingClass(classID)) }
             }
         }
-        if kind == .lessons {
-            WorkspaceSection(store.t("Attendance")) {
-                ForEach(record.objects("sessions")) { session in
-                    NavigationLink(value: WorkspaceRoute.session(session.id)) {
-                        HStack {
-                            Text(session.text("studentName"))
-                            Spacer()
-                            LedgerBadge(code: session.text("status"))
-                        }
-                    }
+        VStack(alignment: .leading, spacing: 4) {
+            Text(store.t("Saved price per student") + " · " + store.money(record.int("rateVnd")))
+            let total = sessions.reduce(0) { $0 + $1.int("amountVnd") }
+            Text(store.t("Completed tuition total") + " · " + store.money(total)).fontWeight(.bold)
+            if locked { Text(store.t("Shared details are locked because a student has been billed.")) }
+        }
+        .font(p.font(14)).foregroundStyle(p.secondaryInk)
+        .fixedSize(horizontal: false, vertical: true)
+        WorkspaceListCard {
+            ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
+                if index > 0 { Divider().overlay(p.border) }
+                attendanceRow(session)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(store.t("Attendance"))
+        .accessibilityIdentifier("lesson-attendance")
+    }
+
+    private func attendanceRow(_ session: LedgerRecord) -> some View {
+        let p = store.palette
+        let status = session.text("status")
+        let name = session.text("studentName")
+        let studentID = session.text("studentId")
+        let statementID = session.string("billedStatementId")
+        let amount = session.flag("billable") ? store.money(session.int(status == "completed" ? "amountVnd" : "rateVnd")) : store.t("Free")
+        return VStack(alignment: .leading, spacing: 8) {
+            NavigationLink(value: WorkspaceRoute.student(studentID)) {
+                Text(name).font(p.font(16, .bold)).fixedSize(horizontal: false, vertical: true)
+            }
+            .buttonStyle(.plain)
+            if let payment = ledgerSessionPayment(session) { LedgerBadge(code: payment) }
+            HStack {
+                LedgerBadge(code: status)
+                Spacer(minLength: 8)
+                Text(amount).font(p.font(14, .bold)).multilineTextAlignment(.trailing)
+            }
+            HStack {
+                Button(store.t("Edit")) { editingParticipant = session }
+                    .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
+                    .accessibilityLabel(store.t("Edit") + " " + name)
+                    .disabled(statementID != nil || store.saving)
+                Spacer(minLength: 8)
+                if let statementID {
+                    detailLink("Open statement", to: .statement(statementID))
+                } else if status == "completed" && session.flag("billable") {
+                    detailLink("Create statement", to: .createStatement(studentID))
                 }
             }
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("lesson-attendance-\(session.id)")
+    }
+
+    private func lessonTitle(_ title: String) -> some View {
+        Text(title).font(store.palette.font(25, .heavy)).fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("lesson-detail-title")
+    }
+
+    private func detailLink(_ title: String, to route: WorkspaceRoute) -> some View {
+        NavigationLink(value: route) {
+            Text(store.t(title)).font(store.palette.font(14)).underline()
+                .padding(.vertical, 8).contentShape(Rectangle())
+        }.buttonStyle(.plain)
     }
 
     @ViewBuilder private func row(_ name: String, _ value: String) -> some View {

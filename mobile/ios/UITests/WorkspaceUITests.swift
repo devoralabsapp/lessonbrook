@@ -332,6 +332,92 @@ final class WorkspaceUITests: XCTestCase {
     }
 
     @MainActor
+    func testCalendarOpensIndividualAndGroupLessonDetails() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-workspace.locale", "en"]
+        app.launch()
+        XCTAssertTrue(app.buttons["View demo"].waitForExistence(timeout: 20))
+        app.buttons["View demo"].tap()
+        let lessons = app.buttons["workspace-tab-lessons"]
+        XCTAssertTrue(lessons.waitForExistence(timeout: 15))
+        lessons.tap()
+        app.buttons["Month calendar"].tap()
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")!
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        let now = Date()
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+        let dayAfter = calendar.date(byAdding: .day, value: 2, to: now)!
+        let individualDay = app.buttons["calendar-day-" + formatter.string(from: tomorrow)]
+        let groupDay = app.buttons["calendar-day-" + formatter.string(from: dayAfter)]
+        let back = app.buttons["workspace-detail-back"]
+        let title = app.staticTexts["lesson-detail-title"]
+
+        func chooseDay(_ day: XCUIElement, date: Date, currentMonth: Date) {
+            for _ in 0..<4 where !day.isHittable { app.swipeDown() }
+            if !calendar.isDate(date, equalTo: currentMonth, toGranularity: .month) {
+                let next = app.buttons["Next month"]
+                for _ in 0..<4 where !next.isHittable { app.swipeDown() }
+                tapVisible(next, app: app)
+            }
+            XCTAssertTrue(day.waitForExistence(timeout: 15))
+            tapVisible(day, app: app)
+            XCTAssertTrue(day.isSelected)
+        }
+
+        chooseDay(individualDay, date: tomorrow, currentMonth: now)
+        let individual = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "calendar-agenda-row-session-24-")).firstMatch
+        XCTAssertTrue(individual.waitForExistence(timeout: 15))
+        tapVisible(individual, app: app)
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Edit lesson"].exists)
+        let complete = app.buttons["Mark complete"]
+        XCTAssertTrue(complete.isHittable)
+        capture("Individual lesson opened from calendar", app: app)
+        complete.tap()
+        XCTAssertTrue(app.buttons["Status"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons["Status"].value as? String, "Completed")
+        tapVisible(app.buttons["Save"], app: app)
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Completed ·")).firstMatch.waitForExistence(timeout: 10))
+        back.tap()
+        XCTAssertTrue(individualDay.waitForExistence(timeout: 10))
+        XCTAssertTrue(individualDay.isSelected)
+
+        chooseDay(groupDay, date: dayAfter, currentMonth: tomorrow)
+        let group = app.buttons["calendar-agenda-row-lesson-25"]
+        XCTAssertTrue(group.waitForExistence(timeout: 15))
+        tapVisible(group, app: app)
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        let roster = app.descendants(matching: .any)["lesson-attendance"]
+        XCTAssertTrue(roster.exists)
+        let editShared = app.buttons["Edit shared details"]
+        XCTAssertTrue(editShared.isHittable)
+        capture("Group lesson opened from calendar", app: app)
+        editShared.tap()
+        let update = app.buttons["Update status and billing for every student"]
+        XCTAssertTrue(update.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Shared status"].exists)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Classes", "workspace-tab-classes")).firstMatch.exists)
+        XCTAssertEqual(app.buttons["Lesson date"].frame.midY, app.buttons["Start time"].frame.midY, accuracy: 2)
+        capture("Shared lesson editor", app: app)
+        app.buttons["Cancel"].firstMatch.tap()
+        XCTAssertTrue(roster.waitForExistence(timeout: 10))
+        let editParticipant = roster.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Edit ")).firstMatch
+        tapVisible(editParticipant, app: app)
+        XCTAssertTrue(app.staticTexts["Edit lesson"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Lesson date"].isEnabled)
+        app.buttons["Cancel"].firstMatch.tap()
+        back.tap()
+        XCTAssertTrue(groupDay.waitForExistence(timeout: 10))
+        XCTAssertTrue(groupDay.isSelected)
+    }
+
+    @MainActor
     func testWebViewListActionsClassDetailsAndUpcomingLessons() {
         let app = XCUIApplication()
         app.launchArguments = ["-workspace.locale", "en"]

@@ -600,9 +600,10 @@ func workspacePaperColor(_ id: String) -> Color {
 }
 
 struct WorkspaceFieldColumns<Content: View>: View {
+    var minimum: CGFloat = 190
     @ViewBuilder let content: () -> Content
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12, alignment: .top)], alignment: .leading, spacing: 14) { content() }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: minimum), spacing: 12, alignment: .top)], alignment: .leading, spacing: 14) { content() }
     }
 }
 

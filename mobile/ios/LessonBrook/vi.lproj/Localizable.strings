@@ -133,6 +133,17 @@
 "List" = "Danh sách";
 "Load more" = "Tải thêm";
 "Mark completed" = "Đánh dấu hoàn thành";
+"Mark complete" = "Đánh dấu hoàn thành";
+"Custom group lesson" = "Buổi nhóm tự chọn";
+"Edit shared details" = "Sửa thông tin chung";
+"Back to class" = "Về lớp học";
+"Saved price per student" = "Đơn giá đã lưu mỗi học viên";
+"Completed tuition total" = "Tổng học phí đã dạy";
+"Shared details are locked because a student has been billed." = "Thông tin chung đã khóa vì có học viên được lập bảng kê.";
+"Open statement" = "Mở bảng kê";
+"The participant list is fixed." = "Danh sách tham gia được giữ cố định.";
+"Update status and billing for every student" = "Cập nhật trạng thái và tính phí cho tất cả học viên";
+"Shared status" = "Trạng thái chung";
 "Month calendar" = "Lịch tháng";
 "Next month" = "Tháng sau";
 "No charge" = "Không tính phí";

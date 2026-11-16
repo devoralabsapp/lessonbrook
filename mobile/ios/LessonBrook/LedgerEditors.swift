@@ -458,6 +458,7 @@ struct LearnerPicker: View {
 struct LessonEditor: View {
     private enum Target: String, CaseIterable { case student = "One student", group = "Custom student group", teachingClass = "A class" }
     @EnvironmentObject private var store: WorkspaceStore
+    @Environment(\.dynamicTypeSize) private var textSize
     let record: LedgerRecord?
     let editingGroup: Bool
     @State private var target: Target
@@ -475,6 +476,7 @@ struct LessonEditor: View {
     @State private var rate: String
     @State private var duration: String
     @State private var status: String
+    @State private var applySharedStatus = false
     @State private var billable: Bool
     @State private var note: String
 
@@ -494,7 +496,7 @@ struct LessonEditor: View {
         _time = State(initialValue: lessonTimeDate(initialTime ?? "18:00"))
         _rate = State(initialValue: record.map { String($0.int("rateVnd")) } ?? "")
         _duration = State(initialValue: record.flatMap { $0.int("durationMinutes") > 0 ? String($0.int("durationMinutes")) : nil } ?? "")
-        _status = State(initialValue: editingGroup ? "keep" : markingComplete ? "completed" : record?.string("status") ?? "completed")
+        _status = State(initialValue: markingComplete ? "completed" : record?.string("status") ?? "completed")
         _billable = State(initialValue: record?.flag("billable") ?? true)
         _note = State(initialValue: record?.text("privateNote") ?? "")
     }
@@ -514,51 +516,83 @@ struct LessonEditor: View {
     }
 
     var body: some View {
-        LedgerEditorForm(title: record == nil ? "Record lesson" : "Edit lesson", valid: valid,
-                         draftKey: [target.rawValue, student, classID, participants.sorted().joined(), LedgerDate.text(date), String(hasTime), lessonTime(time), rate, duration, status, String(billable), note].joined(separator: "\u{0}"),
+        let p = store.palette
+        let dateField = WorkspaceDatePicker(store.t("Lesson date"), selection: $date).disabled(lockedDate)
+        let timeField = WorkspaceDatePicker(store.t("Start time"), selection: $time, displayedComponents: .hourAndMinute, optional: $hasTime).disabled(lockedDate)
+        let durationField = WorkspaceField(store.t("Duration (minutes)"), text: $duration).keyboardType(.numberPad).disabled(lockedDate)
+        let rateField = WorkspaceField(store.t(target == .student ? "Lesson price (VND)" : "Tuition per student (VND)"), text: $rate)
+            .keyboardType(.numberPad).disabled(lockedDate)
+        let title = editingGroup ? "Edit shared details" : record == nil ? "Record lesson" : "Edit lesson"
+        LedgerEditorForm(title: title, valid: valid,
+                         draftKey: [target.rawValue, student, classID, participants.sorted().joined(), LedgerDate.text(date), String(hasTime), lessonTime(time), rate, duration, status, String(applySharedStatus), String(billable), note].joined(separator: "\u{0}"),
                          layout: .record, save: save) {
             if record == nil {
                 WorkspaceChoice(label: store.t("Teach"), selection: $target,
                     options: Target.allCases.map { ($0, store.t($0.rawValue)) })
             }
-            switch target {
-            case .student:
-                if let record { Text(record.text("studentName")) }
-                else { LearnerPicker(selected: $student, inlineSearch: true) }
-            case .group:
-                LearnerChecklist(selection: $participants)
-            case .teachingClass:
-                WorkspaceChoice(label: store.t("Classes"), selection: $classID,
-                    options: [("", store.t("Choose a class"))] + classes.map { ($0.id, $0.name) } +
-                        (!classID.isEmpty && !classes.contains(where: { $0.id == classID }) ? [(classID, currentClass?.name ?? record?.text("className") ?? store.t("Classes"))] : []))
-                .disabled(record != nil)
-                if let classesError { LedgerError(message: classesError) { Task { await loadClasses() } } }
-                if !classID.isEmpty {
-                    if let rosterError {
-                        LedgerError(message: rosterError) { Task { await loadClass() } }
-                    } else if currentClass?.id == classID {
-                        LearnerChecklist(selection: $participants, roster: classMembers)
-                    } else {
-                        ProgressView().tint(store.palette.controlTint)
+            if editingGroup, let record {
+                let count = participants.count
+                let name = record.string("className") ?? store.t("Custom group lesson")
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(name + " · \(count) " + store.t(count == 1 ? "student" : "students"))
+                        .font(p.font(15, .bold))
+                    Text(store.t("The participant list is fixed.") + " " + record.objects("sessions").map { $0.text("studentName") }.joined(separator: ", "))
+                        .font(p.font(13)).foregroundStyle(p.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                switch target {
+                case .student:
+                    if let record { Text(record.text("studentName")) }
+                    else { LearnerPicker(selected: $student, inlineSearch: true) }
+                case .group:
+                    LearnerChecklist(selection: $participants)
+                case .teachingClass:
+                    WorkspaceChoice(label: store.t("Classes"), selection: $classID,
+                        options: [("", store.t("Choose a class"))] + classes.map { ($0.id, $0.name) } +
+                            (!classID.isEmpty && !classes.contains(where: { $0.id == classID }) ? [(classID, currentClass?.name ?? store.t("Classes"))] : []))
+                    if let classesError { LedgerError(message: classesError) { Task { await loadClasses() } } }
+                    if !classID.isEmpty {
+                        if let rosterError {
+                            LedgerError(message: rosterError) { Task { await loadClass() } }
+                        } else if currentClass?.id == classID {
+                            LearnerChecklist(selection: $participants, roster: classMembers)
+                        } else {
+                            ProgressView().tint(p.controlTint)
+                        }
                     }
                 }
             }
             VStack(alignment: .leading, spacing: 14) {
-                WorkspaceFieldColumns {
-                    WorkspaceDatePicker(store.t("Lesson date"), selection: $date).disabled(lockedDate)
-                    WorkspaceChoice(label: store.t("Status"), selection: $status,
-                        options: (editingGroup ? [("keep", store.t("Keep each student's status"))] : []) +
-                            ["planned", "completed", "cancelled"].map { ($0, store.t(ledgerStatus($0))) })
+                if editingGroup {
+                    let minimum: CGFloat = textSize.isAccessibilitySize ? 190 : 132
+                    WorkspaceFieldColumns(minimum: minimum) {
+                        dateField
+                        timeField
+                    }
+                    WorkspaceFieldColumns(minimum: minimum) {
+                        durationField
+                        rateField
+                    }
+                    Toggle(store.t("Update status and billing for every student"), isOn: $applySharedStatus)
+                    if applySharedStatus {
+                        statusField
+                        if status != "cancelled" { Toggle(store.t("Charge for this lesson"), isOn: $billable) }
+                    }
+                } else {
+                    WorkspaceFieldColumns {
+                        dateField
+                        statusField
+                    }
+                    WorkspaceFieldColumns {
+                        timeField
+                        durationField
+                    }
+                    rateField
+                    if status != "cancelled" { Toggle(store.t("Charge for this lesson"), isOn: $billable) }
+                    WorkspaceKeyValue(store.t(status == "planned" ? "Expected tuition" : "Lesson tuition"), value: tuitionPreview)
+                        .padding(12).modifier(WorkspacePanel(palette: p, fill: p.recordAccent))
                 }
-                WorkspaceFieldColumns {
-                    WorkspaceDatePicker(store.t("Start time"), selection: $time, displayedComponents: .hourAndMinute, optional: $hasTime).disabled(lockedDate)
-                    WorkspaceField(store.t("Duration (minutes)"), text: $duration).keyboardType(.numberPad).disabled(lockedDate)
-                }
-                WorkspaceField(store.t(target == .student ? "Lesson price (VND)" : "Tuition per student (VND)"), text: $rate)
-                    .keyboardType(.numberPad).disabled(lockedDate)
-                if status != "keep" && status != "cancelled" { Toggle(store.t("Charge for this lesson"), isOn: $billable) }
-                WorkspaceKeyValue(store.t(status == "planned" ? "Expected tuition" : "Lesson tuition"), value: tuitionPreview)
-                    .padding(12).modifier(WorkspacePanel(palette: store.palette, fill: store.palette.recordAccent))
                 WorkspaceField(store.t("Private notes"), text: $note, axis: .vertical, placeholder: store.t("Only you can see this"))
             }
             .toggleStyle(WorkspaceCheckbox())
@@ -571,9 +605,14 @@ struct LessonEditor: View {
             }
         }
         .task(id: target) {
-            if target == .teachingClass && classes.isEmpty { await loadClasses() }
+            if !editingGroup && target == .teachingClass && classes.isEmpty { await loadClasses() }
         }
-        .task(id: classID) { await loadClass() }
+        .task(id: classID) { if !editingGroup { await loadClass() } }
+    }
+
+    private var statusField: some View {
+        WorkspaceChoice(label: store.t(editingGroup ? "Shared status" : "Status"), selection: $status,
+                        options: ["planned", "completed", "cancelled"].map { ($0, store.t(ledgerStatus($0))) })
     }
 
     private func loadClasses() async {
@@ -603,13 +642,14 @@ struct LessonEditor: View {
 
     private func save() async throws {
         let group = target != .student
+        let changeStatus = !editingGroup || applySharedStatus
         let endpoint = (group ? "/api/lessons" : "/api/sessions") + (record.map { "/" + $0.id } ?? "")
         var input: [String: LedgerValue] = [
             "sessionDate": .string(LedgerDate.text(date)),
             "startTime": hasTime ? .string(lessonTime(time)) : .null,
             "durationMinutes": Int(duration).map(LedgerValue.number) ?? .null,
-            "status": status == "keep" ? .null : .string(status),
-            "billable": status == "keep" ? .null : .flag(status != "cancelled" && billable),
+            "status": changeStatus ? .string(status) : .null,
+            "billable": changeStatus ? .flag(status != "cancelled" && billable) : .null,
             "privateNote": .string(note)
         ]
         if let price = Int(rate) { input["rateVnd"] = .number(price) }
