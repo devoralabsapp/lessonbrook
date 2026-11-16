@@ -297,41 +297,18 @@ struct NativeDashboard: View {
     }
 
     private func scheduleRow(_ lesson: WorkspaceSnapshot.Lesson, today: String, index: Int) -> some View {
-        let name = lesson.name ?? t("Group lesson")
-        let tone = index.isMultiple(of: 2) ? palette.blue : palette.mint
-        let frame = RoundedRectangle(cornerRadius: min(palette.radius, 14))
-        let recurrence = lesson.kind == "recurring" ? " · \(t("Weekly"))" : ""
+        let date = lesson.date == today ? t("Today") : dayLabel(lesson.date)
+        let time = lesson.time ?? t("Time not set")
+        let recurrence = lesson.kind == "recurring" ? " · " + t("Weekly") : ""
         return Button { open(lesson.path) } label: {
-            HStack(spacing: 9) {
-                Text(String(name.prefix(1)).uppercased())
-                    .font(.system(.subheadline, design: palette.fontDesign).weight(.medium))
-                    .frame(width: 40, height: 40)
-                    .background(palette.recordAccent, in: RoundedRectangle(cornerRadius: 3))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(name).font(.system(.body, design: palette.fontDesign).bold())
-                    Text("\((lesson.date == today ? t("Today") : dayLabel(lesson.date))) · \(lesson.time ?? t("Time not set"))\(recurrence)")
-                        .font(.system(.footnote, design: palette.fontDesign))
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .foregroundStyle(palette.foreground)
-            .background(palette.recordAccent.opacity(0.7), in: frame)
-            .background(palette.surface, in: frame)
-            .overlay(frame.strokeBorder(palette.controlTint, lineWidth: 2))
-            .contentShape(Rectangle())
+            WorkspaceScheduleRow(
+                title: lesson.name ?? t("Group lesson"),
+                details: date + " · " + time + recurrence,
+                palette: palette,
+                index: index
+            )
         }
         .buttonStyle(.plain)
-        .padding(12)
-        .background {
-            if palette.retroRows {
-                Rectangle().fill(tone.opacity(0.3)).overlay(alignment: .leading) {
-                    Rectangle().fill(tone).frame(width: 5)
-                }
-            }
-        }
     }
 
     private func dayLabel(_ date: String) -> String {

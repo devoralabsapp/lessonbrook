@@ -510,6 +510,29 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Create statement"].waitForExistence(timeout: 10))
         brand.tap()
         XCTAssertTrue(app.staticTexts["Have a good teaching day."].waitForExistence(timeout: 10))
+
+        let fullSchedule = app.buttons["View full schedule"]
+        tapVisible(fullSchedule, app: app)
+        XCTAssertTrue(app.staticTexts["upcoming-date-range"].waitForExistence(timeout: 15))
+        let fullRows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "upcoming-lesson-"))
+        XCTAssertGreaterThan(fullRows.count, 8)
+        capture("Full schedule using dashboard rows", app: app)
+
+        settings.tap()
+        let saveBank = app.buttons["Save bank transfer details"]
+        let clearBank = app.buttons["Clear bank transfer details"]
+        XCTAssertTrue(clearBank.waitForExistence(timeout: 15))
+        for _ in 0..<4 where !clearBank.isHittable { app.swipeUp() }
+        XCTAssertTrue(saveBank.isHittable)
+        XCTAssertTrue(clearBank.isHittable)
+        XCTAssertEqual(saveBank.frame.minY, clearBank.frame.minY, accuracy: 2)
+        XCTAssertLessThan(saveBank.frame.maxX, clearBank.frame.minX)
+        XCTAssertGreaterThanOrEqual(saveBank.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(clearBank.frame.width, 44)
+        capture("Bank transfer actions on the same row", app: app)
+        XCTAssertTrue(app.staticTexts["Your data"].exists)
+        XCTAssertTrue(app.buttons["Export all data"].exists)
+        XCTAssertFalse(app.buttons["Delete account"].exists)
     }
 
     @MainActor

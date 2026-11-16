@@ -65,6 +65,7 @@ struct NativeSettings: View {
     @State private var notice: String?
     @State private var disconnectAll = false
     @State private var deleting = false
+    @State private var confirmingDeletion = false
     @State private var confirmation = ""
     @State private var export: LedgerExportDocument?
     @State private var exportPresented = false
@@ -131,8 +132,8 @@ struct NativeSettings: View {
                         (!bankBin.isEmpty && !Self.banks.contains(where: { $0.0 == bankBin }) ? [(bankBin, bankBin)] : []))
                 WorkspaceField(store.t("Account number"), text: $account).keyboardType(.numberPad)
                 WorkspaceField(store.t("Account holder name"), text: $accountName)
-                WorkspaceActionRows {
-                    Button(store.t("Save bank transfer details")) {
+                HStack(alignment: .top, spacing: 8) {
+                    Button {
                         Task {
                             await perform {
                                 _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: [
@@ -141,11 +142,13 @@ struct NativeSettings: View {
                                 ])
                             }
                         }
+                    } label: {
+                        bankActionLabel("Save bank transfer details")
                     }
                     .buttonStyle(WorkspaceActionButton(palette: p))
                     .disabled(store.saving || bankBin.count != 6 || account.count < 6 || accountName.isEmpty)
                     if profile?.object("bankTransfer") != nil {
-                        Button(store.t("Clear bank transfer details")) {
+                        Button {
                             Task {
                                 await perform {
                                     _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: ["bankTransfer": .null])
@@ -154,6 +157,8 @@ struct NativeSettings: View {
                                     accountName = ""
                                 }
                             }
+                        } label: {
+                            bankActionLabel("Clear bank transfer details")
                         }
                         .disabled(store.saving)
                     }
@@ -174,6 +179,13 @@ struct NativeSettings: View {
                 WorkspaceActionRows {
                     Button(store.t(exporting ? "Preparing export…" : "Export all data")) { Task { await exportData() } }
                         .disabled(exporting || store.saving)
+                    if !store.demo {
+                        Button(store.t("Delete account"), role: .destructive) {
+                            confirmation = ""
+                            deleting = true
+                        }
+                        .disabled(store.saving || exporting)
+                    }
                 }
             }
             WorkspaceSection {
@@ -184,7 +196,6 @@ struct NativeSettings: View {
                     } else {
                         Button(store.t("Sign out")) { Task { await store.signOut() } }
                         Button(store.t("Sign out on all devices")) { disconnectAll = true }
-                        Button(store.t("Delete account"), role: .destructive) { confirmation = ""; deleting = true }
                     }
                 }
             }
@@ -200,27 +211,51 @@ struct NativeSettings: View {
                 WorkspaceScroll {
                     WorkspaceSection {
                         Text(store.t("This permanently deletes your account, lessons, statements and payment history."))
-                        WorkspaceField("DELETE ACCOUNT", text: $confirmation).textInputAutocapitalization(.characters)
+                        WorkspaceField(store.t("Type DELETE ACCOUNT to confirm."), text: $confirmation)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .disabled(confirmingDeletion)
                         Button(store.t("Confirm with Google and delete"), role: .destructive) {
+                            confirmingDeletion = true
+                            let typedConfirmation = confirmation
                             Task {
-                                do { try await store.startDeletion(confirmation); deleting = false }
-                                catch { self.error = store.t(error.localizedDescription); deleting = false }
+                                defer { confirmingDeletion = false }
+                                do {
+                                    try await store.startDeletion(typedConfirmation)
+                                    deleting = false
+                                } catch {
+                                    self.error = store.t(error.localizedDescription)
+                                    deleting = false
+                                }
                             }
-                        }.disabled(confirmation != "DELETE ACCOUNT" || !store.hasNativeGoogle || store.saving)
+                        }
+                        .disabled(confirmation != "DELETE ACCOUNT" || !store.hasNativeGoogle || store.saving || confirmingDeletion)
                     }
                     if !store.hasNativeGoogle {
                         Text(store.t("Connect native Google sign-in to confirm this action."))
                     }
                 }
                 .navigationTitle(store.t("Delete account"))
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button(store.t("Cancel")) { deleting = false } } }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(store.t("Cancel")) { deleting = false }.disabled(confirmingDeletion)
+                    }
+                }
             }
+            .interactiveDismissDisabled(confirmingDeletion)
         }
         .fileExporter(isPresented: $exportPresented, document: export, contentType: .json,
                       defaultFilename: "LessonBrook-\(LedgerDate.today)") { result in
             export = nil
             if case .failure(let failure) = result { error = store.t(failure.localizedDescription) }
         }
+    }
+
+    private func bankActionLabel(_ title: String) -> some View {
+        Text(store.t(title))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity)
     }
 
     private func infoLink(_ title: String, url: URL) -> some View {

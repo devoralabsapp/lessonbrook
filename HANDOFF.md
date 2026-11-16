@@ -6,6 +6,8 @@ Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) f
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
 
+- **iOS 0.5.8, build 26**. Dashboard and the full schedule share the same themed lesson rows. Bank transfer actions sit side by side, and Delete account appears alongside Export all data for signed-in teachers, with typed confirmation and Google reauthentication.
+
 - **iOS 0.5.7, build 25**. Student detail puts Record lesson, Edit student and Archive student in one action group. The month calendars use a square outer frame. Lesson List rows stack lesson status, payment status and Edit on the right. The bottom tab row is inset below the divider.
 
 - **iOS 0.5.6, build 24**. The SwiftUI workspace uses the mobile web header with the LessonBrook wordmark, a language menu, the appearance picker and an account avatar. The demo also shows Sign in. The theme list previews immediately and saves explicitly. Settings follows the mobile web profile, transfer and Shortcut sections. The getting-started guide uses the existing onboarding progress endpoint. Student detail embeds the lesson directory. Statement creation opens a full page and proceeds to the issued statement. Cash entry sits inside the statement and payment history keeps its actions beside the payment. Use a 393px phone WebKit session on `/demo` for visual comparisons. Use the isolated emulator for signed-in writes.

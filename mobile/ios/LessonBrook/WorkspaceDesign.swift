@@ -516,6 +516,38 @@ struct WorkspaceListTone: ViewModifier {
     }
 }
 
+struct WorkspaceScheduleRow: View {
+    let title: String
+    let details: String
+    let palette: WorkspacePalette
+    let index: Int
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: min(palette.radius, 14))
+        return HStack(spacing: 9) {
+            Text(String(title.prefix(1)).uppercased())
+                .font(.system(.subheadline, design: palette.fontDesign).weight(.medium))
+                .frame(width: 40, height: 40)
+                .background(palette.recordAccent, in: RoundedRectangle(cornerRadius: 3))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.system(.body, design: palette.fontDesign).bold())
+                Text(details).font(.system(.footnote, design: palette.fontDesign))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .foregroundStyle(palette.foreground)
+        .background(palette.recordAccent.opacity(0.7), in: shape)
+        .background(palette.surface, in: shape)
+        .overlay(shape.strokeBorder(palette.controlTint, lineWidth: 2))
+        .padding(12)
+        .modifier(WorkspaceListTone(palette: palette, color: index.isMultiple(of: 2) ? palette.blue : palette.mint))
+        .contentShape(Rectangle())
+    }
+}
+
 struct WorkspaceKeyValue: View {
     @EnvironmentObject private var store: WorkspaceStore
     let label: String

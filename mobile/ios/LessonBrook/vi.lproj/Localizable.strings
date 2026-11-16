@@ -92,6 +92,7 @@
 "Completed" = "Đã dạy";
 "Confirm cancellation" = "Xác nhận hủy bảng kê";
 "Confirm with Google and delete" = "Xác nhận Google và xóa";
+"Type DELETE ACCOUNT to confirm." = "Nhập DELETE ACCOUNT để xác nhận.";
 "Connect native Google sign-in to confirm this action." = "Thiết lập đăng nhập Google để xác nhận thao tác này.";
 "Contact name" = "Người liên hệ";
 "Create new link" = "Tạo link mới";

@@ -266,13 +266,12 @@ struct NativeSchedule: View {
                             if let route = WorkspaceRoute.from(lesson.path) {
                                 if index > 0 { Divider().overlay(p.border) }
                                 NavigationLink(value: route) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(lesson.name ?? store.t("Custom student group"))
-                                            .font(p.font(15, .bold))
-                                        Text(lessonDetails(lesson)).font(p.font(13)).foregroundStyle(p.secondaryInk)
-                                    }
-                                    .padding(12).frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                                    .contentShape(Rectangle())
+                                    WorkspaceScheduleRow(
+                                        title: lesson.name ?? store.t("Custom student group"),
+                                        details: lessonDetails(lesson),
+                                        palette: p,
+                                        index: index
+                                    )
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("upcoming-lesson-\(lesson.path)")
