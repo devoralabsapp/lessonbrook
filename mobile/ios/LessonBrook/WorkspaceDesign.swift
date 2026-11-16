@@ -409,6 +409,45 @@ struct WorkspaceActionRows<Content: View>: View {
     }
 }
 
+private struct WorkspaceRootActionKey: EnvironmentKey {
+    static let defaultValue: ((WorkspaceTab) -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    var openWorkspaceRoot: ((WorkspaceTab) -> Void)? {
+        get { self[WorkspaceRootActionKey.self] }
+        set { self[WorkspaceRootActionKey.self] = newValue }
+    }
+}
+
+struct WorkspaceBackLink: View {
+    @EnvironmentObject private var store: WorkspaceStore
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWorkspaceRoot) private var openWorkspaceRoot
+    let title: String
+    var tab: WorkspaceTab? = nil
+
+    init(_ title: String, tab: WorkspaceTab? = nil) {
+        self.title = title
+        self.tab = tab
+    }
+
+    var body: some View {
+        Button {
+            if let tab, let openWorkspaceRoot { openWorkspaceRoot(tab) }
+            else { dismiss() }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.left").font(.system(size: 12)).accessibilityHidden(true)
+                Text(store.t(title)).underline().font(store.palette.font(14))
+            }
+            .frame(minHeight: 32, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("workspace-detail-back")
+    }
+}
+
 struct WorkspaceScroll<Content: View>: View {
     @EnvironmentObject private var store: WorkspaceStore
     var eager = false
@@ -431,6 +470,7 @@ struct WorkspaceSection<Content: View>: View {
     @EnvironmentObject private var store: WorkspaceStore
     var title: String? = nil
     var fill: Color? = nil
+    var padding: CGFloat = 12
     @ViewBuilder let content: () -> Content
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -439,10 +479,10 @@ struct WorkspaceSection<Content: View>: View {
                 Divider().overlay(store.palette.border)
             }
             content()
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(padding)
             .modifier(WorkspacePanel(palette: store.palette, fill: fill ?? store.palette.surface))
     }
-    init(_ title: String? = nil, fill: Color? = nil, @ViewBuilder content: @escaping () -> Content) { self.title = title; self.fill = fill; self.content = content }
+    init(_ title: String? = nil, fill: Color? = nil, padding: CGFloat = 12, @ViewBuilder content: @escaping () -> Content) { self.title = title; self.fill = fill; self.padding = padding; self.content = content }
 }
 
 struct WorkspaceListCard<Content: View>: View {

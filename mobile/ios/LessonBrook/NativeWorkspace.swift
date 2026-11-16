@@ -193,7 +193,7 @@ struct WorkspacePalette {
         }
     }
 
-    private static func color(_ rgb: UInt32) -> Color {
+    static func color(_ rgb: UInt32) -> Color {
         Color(
             red: Double((rgb >> 16) & 255) / 255,
             green: Double((rgb >> 8) & 255) / 255,
@@ -219,11 +219,18 @@ struct NativeDashboard: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(t("Have a good teaching day."))
-                    .font(.system(.title2, design: palette.fontDesign).bold())
-                    .accessibilityAddTraits(.isHeader)
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(t("Today").uppercased() + " · " + dayLabel(LedgerDate.today).uppercased())
+                        .font(palette.font(11, .semibold)).tracking(1.8).foregroundStyle(palette.secondaryInk)
+                    Text(t("Have a good teaching day."))
+                        .font(palette.font(25, .heavy)).accessibilityAddTraits(.isHeader)
+                    Text(t("Each lesson recorded is one less thing to remember at month-end."))
+                        .font(palette.font(15)).foregroundStyle(palette.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 metric("Outstanding tuition", value: money(snapshot.summary.outstandingVnd),
-                       size: .largeTitle, fill: palette.yellow)
+                       size: 29, fill: palette.yellow, icon: "note.text",
+                       caption: "Unpaid balance on all issued statements")
                 if textSize.isAccessibilitySize {
                     VStack(spacing: 12) {
                         unbilled
@@ -237,7 +244,7 @@ struct NativeDashboard: View {
                         }
                     }
                 }
-                metric("Active students", value: number(snapshot.summary.activeStudents), size: .title3)
+                metric("Active students", value: number(snapshot.summary.activeStudents), size: 20)
                 if let schedule = snapshot.schedule { scheduleView(schedule) }
                 if snapshot.needsOnboarding {
                     Button { open("/onboarding") } label: {
@@ -263,13 +270,13 @@ struct NativeDashboard: View {
         let items = schedule.upcoming
         return VStack(alignment: .leading, spacing: 0) {
             Text(t("Upcoming lessons"))
-                .font(.system(.title3, design: palette.fontDesign).bold())
+                .font(palette.font(17, .heavy))
                 .accessibilityAddTraits(.isHeader)
                 .padding(12)
             Divider().overlay(palette.border)
             if items.isEmpty {
                 Text(t("No planned lessons in the schedule."))
-                    .font(.system(.subheadline, design: palette.fontDesign))
+                    .font(palette.font(14))
                     .padding(12)
             } else {
                 ForEach(Array(items.enumerated()), id: \.element.path) { index, lesson in
@@ -277,7 +284,8 @@ struct NativeDashboard: View {
                     Divider().overlay(palette.border)
                 }
                 Button(t("View full schedule")) { open("/app/schedule") }
-                    .font(.system(.subheadline, design: palette.fontDesign).weight(.semibold))
+                    .font(palette.font(14, .semibold))
+                    .buttonStyle(.plain)
                     .underline()
                     .tint(palette.controlTint)
                     .padding(12)
@@ -302,7 +310,7 @@ struct NativeDashboard: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name).font(.system(.body, design: palette.fontDesign).bold())
-                    Text("\(dayLabel(lesson.date, today: today)) · \(lesson.time ?? t("Time not set"))\(recurrence)")
+                    Text("\((lesson.date == today ? t("Today") : dayLabel(lesson.date))) · \(lesson.time ?? t("Time not set"))\(recurrence)")
                         .font(.system(.footnote, design: palette.fontDesign))
                 }
             }
@@ -326,8 +334,7 @@ struct NativeDashboard: View {
         }
     }
 
-    private func dayLabel(_ date: String, today: String) -> String {
-        if date == today { return t("Today") }
+    private func dayLabel(_ date: String) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
@@ -340,21 +347,31 @@ struct NativeDashboard: View {
 
     private var unbilled: some View {
         metric("Lessons ready for a statement", value: money(snapshot.summary.unbilledVnd),
-               fill: palette.blue, compact: true)
+               fill: palette.blue, icon: "calendar", compact: true)
     }
 
     private var received: some View {
         metric("Received this month", value: money(snapshot.summary.receivedMonthVnd),
-               fill: palette.mint, compact: true)
+               fill: palette.mint, icon: "note.text", compact: true)
     }
 
-    private func metric(_ title: String, value: String, size: Font.TextStyle = .body,
-                        fill: Color? = nil, compact: Bool = false) -> some View {
+    private func metric(_ title: String, value: String, size: CGFloat = 17,
+                        fill: Color? = nil, icon: String? = nil, caption: String? = nil,
+                        compact: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(t(title)).font(.system(compact ? .footnote : .subheadline, design: palette.fontDesign))
+            HStack(alignment: .top, spacing: 5) {
+                Text(t(title)).font(palette.font(13, compact ? .semibold : .regular))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if let icon {
+                    Image(systemName: icon).font(.system(size: 14)).accessibilityHidden(true)
+                }
+            }
+            Text(value).font(palette.font(size, .bold).monospacedDigit())
                 .fixedSize(horizontal: false, vertical: true)
-            Text(value).font(.system(size, design: palette.fontDesign).bold().monospacedDigit())
-                .fixedSize(horizontal: false, vertical: true)
+            if let caption {
+                Text(t(caption)).font(palette.font(12)).fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, minHeight: compact && !textSize.isAccessibilitySize ? 68 : nil,
                alignment: .topLeading)
@@ -388,19 +405,52 @@ struct WorkspacePanel: ViewModifier {
     }
 }
 
-struct WelcomeButtonStyle: ButtonStyle {
+struct WorkspaceBrand: View {
     let palette: WorkspacePalette
-    let primary: Bool
+    var subtitle: String? = nil
+    private var compact: Bool { subtitle == nil }
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(.body, design: palette.fontDesign).bold())
-            .foregroundStyle(primary ? palette.onAccent : palette.foreground)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .frame(minHeight: 48)
-            .modifier(WorkspacePanel(palette: palette, fill: primary ? palette.accent : palette.surface))
-            .offset(x: configuration.isPressed ? 2 : 0, y: configuration.isPressed ? 2 : 0)
+    var body: some View {
+        HStack(spacing: 8) {
+            NotebookMark()
+                .stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                .foregroundStyle(palette.dark ? palette.onAccent : palette.surface)
+                .frame(width: compact ? 17 : 21, height: compact ? 17 : 21)
+                .frame(width: compact ? 31 : 40, height: compact ? 31 : 40)
+                .background(palette.dark ? palette.accent : palette.foreground, in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("LessonBrook\(Text(".").foregroundColor(WorkspacePalette.color(0xacb77f)))")
+                    .font(palette.font(compact ? 18 : 20, .heavy))
+                    .lineLimit(1).minimumScaleFactor(0.75)
+                if let subtitle { Text(subtitle).font(palette.font(11)) }
+            }
+        }
+    }
+}
+
+private struct NotebookMark: Shape {
+    func path(in rect: CGRect) -> Path {
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: x * rect.width / 24, y: y * rect.height / 24)
+        }
+        var drawing = Path()
+        drawing.move(to: point(13, 2))
+        drawing.addLine(to: point(6, 2))
+        drawing.addQuadCurve(to: point(4, 4), control: point(4, 2))
+        drawing.addLine(to: point(4, 20))
+        drawing.addQuadCurve(to: point(6, 22), control: point(4, 22))
+        drawing.addLine(to: point(18, 22))
+        drawing.addQuadCurve(to: point(20, 20), control: point(20, 22))
+        drawing.addLine(to: point(20, 13))
+        for y: CGFloat in [6, 10, 14, 18] {
+            drawing.move(to: point(2, y))
+            drawing.addLine(to: point(6, y))
+        }
+        drawing.move(to: point(21.5, 5.5))
+        drawing.addQuadCurve(to: point(18.5, 2.5), control: point(22.5, 1.5))
+        drawing.addLines([point(18.5, 2.5), point(13, 8), point(12, 12), point(16, 11), point(21.5, 5.5)])
+        return drawing
     }
 }
 
@@ -418,86 +468,52 @@ struct NativeWelcome: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 22) {
-                HStack {
-                    Text("LessonBrook")
-                        .font(.system(.headline, design: palette.fontDesign).bold())
-                        .accessibilityAddTraits(.isHeader)
-                    Spacer(minLength: 12)
-                    WorkspaceChoice(label: t("Language"), selection: Binding(get: { locale }, set: changeLanguage),
-                                    options: [("en", "English"), ("vi", "Tiếng Việt")],
-                                    compact: true, leadingIcon: "globe")
-                        .frame(width: 132)
+            VStack(alignment: .leading, spacing: 20) {
+                WorkspaceBrand(palette: palette, subtitle: t("Lesson & tuition ledger").uppercased())
+                    .accessibilityElement(children: .combine)
+                WorkspaceChoice(label: t("Language"), selection: Binding(get: { locale }, set: changeLanguage),
+                                options: [("en", "English"), ("vi", "Tiếng Việt")],
+                                compact: true, leadingIcon: "globe")
+                    .frame(width: 132)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 12)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(t("A LIGHTER WAY TO KEEP RECORDS")).font(palette.font(12, .semibold)).tracking(1.5)
+                    Text(t("Welcome.")).font(palette.font(37, .heavy)).accessibilityAddTraits(.isHeader)
+                    Text(t("Sign in to open your lesson ledger. Students do not need an account."))
+                        .font(palette.font(16)).foregroundStyle(palette.secondaryInk).lineSpacing(4)
                 }
-
-                VStack(spacing: 10) {
-                    ledgerMark
-                    Text(t("Sign in"))
-                        .font(.system(.largeTitle, design: palette.fontDesign).bold())
-                        .accessibilityAddTraits(.isHeader)
-                    Text(t("Your lessons and tuition in one place."))
-                        .font(.system(.subheadline, design: palette.fontDesign))
-                    if expired {
-                        Text(t("Your session expired. Sign in again."))
-                            .font(.footnote)
-                            .padding(9)
-                            .frame(maxWidth: .infinity)
-                            .background(palette.yellow.opacity(0.32), in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    signInAction
-                        .padding(.top, 8)
+                if expired {
+                    Text(t("Your session expired. Sign in again."))
+                        .font(palette.font(14))
+                        .padding(9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(palette.yellow.opacity(0.32), in: RoundedRectangle(cornerRadius: 10))
                 }
-                .multilineTextAlignment(.center)
-                .padding(18)
-                .frame(maxWidth: .infinity)
-                .modifier(WorkspacePanel(palette: palette, fill: palette.surface))
-
-                VStack(spacing: 6) {
-                    Button(action: demo) {
-                        welcomeLabel(t("View demo"), icon: "play.rectangle")
-                    }
-                    .buttonStyle(WelcomeButtonStyle(palette: palette, primary: false))
-                    Text(t("Explore with sample data. No account needed."))
-                        .font(.system(.footnote, design: palette.fontDesign))
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 4)
+                signInAction
+                Button(action: demo) {
+                    welcomeLabel(t("View demo"), icon: "play.rectangle")
                 }
-
+                .buttonStyle(WorkspaceActionButton(palette: palette))
+                Text(t("Explore with sample data. No account needed."))
+                    .font(palette.font(13)).foregroundStyle(palette.secondaryInk)
+                Divider().overlay(palette.border)
+                Label {
+                    Text(t("Your lesson data belongs to your account. Each lesson keeps its own price. An internet connection is required to save changes."))
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: { Image(systemName: "checkmark.shield") }
+                    .font(palette.font(13)).foregroundStyle(palette.secondaryInk)
                 Button(action: help) {
-                    Text(t("Help & support"))
-                        .underline()
-                        .font(.system(.subheadline, design: palette.fontDesign))
+                    Text(t("Help & support")).underline().font(palette.font(14))
                         .frame(minHeight: 44)
-                }
-                .tint(palette.controlTint)
+                }.buttonStyle(.plain)
             }
-            .frame(maxWidth: 400)
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
-            .padding(.bottom, 12)
+            .frame(maxWidth: 400, alignment: .leading)
+            .padding(.horizontal, 24).padding(.vertical, 25)
             .frame(maxWidth: .infinity)
         }
         .foregroundStyle(palette.foreground)
         .background(palette.background)
-    }
-
-    private var ledgerMark: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(palette.blue)
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(palette.border, lineWidth: 2))
-                .frame(width: 58, height: 66)
-                .rotationEffect(.degrees(11))
-                .offset(x: 10, y: -2)
-            Image(systemName: "checkmark.rectangle")
-                .font(.system(size: 34, weight: .semibold))
-                .frame(width: 58, height: 66)
-                .modifier(WorkspacePanel(palette: palette, fill: palette.yellow))
-                .rotationEffect(.degrees(-7))
-                .offset(x: -6, y: 2)
-        }
-        .frame(height: 86)
-        .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -506,12 +522,12 @@ struct NativeWelcome: View {
             Button(action: signIn) {
                 welcomeLabel(t("Continue with Google"), icon: nil)
             }
-            .buttonStyle(WelcomeButtonStyle(palette: palette, primary: true))
+            .buttonStyle(WorkspaceOutlineButton(palette: palette))
         } else if checkFailed || available == false {
             Text(t(checkFailed ? "Check your connection and try again." : "Sign-in is currently unavailable."))
                 .font(.footnote)
             Button(t("Try again"), action: retry)
-                .buttonStyle(WelcomeButtonStyle(palette: palette, primary: false))
+                .buttonStyle(WorkspaceOutlineButton(palette: palette))
         } else {
             ProgressView()
                 .tint(palette.controlTint)

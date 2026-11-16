@@ -55,6 +55,7 @@ struct NativeSettings: View {
         ("971101", "ZaloPay")
     ]
     @Environment(\.openURL) private var openURL
+    @ScaledMetric(relativeTo: .body) private var settingsSpacing = 16.0
     @State private var profile: LedgerRecord?
     @State private var displayName = ""
     @State private var bankBin = ""
@@ -70,27 +71,68 @@ struct NativeSettings: View {
     @State private var exporting = false
 
     var body: some View {
+        let p = store.palette
         WorkspaceScroll(eager: true) {
-            WorkspaceSection(store.t("Teacher profile")) {
-                WorkspaceField(store.t("Display name"), text: $displayName)
-                if let email = profile?.string("email") { Text(email).foregroundStyle(.secondary) }
-                Button(store.t("Save profile")) {
-                    Task {
-                        await perform {
-                            _ = try await store.write("/api/profile", method: "PATCH", body: ["displayName": .string(displayName)])
-                            await store.refreshDashboard()
+            VStack(alignment: .leading, spacing: settingsSpacing) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(store.t("YOUR WORKSPACE")).font(p.font(12)).foregroundStyle(p.secondaryInk)
+                    Text(store.t("Account settings")).font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
+                }
+                NavigationLink(value: WorkspaceRoute.onboarding) {
+                    Text(store.t("View getting started guide"))
+                        .font(p.font(15)).underline()
+                        .padding(.vertical, 3)
+                }
+                .buttonStyle(.plain)
+                WorkspaceActionRows(spacing: 16) {
+                    infoLink("Help & support", url: MobileSignIn.origin.appending(path: "help"))
+                    infoLink("Data & privacy", url: MobileSignIn.origin.appending(path: "privacy"))
+                    infoLink("Add to your home screen", url: URL(string: "/help#install", relativeTo: MobileSignIn.origin) ?? MobileSignIn.origin)
+                }
+                .foregroundStyle(p.secondaryInk)
+            }
+            .padding(.top, 2).padding(.bottom, 6)
+            WorkspaceSection(padding: 14) {
+                if let profile {
+                    if let email = profile.string("email") {
+                        Text(email).font(p.font(13)).foregroundStyle(p.secondaryInk)
+                    }
+                    WorkspaceField(store.t("Teacher / class name"), text: $displayName)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(store.t("Currency: VND · Time zone: Vietnam."))
+                        Text(store.t("The ledger only records lessons you enter; it excludes earlier debts."))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(p.font(13)).foregroundStyle(p.secondaryInk).lineSpacing(4)
+                    .padding(.vertical, 2)
+                    Button(store.t("Save profile")) {
+                        Task {
+                            await perform {
+                                _ = try await store.write("/api/profile", method: "PATCH", body: ["displayName": .string(displayName)])
+                                await store.refreshDashboard()
+                            }
                         }
                     }
-                }.disabled(store.saving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .buttonStyle(WorkspaceActionButton(palette: p))
+                    .disabled(store.saving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } else if error == nil {
+                    ProgressView().tint(p.controlTint)
+                }
+                if let error { WorkspaceNotice(message: error, tone: .error) }
+                if let notice { WorkspaceNotice(message: notice) }
             }
-            WorkspaceSection(store.t("Bank transfer details")) {
-                WorkspaceChoice(label: store.t("Bank"), selection: $bankBin,
+            WorkspaceSection(padding: 14) {
+                Text(store.t("Bank transfer details")).font(p.font(21, .heavy)).accessibilityAddTraits(.isHeader)
+                Text(store.t("Saved details are used to create a VietQR when you issue a statement. Anyone with the statement link can see these details."))
+                    .font(p.font(15)).foregroundStyle(p.secondaryInk).lineSpacing(5)
+                    .fixedSize(horizontal: false, vertical: true)
+                WorkspaceChoice(label: store.t("Bank name"), selection: $bankBin,
                     options: [("", store.t("Choose a bank"))] + Self.banks +
                         (!bankBin.isEmpty && !Self.banks.contains(where: { $0.0 == bankBin }) ? [(bankBin, bankBin)] : []))
                 WorkspaceField(store.t("Account number"), text: $account).keyboardType(.numberPad)
-                WorkspaceField(store.t("Account holder"), text: $accountName)
+                WorkspaceField(store.t("Account holder name"), text: $accountName)
                 WorkspaceActionRows {
-                    Button(store.t("Save bank details")) {
+                    Button(store.t("Save bank transfer details")) {
                         Task {
                             await perform {
                                 _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: [
@@ -99,30 +141,39 @@ struct NativeSettings: View {
                                 ])
                             }
                         }
-                    }.disabled(store.saving || bankBin.count != 6 || account.count < 6 || accountName.isEmpty)
-                    Button(store.t("Remove bank details"), role: .destructive) {
-                        Task {
-                            await perform {
-                                _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: ["bankTransfer": .null])
-                                bankBin = ""; account = ""; accountName = ""
+                    }
+                    .buttonStyle(WorkspaceActionButton(palette: p))
+                    .disabled(store.saving || bankBin.count != 6 || account.count < 6 || accountName.isEmpty)
+                    if profile?.object("bankTransfer") != nil {
+                        Button(store.t("Clear bank transfer details")) {
+                            Task {
+                                await perform {
+                                    _ = try await store.write("/api/profile/bank-transfer", method: "PATCH", body: ["bankTransfer": .null])
+                                    bankBin = ""
+                                    account = ""
+                                    accountName = ""
+                                }
                             }
                         }
-                    }.disabled(store.saving || profile?.object("bankTransfer") == nil)
+                        .disabled(store.saving)
+                    }
                 }
-            }
-            if !store.demo {
-                WorkspaceSection(store.t("Payment notifications")) { BankShortcutForm(accountNumber: account) }
-            }
-            WorkspaceSection(store.t("Preferences")) {
-                WorkspaceChoice(label: store.t("Language"), selection: Binding(get: { store.locale }, set: store.setLanguage),
-                                options: [("en", "English"), ("vi", "Tiếng Việt")])
+                Divider().overlay(p.border).padding(.vertical, 3)
+                Text(store.t("Automatic reconciliation with Shortcuts")).font(p.font(16, .bold))
+                Text(store.t("Send the original incoming payment notification. LessonBrook records the transfer when the account, transfer reference and outstanding balance match. Record cash in the statement."))
+                    .font(p.font(14)).foregroundStyle(p.secondaryInk).fixedSize(horizontal: false, vertical: true)
+                Text(store.t("Confirm with Google once to let the Shortcut renew its session automatically."))
+                    .font(p.font(14)).foregroundStyle(p.secondaryInk).fixedSize(horizontal: false, vertical: true)
+                if store.demo {
+                    Button(store.t("Sign in to use this feature.")) { Task { await store.beginSignIn(open: openURL) } }
+                } else {
+                    BankShortcutForm(accountNumber: account)
+                }
             }
             WorkspaceSection(store.t("Your data")) {
                 WorkspaceActionRows {
                     Button(store.t(exporting ? "Preparing export…" : "Export all data")) { Task { await exportData() } }
                         .disabled(exporting || store.saving)
-                    Link(store.t("Help & support"), destination: MobileSignIn.origin.appending(path: "help"))
-                    Link(store.t("Data & privacy"), destination: MobileSignIn.origin.appending(path: "privacy"))
                 }
             }
             WorkspaceSection {
@@ -137,8 +188,6 @@ struct NativeSettings: View {
                     }
                 }
             }
-            if let error { Text(error).foregroundStyle(.red) }
-            if let notice { Text(notice).foregroundStyle(.secondary) }
         }
         .scrollContentBackground(.hidden)
         .background(store.palette.background)
@@ -172,6 +221,14 @@ struct NativeSettings: View {
             export = nil
             if case .failure(let failure) = result { error = store.t(failure.localizedDescription) }
         }
+    }
+
+    private func infoLink(_ title: String, url: URL) -> some View {
+        Link(destination: url) {
+            Text(store.t(title)).font(store.palette.font(13)).underline()
+                .padding(.vertical, 3)
+        }
+        .buttonStyle(.plain)
     }
 
     private func load() async {
@@ -400,89 +457,265 @@ struct BankShortcutForm: View {
 }
 
 struct NativeAppearance: View {
-    private let themes = [
-        ("playful-retro", "Playful Retro Neo-Brutalism"), ("mono-os", "Mono OS"), ("chapter-desk", "Chapter Desk"),
-        ("afterhours-fm", "Afterhours FM"), ("margin-notes", "Margin Notes"), ("sticker-sprint", "Sticker Sprint")
+    private struct Choice: Identifiable {
+        let id: String
+        let name: String
+        let description: String
+        let swatches: [UInt32]
+    }
+
+    private static let choices = [
+        Choice(id: "playful-retro", name: "Playful Retro Neo-Brutalism",
+               description: "Warm cream, vivid pastels, bold outlines and retro shadows",
+               swatches: [0xfff6e6, 0xffd02c, 0xff86b0, 0x79c8ff, 0x83e5b0]),
+        Choice(id: "mono-os", name: "Mono OS",
+               description: "Grayscale desktop, monospace type, and thin outlines",
+               swatches: [0xd9d9d9, 0xffffff, 0x111111]),
+        Choice(id: "chapter-desk", name: "Chapter Desk",
+               description: "A warm cream reading desk with burnt-orange accents",
+               swatches: [0xf4e9d5, 0xfff5e2, 0xa34018]),
+        Choice(id: "afterhours-fm", name: "Afterhours FM",
+               description: "Charcoal surfaces, warm white text, and bright yellow accents",
+               swatches: [0x101010, 0x1d1d1d, 0xf7d449, 0x71d6c8]),
+        Choice(id: "margin-notes", name: "Margin Notes",
+               description: "Warm paper, serif headings, and plum ink",
+               swatches: [0xf0e9df, 0xfffcf5, 0x713346, 0xded8eb]),
+        Choice(id: "sticker-sprint", name: "Sticker Sprint",
+               description: "Dotted paper, sunflower yellow, and bold cut-paper shadows",
+               swatches: [0xfff8ec, 0xffd34e, 0xbdebd9, 0xded2f9])
     ]
+
     @EnvironmentObject private var store: WorkspaceStore
-    @Environment(\.dismiss) private var dismiss
-    @State private var preview: String?
     @State private var error: String?
+    @State private var saving = false
+    @State private var saved = false
 
     var body: some View {
-        let palette = WorkspacePalette(preview ?? store.theme)
+        let p = store.palette
+        let selected = store.previewTheme ?? store.theme
+        let changed = selected != store.theme
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text(store.t("Appearance")).font(palette.font(24, .heavy))
-                    Spacer()
-                    Button(store.t("Close")) { dismiss() }.buttonStyle(WorkspaceOutlineButton(palette: palette, compact: true))
+            VStack(alignment: .leading, spacing: 10) {
+                Text(store.t("Your appearance")).font(p.font(21, .heavy)).accessibilityAddTraits(.isHeader)
+                    .padding(.bottom, 2)
+                ForEach(Self.choices) { choice in
+                    row(choice, selected: selected == choice.id)
                 }
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(themes, id: \.0) { theme in
-                    let colors = WorkspacePalette(theme.0)
-                    Button { preview = theme.0; store.previewTheme = theme.0 } label: {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(theme.1).font(palette.font(14, .bold)).fixedSize(horizontal: false, vertical: true)
-                                Spacer()
-                                if (preview ?? store.theme) == theme.0 { Image(systemName: "checkmark") }
-                            }
-                            HStack(spacing: 6) {
-                                ForEach(Array([colors.yellow, colors.blue, colors.mint].enumerated()), id: \.offset) { _, color in
-                                    RoundedRectangle(cornerRadius: 4).fill(color).frame(height: 22)
-                                }
-                            }
+                Text(store.t("Select a theme to preview it instantly. Your choice is only saved when you select Save appearance."))
+                    .font(p.font(13)).foregroundStyle(p.secondaryInk).fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+                if let error { WorkspaceNotice(message: error, tone: .error) }
+                WorkspaceActionRows {
+                    Button(store.t(saving ? "Saving…" : "Save appearance")) {
+                        Task {
+                            saving = true
+                            error = nil
+                            defer { saving = false }
+                            do {
+                                try await store.chooseTheme(selected)
+                                store.previewTheme = nil
+                                saved = true
+                            } catch { self.error = store.t(error.localizedDescription) }
                         }
-                        .padding(12)
-                        .foregroundStyle(palette.foreground)
-                        .modifier(WorkspacePanel(palette: palette, fill: palette.surface))
-                    }.buttonStyle(.plain)
-                }
-                }
-                if let error { Text(error).foregroundStyle(.red) }
-                Button(store.t("Save appearance")) {
-                    Task {
-                        do { try await store.chooseTheme(preview ?? store.theme); dismiss() }
-                        catch { self.error = store.t(error.localizedDescription) }
                     }
-                }.buttonStyle(WorkspaceActionButton(palette: store.palette)).disabled(store.saving)
-            }.padding(16)
+                    .buttonStyle(WorkspaceActionButton(palette: p))
+                    .disabled(!changed || saving)
+                    if changed {
+                        Button(store.t("Cancel preview")) {
+                            store.previewTheme = nil
+                            error = nil
+                            saved = false
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(saving)
+                    }
+                }
+                if changed || saved {
+                    Text(store.t(changed ? "Previewing — not saved yet." : "Appearance saved. It applies to your account across devices."))
+                        .font(p.font(13)).foregroundStyle(p.secondaryInk)
+                        .accessibilityIdentifier("theme-preview-status")
+                }
+            }
+            .padding(16).padding(.trailing, max(0, p.shadowOffset - 1))
         }
-        .background(palette.background)
-        .preferredColorScheme(palette.dark ? .dark : .light)
-        .navigationTitle(store.t("Appearance"))
-        .onDisappear { store.previewTheme = nil }
+        .accessibilityIdentifier("workspace-appearance")
+        .foregroundStyle(p.foreground)
+        .clipShape(RoundedRectangle(cornerRadius: p.radius))
+        .modifier(WorkspacePanel(palette: p, fill: p.surface))
+    }
+
+    private func row(_ choice: Choice, selected: Bool) -> some View {
+        let p = store.palette
+        let ink = selected ? p.onAccent : p.foreground
+        return Button {
+            store.previewTheme = choice.id == store.theme ? nil : choice.id
+            error = nil
+            saved = false
+        } label: {
+            HStack(alignment: .top, spacing: 11) {
+                ZStack {
+                    Circle().strokeBorder(ink.opacity(selected ? 1 : 0.58), lineWidth: 1.5)
+                    if selected {
+                        Circle().fill(ink)
+                        Circle().fill(p.accent).frame(width: 4, height: 4)
+                    }
+                }
+                .frame(width: 15, height: 15).padding(.top, 3)
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(choice.name).font(p.font(15, .bold))
+                    HStack(spacing: 4) {
+                        ForEach(choice.swatches, id: \.self) { color in
+                            Circle()
+                                .fill(WorkspacePalette.color(color))
+                                .overlay(Circle().strokeBorder(ink.opacity(0.15), lineWidth: 1))
+                                .frame(width: 15, height: 15)
+                        }
+                    }
+                    .accessibilityHidden(true)
+                    Text(store.t(choice.description)).font(p.font(13))
+                        .foregroundStyle(ink.opacity(p.dark ? 0.89 : 0.82))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 13).padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(ink)
+            .modifier(WorkspacePanel(palette: p, fill: selected ? p.accent : p.surface))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(saving)
+        .accessibilityLabel(choice.name)
+        .accessibilityHint(store.t(choice.description))
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier("theme-option-\(choice.id)")
     }
 }
 
 struct NativeOnboarding: View {
+    let openDashboard: () -> Void
     @EnvironmentObject private var store: WorkspaceStore
+    @State private var progress: LedgerRecord?
     @State private var name = ""
     @State private var error: String?
+    @State private var addingStudent = false
+    @State private var recordingLesson = false
+
+    private var step: Int {
+        guard let progress, progress.flag("profileConfirmed") else { return 0 }
+        if progress.object("student") == nil && !progress.flag("completed") { return 1 }
+        return progress.object("session") == nil ? 2 : 3
+    }
+
     var body: some View {
-        WorkspaceScroll {
-            WorkspaceSection(store.t("Teacher profile")) {
-                WorkspaceField(store.t("Display name"), text: $name)
-                Button(store.t("Save profile")) {
-                    Task {
-                        do {
-                            _ = try await store.write("/api/onboarding", body: ["displayName": .string(name)])
-                            await store.refreshDashboard()
-                        } catch { self.error = store.t(error.localizedDescription) }
-                    }
-                }.disabled(store.saving || name.isEmpty)
+        let p = store.palette
+        WorkspaceScroll(eager: true) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(store.t("Lesson & tuition ledger").uppercased()).font(p.font(12)).foregroundStyle(p.secondaryInk)
+                Text(store.t("Open your lesson ledger")).font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
+                Text(store.t("For individual and class teaching, charged per lesson and paid afterwards. You can pause and continue at any time."))
+                    .font(p.font(15)).foregroundStyle(p.secondaryInk).lineSpacing(4)
             }
-            WorkspaceSection {
-                NavigationLink(value: WorkspaceRoute.studentHistory(.students, "")) { Text(store.t("Students")) }
-                NavigationLink(value: WorkspaceRoute.recordLesson()) { Text(store.t("Record lesson")) }
+            if progress != nil {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) { steps }
+                    VStack(spacing: 6) { steps }
+                }
+                WorkspaceSection(padding: 14) { currentStep }
+            } else if error == nil {
+                ProgressView().tint(p.controlTint)
             }
-            if let error { Text(error).foregroundStyle(.red) }
+            if let error { LedgerError(message: error) { Task { await load() } } }
+            Text(store.t("LessonBrook only counts lessons you enter; it excludes earlier debts. An internet connection is needed to save data."))
+                .font(p.font(13)).foregroundStyle(p.secondaryInk)
+            Button(store.t("Continue to app"), action: openDashboard).buttonStyle(.plain)
         }
-        .scrollContentBackground(.hidden)
-        .background(store.palette.background)
-        .navigationTitle(store.t("Get started"))
-        .task { name = store.snapshot?.displayName ?? "" }
+        .task(id: store.revision) { await load() }
+        .sheet(isPresented: $addingStudent) { StudentEditor() }
+        .sheet(isPresented: $recordingLesson) { LessonEditor(studentID: progress?.object("student")?.id) }
+    }
+
+    private var steps: some View {
+        let p = store.palette
+        return ForEach(Array(["Teacher profile", "Add student", "First lesson"].enumerated()), id: \.offset) { index, title in
+            let active = step >= index
+            let shape = RoundedRectangle(cornerRadius: p.fieldRadius)
+            VStack(alignment: .leading, spacing: 5) {
+                if step > index {
+                    Label(store.t("Done"), systemImage: "checkmark").font(p.font(13, .bold))
+                } else {
+                    Text(String(format: store.t("Step %d"), index + 1)).font(p.font(13, .bold))
+                }
+                Text(store.t(title)).font(p.font(13)).lineLimit(1)
+            }
+            .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(active ? p.onAccent : p.foreground)
+            .background(active ? p.accent : p.surface, in: shape)
+            .overlay(shape.strokeBorder(p.border, lineWidth: 1))
+            .accessibilityAddTraits(step == index ? .isSelected : [])
+        }
+    }
+
+    @ViewBuilder private var currentStep: some View {
+        let p = store.palette
+        switch step {
+        case 0:
+            Text(store.t("What name should we show?")).font(p.font(21, .heavy))
+            WorkspaceField(store.t("Teacher / class name"), text: $name)
+            Text(store.t("This name appears on statements you issue. You can set up VietQR in Account settings."))
+                .font(p.font(13)).foregroundStyle(p.secondaryInk)
+            Button(store.t("Save and continue")) {
+                Task {
+                    do {
+                        _ = try await store.write("/api/onboarding", body: ["displayName": .string(name)])
+                        await store.refreshDashboard()
+                    } catch { self.error = store.t(error.localizedDescription) }
+                }
+            }
+            .buttonStyle(WorkspaceActionButton(palette: p))
+            .disabled(store.saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        case 1:
+            Text(store.t("Add your first student")).font(p.font(21, .heavy))
+            Text(store.t("You only need the student's name. You can add contact details later."))
+                .font(p.font(15)).foregroundStyle(p.secondaryInk)
+            Button(store.t("Add your first student")) { addingStudent = true }
+                .buttonStyle(WorkspaceActionButton(palette: p))
+        case 2:
+            Text(store.t("Record your first completed lesson")).font(p.font(21, .heavy))
+            if let student = progress?.object("student") { Text(student.name).font(p.font(15, .bold)) }
+            Text(store.t("Choose the lesson date and price, then mark the lesson as completed."))
+                .font(p.font(15)).foregroundStyle(p.secondaryInk)
+            Button(store.t("Record first lesson")) { recordingLesson = true }
+                .buttonStyle(WorkspaceActionButton(palette: p)).disabled(progress?.object("student") == nil)
+        default:
+            Text(store.t("Your ledger is ready")).font(p.font(25, .heavy))
+            if let session = progress?.object("session") {
+                let date = LedgerDate.localized(session.text("sessionDate"), locale: store.language)
+                Text(String(format: store.t("Lesson recorded %@ on %@: %@."),
+                            session.text("studentName"), date, store.money(session.int("amountVnd"))))
+                    .font(p.font(15)).lineSpacing(4)
+            }
+            Text(store.t("Completed, chargeable lessons appear under “Lessons ready for a statement” until you issue a statement. You can then share its link and record received payments."))
+                .font(p.font(15)).foregroundStyle(p.secondaryInk).lineSpacing(4)
+            WorkspaceActionRows {
+                Button(action: openDashboard) { Label(store.t("View dashboard"), systemImage: "arrow.right") }
+                    .buttonStyle(WorkspaceActionButton(palette: p))
+                if let studentID = progress?.object("session")?.string("studentId") {
+                    NavigationLink(value: WorkspaceRoute.student(studentID)) { Text(store.t("Open student ledger")) }
+                }
+            }
+        }
+    }
+
+    private func load() async {
+        do {
+            let result: LedgerRecord = try await store.read("/api/onboarding")
+            try Task.checkCancellation()
+            progress = result
+            name = result.object("profile")?.name ?? ""
+            error = nil
+        } catch { if !Task.isCancelled { self.error = store.t(error.localizedDescription) } }
     }
 }
 

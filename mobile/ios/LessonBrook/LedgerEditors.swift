@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LedgerEditorForm<Content: View>: View {
-    enum Layout { case standard, record, teachingClass }
+    enum Layout { case standard, record, teachingClass, page }
 
     @EnvironmentObject private var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
@@ -9,6 +9,7 @@ struct LedgerEditorForm<Content: View>: View {
     let valid: Bool
     let draftKey: String
     var layout: Layout = .standard
+    var shouldDismissAfterSave = true
     let save: () async throws -> Void
     @ViewBuilder let content: () -> Content
     @State private var error: String?
@@ -20,7 +21,7 @@ struct LedgerEditorForm<Content: View>: View {
     private var saveTitle: String {
         if title.contains("student") { return "Save student" }
         if title.contains("class") { return "Save class" }
-        if title == "Create statement" { return "Create statement" }
+        if title == "Create tuition statement" { return "Create statement" }
         if title.contains("statement") { return "Save statement" }
         if title == "Paid by cash" || title == "Edit payment" { return "Save payment" }
         return "Save lesson"
@@ -28,7 +29,9 @@ struct LedgerEditorForm<Content: View>: View {
 
     var body: some View {
         Group {
-            if layout == .standard {
+            if layout == .page {
+                editorPage
+            } else if layout == .standard {
                 editorPanel.padding(12)
             } else {
                 GeometryReader { viewport in
@@ -51,6 +54,36 @@ struct LedgerEditorForm<Content: View>: View {
         .onAppear { if initialDraft == nil { initialDraft = draftKey }; store.hasUnsavedEdits = changed }
         .onChange(of: draftKey) { _ in store.hasUnsavedEdits = changed }
         .onDisappear { store.hasUnsavedEdits = false }
+    }
+
+    private var editorPage: some View {
+        let p = store.palette
+        return WorkspaceScroll(eager: true) {
+            Button(action: close) {
+                Label(store.t("Statement list"), systemImage: "arrow.left")
+                    .font(p.font(14)).underline()
+            }
+            .buttonStyle(.plain)
+            Text(store.t(title)).font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
+            content()
+            if let error { WorkspaceNotice(message: error, tone: .error) }
+            editorSaveButton
+        }
+        .scrollDismissesKeyboard(.interactively)
+    }
+
+    private var editorSaveButton: some View {
+        Button(store.t(store.saving ? "Saving changes" : error != nil ? "Try saving again" : saveTitle)) {
+            Task {
+                do {
+                    try await save()
+                    if shouldDismissAfterSave { dismiss() }
+                } catch { self.error = store.t(error.localizedDescription) }
+            }
+        }
+        .buttonStyle(WorkspaceActionButton(palette: store.palette))
+        .disabled(!valid || store.saving)
+        .accessibilityIdentifier("Save")
     }
 
     private var editorPanel: some View {
@@ -86,13 +119,7 @@ struct LedgerEditorForm<Content: View>: View {
                     Button(store.t(layout == .standard ? "Cancel" : "Later"), action: close)
                         .buttonStyle(WorkspaceOutlineButton(palette: p))
                         .accessibilityLabel(store.t("Cancel")).disabled(store.saving)
-                    Button(store.t(store.saving ? "Saving changes" : error != nil ? "Try saving again" : saveTitle)) {
-                        Task {
-                            do { try await save(); dismiss() }
-                            catch { self.error = store.t(error.localizedDescription) }
-                        }
-                    }.buttonStyle(WorkspaceActionButton(palette: p)).disabled(!valid || store.saving)
-                        .accessibilityIdentifier("Save")
+                    editorSaveButton
                 }
                 .padding(.horizontal, 14).padding(.vertical, 12)
             }
@@ -452,7 +479,7 @@ struct LessonEditor: View {
     @State private var note: String
 
     init(classID: String? = nil, studentID: String? = nil, proposedDate: String? = nil, proposedTime: String? = nil,
-         record: LedgerRecord? = nil, editingGroup: Bool = false) {
+         record: LedgerRecord? = nil, editingGroup: Bool = false, markingComplete: Bool = false) {
         self.record = record
         self.editingGroup = editingGroup
         let initialClass = classID ?? record?.string("classId")
@@ -467,7 +494,7 @@ struct LessonEditor: View {
         _time = State(initialValue: lessonTimeDate(initialTime ?? "18:00"))
         _rate = State(initialValue: record.map { String($0.int("rateVnd")) } ?? "")
         _duration = State(initialValue: record.flatMap { $0.int("durationMinutes") > 0 ? String($0.int("durationMinutes")) : nil } ?? "")
-        _status = State(initialValue: editingGroup ? "keep" : record?.string("status") ?? "completed")
+        _status = State(initialValue: editingGroup ? "keep" : markingComplete ? "completed" : record?.string("status") ?? "completed")
         _billable = State(initialValue: record?.flag("billable") ?? true)
         _note = State(initialValue: record?.text("privateNote") ?? "")
     }

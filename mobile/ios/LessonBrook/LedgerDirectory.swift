@@ -54,6 +54,7 @@ struct LedgerDirectory: View {
     }
     let kind: LedgerKind
     let relation: [String: String]
+    let embedded: Bool
     @EnvironmentObject private var store: WorkspaceStore
     @State private var layout = Layout.notes
     @State private var search = ""
@@ -82,9 +83,10 @@ struct LedgerDirectory: View {
     @State private var selected: Set<String> = []
     private static let logger = Logger(subsystem: "tech.devoralabs.lessonbrook", category: "performance")
 
-    init(_ kind: LedgerKind, relation: [String: String] = [:]) {
+    init(_ kind: LedgerKind, relation: [String: String] = [:], embedded: Bool = false) {
         self.kind = kind
         self.relation = relation
+        self.embedded = embedded
         _period = State(initialValue: relation.isEmpty ? .month : .all)
     }
 
@@ -122,59 +124,35 @@ struct LedgerDirectory: View {
         default: return "Lesson list"
         }
     }
-    private var pageTitle: String { kind == .statements ? "Tuition statements" : kind == .sessions ? "Lesson ledger" : kind.title }
+    private var pageTitle: String {
+        switch kind {
+        case .students: return "Your students"
+        case .statements: return "Tuition statements"
+        case .sessions: return "Lesson ledger"
+        default: return kind.title
+        }
+    }
     private var description: String {
         switch kind {
-        case .students: return "Manage student details and contact information."
+        case .students: return "Manage student profiles and contact information."
         case .classes: return "Organise students into classes, record one lesson and track each person's tuition separately."
         case .statements: return "Reconcile each lesson and finalise the amount to collect."
         default: return "Record each lesson and track tuition accurately."
         }
     }
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(store.t("Lesson & tuition ledger").uppercased()).font(store.palette.font(11, .semibold)).tracking(1.8)
-                    Text(store.t(pageTitle)).font(store.palette.font(25, .heavy)).accessibilityAddTraits(.isHeader)
-                    Text(store.t(description)).font(store.palette.font(15)).foregroundStyle(store.palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 8) {
-                        if kind == .sessions {
-                            NavigationLink(value: WorkspaceRoute.schedule) { Label(store.t("Upcoming lessons"), systemImage: "calendar") }
-                                .buttonStyle(WorkspaceOutlineButton(palette: store.palette))
-                        }
-                        Button { editing = true } label: {
-                            if kind == .statements { Text(store.t(kind.addTitle)) }
-                            else { Label(store.t(kind.addTitle), systemImage: "plus") }
-                        }.buttonStyle(WorkspaceActionButton(palette: store.palette))
-                    }.padding(.top, 4)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    controls
-                    Divider().overlay(store.palette.border)
-                    if kind == .students || kind == .classes {
-                        WorkspaceField(store.t(kind == .students ? "Search students by name" : "Search classes by name"), text: $search,
-                                       placeholder: store.t("With or without accents")).padding(12)
-                    } else if kind == .sessions || kind == .statements { filters.padding(12) }
-                    Divider().overlay(store.palette.border)
-                    if kind == .sessions && selecting && layout != .calendar { selectionControls.padding(12) }
-                    if let error { LedgerError(message: error) { Task { await load(refresh: true) } } }
-                    if !ready { ProgressView().frame(maxWidth: .infinity, minHeight: 64) }
-                    else if layout == .calendar { LedgerMonth(kind: kind, records: items, month: $month).padding(10) }
-                    else if items.isEmpty { Text(store.t("No records found.")).padding(16) }
-                    else {
-                        let columns = layout == .notes && (kind == .students || kind == .classes) ? 2 : 1
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top), count: columns), spacing: layout == .notes ? 16 : 0) {
-                            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in row(item, index: index) }
-                        }.padding(.horizontal, layout == .notes ? 6 : 0).padding(.vertical, layout == .notes ? 20 : 0)
-                        if cursor != nil {
-                            Button(store.t("Load more")) { Task { await more() } }
-                                .buttonStyle(WorkspaceOutlineButton(palette: store.palette)).disabled(loadingMore)
-                                .frame(maxWidth: .infinity).padding(12)
-                        }
+        Group {
+            if embedded {
+                directoryCard
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        pageHeading
+                        directoryCard
                     }
-                }.modifier(WorkspacePanel(palette: store.palette, fill: store.palette.surface))
-            }.padding(12).padding(.bottom, 4)
+                    .padding(12).padding(.bottom, 4)
+                }
+            }
         }
         .background(store.palette.background).foregroundStyle(store.palette.foreground)
         .font(store.palette.font())
@@ -200,36 +178,117 @@ struct LedgerDirectory: View {
             }
         }
     }
-    private var controls: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(store.t(directoryTitle)).font(store.palette.font(15, .heavy))
-            if kind != .statements {
-                Text(store.t(kind == .classes ? "Select a name to open the class" : kind == .students ? "Select a name to open the student's ledger" : "Each lesson keeps its own price"))
-                    .font(store.palette.font(13)).foregroundStyle(store.palette.secondaryInk)
-            }
+    private var pageHeading: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(store.t("Lesson & tuition ledger").uppercased()).font(store.palette.font(11, .semibold)).tracking(1.8)
+            Text(store.t(pageTitle)).font(store.palette.font(25, .heavy)).accessibilityAddTraits(.isHeader)
+            Text(store.t(description)).font(store.palette.font(15)).foregroundStyle(store.palette.secondaryInk).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                ForEach(kind.hasCalendar ? [Layout.list, .notes, .calendar] : [.list, .notes], id: \.self) { option in
-                    Button {
-                        if option == .calendar && layout != .calendar {
-                            month = .now
-                            selecting = false
-                            selected.removeAll()
-                        }
-                        layout = option
-                    } label: {
-                        Image(systemName: option == .list ? "list.bullet" : option == .notes ? "note" : "calendar")
-                            .frame(width: 18, height: 20)
+                if kind == .sessions {
+                    NavigationLink(value: WorkspaceRoute.schedule) { Label(store.t("Upcoming lessons"), systemImage: "calendar") }
+                        .buttonStyle(WorkspaceOutlineButton(palette: store.palette))
+                }
+                if kind == .statements {
+                    NavigationLink(value: WorkspaceRoute.createStatement(relation["studentId"])) {
+                        Text(store.t(kind.addTitle))
                     }
-                    .buttonStyle(WorkspaceViewButton(palette: store.palette, active: layout == option))
-                    .accessibilityLabel(store.t(option.rawValue)).accessibilityAddTraits(layout == option ? .isSelected : [])
+                    .buttonStyle(WorkspaceActionButton(palette: store.palette))
+                } else {
+                    Button { editing = true } label: { Label(store.t(kind.addTitle), systemImage: "plus") }
+                        .buttonStyle(WorkspaceActionButton(palette: store.palette))
                 }
-                if kind == .students || kind == .classes {
-                    WorkspaceChoice(label: store.t("Status"), selection: $archived,
-                        options: [(false, store.t("Active")), (true, store.t("Archived"))], compact: true).frame(width: 110)
+            }.padding(.top, 4)
+        }
+    }
+
+    private var directoryCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            controls
+            Divider().overlay(store.palette.border)
+            if kind == .students || kind == .classes {
+                let students = kind == .students
+                WorkspaceField(store.t(students ? "Find a student" : "Search classes by name"), text: $search,
+                               placeholder: store.t(students ? "Enter a name, with or without accents" : "With or without accents"))
+                    .padding(12)
+            } else if kind == .sessions || kind == .statements { filters.padding(12) }
+            Divider().overlay(store.palette.border)
+            if kind == .sessions && selecting && layout != .calendar { selectionControls.padding(12) }
+            if let error { LedgerError(message: error) { Task { await load(refresh: true) } } }
+            if !ready { ProgressView().frame(maxWidth: .infinity, minHeight: 64) }
+            else if layout == .calendar { LedgerMonth(kind: kind, records: items, month: $month).padding(10) }
+            else if items.isEmpty { Text(store.t("No records found.")).padding(16) }
+            else {
+                let columns = layout == .notes && (kind == .students || kind == .classes) ? 2 : 1
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top), count: columns), spacing: layout == .notes ? 16 : 0) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in row(item, index: index) }
+                }.padding(.horizontal, layout == .notes ? 6 : 0).padding(.vertical, layout == .notes ? 20 : 0)
+                if cursor != nil {
+                    Button(store.t("Load more")) { Task { await more() } }
+                        .buttonStyle(WorkspaceOutlineButton(palette: store.palette)).disabled(loadingMore)
+                        .frame(maxWidth: .infinity).padding(12)
                 }
-                Spacer(minLength: 0)
             }
-        }.padding(12)
+        }.modifier(WorkspacePanel(palette: store.palette, fill: store.palette.surface))
+    }
+
+    private var controls: some View {
+        let p = store.palette
+        let label = VStack(alignment: .leading, spacing: 3) {
+            Text(store.t(directoryTitle)).font(p.font(15, .heavy))
+            if kind != .statements {
+                Text(store.t(kind == .classes ? "Select a name to open the class" : kind == .students ? "Select a name to open that student's ledger" : "Each lesson keeps its own price"))
+                    .font(p.font(13)).foregroundStyle(p.secondaryInk).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        return Group {
+            if kind == .students || kind == .classes {
+                VStack(alignment: .leading, spacing: 8) {
+                    label
+                    HStack(spacing: 8) {
+                        viewButtons
+                        WorkspaceChoice(label: store.t("Status"), selection: $archived,
+                            options: [(false, store.t("Active")), (true, store.t("Archived"))], compact: true)
+                            .frame(width: 92)
+                    }
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        label.fixedSize()
+                        Spacer(minLength: 0)
+                        viewButtons
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        label
+                        viewButtons
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+    }
+
+    private var viewButtons: some View {
+        HStack(spacing: 5) {
+            ForEach(kind.hasCalendar ? [Layout.list, .notes, .calendar] : [.list, .notes], id: \.self) { option in
+                Button {
+                    if option == .calendar && layout != .calendar {
+                        month = .now
+                        selecting = false
+                        selected.removeAll()
+                    }
+                    layout = option
+                } label: {
+                    Image(systemName: option == .list ? "list.bullet" : option == .notes ? "note" : "calendar")
+                        .frame(width: 18, height: 20)
+                }
+                .buttonStyle(WorkspaceViewButton(palette: store.palette, active: layout == option))
+                .accessibilityLabel(store.t(option.rawValue))
+                .accessibilityAddTraits(layout == option ? .isSelected : [])
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
     }
     private var startBinding: Binding<Date> { Binding(get: { dateBounds.0 }, set: {
         let end = dateBounds.1; from = $0; to = end; period = .custom
@@ -267,7 +326,7 @@ struct LedgerDirectory: View {
                 }
                 HStack(alignment: .top, spacing: 10) {
                     WorkspaceChoice(label: store.t("Lesson status"), selection: $status, options: statusOptions)
-                    WorkspaceChoice(label: store.t("Tuition"), selection: $billing,
+                    WorkspaceChoice(label: store.t("Payment status"), selection: $billing,
                         options: [("all", store.t("All"))] + ["paid", "unpaid", "free"].map { ($0, store.t(ledgerStatus($0))) })
                 }
                 WorkspaceChoice(label: store.t("Lesson type"), selection: $type,
@@ -285,7 +344,7 @@ struct LedgerDirectory: View {
             }
         }
         .task(id: store.revision) {
-            if kind == .sessions {
+            if kind == .sessions && relation["studentId"] == nil && relation["classId"] == nil {
                 do { classes = try await store.all("/api/classes", query: ["order": "schedule", "archived": "all"]) }
                 catch { if !Task.isCancelled { self.error = store.t(error.localizedDescription) } }
             }
@@ -350,7 +409,7 @@ struct LedgerDirectory: View {
         case .classes: ClassEditor()
         case .sessions, .lessons:
             LessonEditor(classID: relation["classId"], studentID: relation["studentId"])
-        case .statements: StatementEditor(studentID: relation["studentId"])
+        case .statements: EmptyView()
         }
     }
 

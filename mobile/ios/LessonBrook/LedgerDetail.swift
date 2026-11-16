@@ -7,22 +7,16 @@ struct LedgerRecordDetail: View {
     @State private var record: LedgerRecord?
     @State private var error: String?
     @State private var editing = false
+    @State private var recordingStudent = false
+    @State private var markingComplete = false
     @State private var archive = false
-    @State private var statement = false
 
     var body: some View {
-        WorkspaceScroll(eager: kind == .classes) {
+        WorkspaceScroll(eager: kind == .classes || kind == .students) {
+            if kind != .students {
+                WorkspaceBackLink(backTitle, tab: kind == .classes ? .classes : nil)
+            }
             if let record {
-                if kind != .classes {
-                    HStack {
-                        Text(store.t(detailTitle)).font(store.palette.font(25, .heavy))
-                        Spacer()
-                        if editable(record) {
-                            Button(store.t("Edit")) { editing = true }
-                                .buttonStyle(WorkspaceOutlineButton(palette: store.palette))
-                        }
-                    }
-                }
                 switch kind {
                 case .students: student(record)
                 case .classes: teachingClass(record)
@@ -43,12 +37,12 @@ struct LedgerRecordDetail: View {
                 case .students: StudentEditor(record: record)
                 case .classes: ClassEditor(record: record)
                 case .sessions, .lessons:
-                    LessonEditor(record: record, editingGroup: kind == .lessons)
+                    LessonEditor(record: record, editingGroup: kind == .lessons, markingComplete: markingComplete)
                 case .statements: EmptyView()
                 }
             }
         }
-        .sheet(isPresented: $statement) { StatementEditor(studentID: id) }
+        .sheet(isPresented: $recordingStudent) { LessonEditor(studentID: id) }
         .confirmationDialog(store.t(record?.string("archivedAt") == nil ? "Archive" : "Restore"),
                             isPresented: $archive, titleVisibility: .visible) {
             Button(store.t(record?.string("archivedAt") == nil ? "Archive" : "Restore")) {
@@ -59,11 +53,11 @@ struct LedgerRecordDetail: View {
         .refreshable { await load() }
     }
 
-    private var detailTitle: String {
+    private var backTitle: String {
         switch kind {
-        case .students: return "Student"
-        case .classes: return "Class"
-        default: return "Lesson details"
+        case .students: return "Students"
+        case .classes: return "Classes"
+        default: return "Lessons"
         }
     }
 
@@ -76,21 +70,38 @@ struct LedgerRecordDetail: View {
     }
 
     @ViewBuilder private func student(_ record: LedgerRecord) -> some View {
-        WorkspaceSection {
-            Text(record.name).font(.title2.bold())
-            if record.string("archivedAt") != nil { Text(store.t("Archived")).foregroundStyle(.secondary) }
-            row("Contact name", record.text("contactName"))
-            row("Phone number", record.text("phone"))
-            row("Email", record.text("email"))
-        }
-        WorkspaceSection {
-            NavigationLink(value: WorkspaceRoute.studentHistory(.sessions, id)) { Text(store.t("Lessons")) }
-            NavigationLink(value: WorkspaceRoute.studentHistory(.statements, id)) { Text(store.t("Statements")) }
-            Button(store.t("Create statement")) { statement = true }
-            if record.string("archivedAt") == nil {
-                NavigationLink(value: WorkspaceRoute.recordStudentLesson(id)) { Text(store.t("Record lesson")) }
+        let p = store.palette
+        let archived = record.string("archivedAt") != nil
+        VStack(alignment: .leading, spacing: 8) {
+            Text(store.t("Lesson & tuition ledger").uppercased()).font(p.font(11, .semibold)).tracking(1.8)
+            Text(record.name).font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
+            Text(store.t(archived ? "Archived" : "Record each lesson and track tuition accurately."))
+                .font(p.font(15)).foregroundStyle(p.secondaryInk)
+            if !archived {
+                Button { recordingStudent = true } label: {
+                    Label(store.t("Record lesson"), systemImage: "plus")
+                }
+                .buttonStyle(WorkspaceActionButton(palette: p))
             }
-            Button(store.t(record.string("archivedAt") == nil ? "Archive" : "Restore")) { archive = true }
+        }
+        WorkspaceActionRows {
+            Button(store.t("Edit student")) { editing = true }
+            Button(store.t(archived ? "Restore" : "Archive student")) { archive = true }
+            WorkspaceBackLink("All students", tab: .students)
+        }
+        WorkspaceActionRows {
+            NavigationLink(value: WorkspaceRoute.studentHistory(.statements, id)) {
+                Text(store.t("Student's statements")).underline()
+            }.buttonStyle(.plain)
+            NavigationLink(value: WorkspaceRoute.createStatement(id)) { Text(store.t("Create statement")) }
+        }
+        LedgerDirectory(.sessions, relation: ["studentId": id], embedded: true)
+        if !record.text("contactName").isEmpty || !record.text("phone").isEmpty || !record.text("email").isEmpty {
+            WorkspaceSection(store.t("Contact information")) {
+                row("Contact name", record.text("contactName"))
+                row("Phone number", record.text("phone"))
+                row("Email", record.text("email"))
+            }
         }
     }
 
@@ -117,8 +128,9 @@ struct LedgerRecordDetail: View {
                     .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
                 if !archived {
                     NavigationLink(value: WorkspaceRoute.recordLesson(classID: id)) {
-                        Text(store.t("Record lesson for class"))
+                        Text(store.t("Record class lesson"))
                     }.buttonStyle(WorkspaceActionButton(palette: p))
+                        .accessibilityLabel(store.t("Record lesson for class"))
                 }
                 Button(store.t(archived ? "Restore class" : "Archive class")) { archive = true }
                     .buttonStyle(WorkspaceOutlineButton(palette: p, compact: true))
@@ -129,7 +141,8 @@ struct LedgerRecordDetail: View {
 
     private func classSchedule(_ schedule: [LedgerRecord]) -> some View {
         let p = store.palette
-        return WorkspaceSection(store.t("Weekly schedule")) {
+        return WorkspaceSection {
+            Text(store.t("Weekly class schedule")).font(p.font(21, .heavy)).accessibilityAddTraits(.isHeader)
             if schedule.isEmpty {
                 Text(store.t("No scheduled times.")).font(p.font(14)).foregroundStyle(p.secondaryInk)
             } else {
@@ -149,8 +162,9 @@ struct LedgerRecordDetail: View {
 
     private func classRoster(_ members: [LedgerRecord], note: String) -> some View {
         let p = store.palette
-        return WorkspaceSection(store.t("Students in this class")) {
-            Text(store.t("Choose the students who attended. Changes to the roster or rate apply to new lessons."))
+        return WorkspaceSection {
+            Text(store.t("Class students")).font(p.font(21, .heavy)).accessibilityAddTraits(.isHeader)
+            Text(store.t("When recording a lesson, select only those attending. Changing class members or prices does not change past lessons."))
                 .font(p.font(13)).foregroundStyle(p.secondaryInk)
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(members.enumerated()), id: \.element.id) { index, student in
@@ -181,15 +195,27 @@ struct LedgerRecordDetail: View {
     }
 
     @ViewBuilder private func lesson(_ record: LedgerRecord) -> some View {
+        let p = store.palette
+        let date = LedgerDate.localized(record.text("sessionDate"), locale: store.language)
+        let time = record.string("startTime") ?? store.t("Time not set")
+        Text(record.string("className") ?? record.string("studentName") ?? store.t("Group lesson"))
+            .font(p.font(25, .heavy)).accessibilityAddTraits(.isHeader)
         WorkspaceSection {
-            Text(record.string("className") ?? record.string("studentName") ?? store.t("Group lesson")).font(.title2.bold())
-            row("Lesson date", record.text("sessionDate"))
-            row("Start time", record.text("startTime"))
+            Text(date + " · " + time).font(p.font(16))
             if record.int("durationMinutes") > 0 { row("Duration (minutes)", String(record.int("durationMinutes"))) }
             row("Lesson price (VND)", store.money(record.int("rateVnd")))
             if kind == .sessions {
                 LedgerBadge(code: record.text("status"))
                 if let payment = record.string("paymentStatus") { LedgerBadge(code: payment) }
+            }
+            if editable(record) {
+                WorkspaceActionRows {
+                    if kind == .sessions && record.text("status") == "planned" {
+                        Button(store.t("Mark completed")) { markingComplete = true; editing = true }
+                            .buttonStyle(WorkspaceActionButton(palette: p)).disabled(store.saving)
+                    }
+                    Button(store.t("Edit lesson")) { markingComplete = false; editing = true }
+                }
             }
         }
         WorkspaceSection {
@@ -204,9 +230,6 @@ struct LedgerRecordDetail: View {
             }
             if let lessonID = record.string("lessonId") {
                 NavigationLink(value: WorkspaceRoute.lesson(lessonID)) { Text(store.t("Group lesson")) }
-            }
-            if kind == .sessions && record.text("status") == "planned" && editable(record) {
-                Button(store.t("Mark completed")) { Task { await complete() } }.disabled(store.saving)
             }
         }
         if kind == .lessons {
@@ -242,10 +265,7 @@ struct LedgerRecordDetail: View {
         } catch { self.error = store.t(error.localizedDescription) }
     }
 
-    private func complete() async {
-        do { _ = try await store.write("/api/sessions/complete", body: ["ids": .strings([id])]) }
-        catch { self.error = store.t(error.localizedDescription) }
-    }
+
 }
 
 private struct ClassLessonList: View {

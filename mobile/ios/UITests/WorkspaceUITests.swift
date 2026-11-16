@@ -28,7 +28,7 @@ final class WorkspaceUITests: XCTestCase {
         tapVisible(app.buttons["Save"], app: app)
         XCTAssertTrue(name.waitForNonExistence(timeout: 15))
         XCTAssertTrue(add.waitForExistence(timeout: 20))
-        let search = app.textFields["Search students by name"]
+        let search = app.textFields["Find a student"]
         search.tap()
         search.typeText("Native QA\n")
         let created = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Native QA Student")).firstMatch
@@ -75,27 +75,34 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(statementSearch.waitForExistence(timeout: 10))
         statementSearch.tap(); statementSearch.typeText("Native QA")
         XCTAssertTrue(learner.waitForExistence(timeout: 10)); learner.tap()
-        let selectAll = app.buttons["Select all lessons"]
-        if !selectAll.isHittable { app.swipeUp() }
-        XCTAssertTrue(selectAll.waitForExistence(timeout: 10)); selectAll.tap()
+        let selectAll = app.descendants(matching: .any)["select-all-eligible-lessons"].firstMatch
+        XCTAssertTrue(selectAll.waitForExistence(timeout: 15), app.debugDescription)
+        tapVisible(selectAll, app: app)
         tapVisible(app.buttons["Save"], app: app)
         XCTAssertTrue(selectAll.waitForNonExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["Create statement"].waitForExistence(timeout: 15))
-        tapVisible(app.buttons["All students"], app: app)
-        XCTAssertTrue(statementSearch.waitForExistence(timeout: 10))
-        statementSearch.tap(); statementSearch.typeText("Native QA")
-        XCTAssertTrue(learner.waitForExistence(timeout: 10)); learner.tap()
-        let tuition = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH %@", "· Native QA Student")).firstMatch
-        tapVisible(tuition, app: app)
+        XCTAssertTrue(app.staticTexts["Payment history"].waitForExistence(timeout: 15))
+        capture("native-statement-detail", app: app)
+        tapVisible(app.buttons["Share"], app: app)
+        let openStatement = app.buttons["Open public statement"]
+        XCTAssertTrue(openStatement.waitForExistence(timeout: 15))
+        tapVisible(openStatement, app: app)
+        let closePreview = app.buttons["Close"]
+        XCTAssertTrue(closePreview.waitForExistence(timeout: 10))
+        capture("native-statement-preview", app: app)
+        closePreview.tap()
+        for _ in 0..<4 where !app.buttons["Paid by cash"].isHittable { app.swipeDown() }
         let cash = app.buttons["Paid by cash"]
         if !cash.isHittable { app.swipeUp() }
         XCTAssertTrue(cash.waitForExistence(timeout: 10)); cash.tap()
-        XCTAssertTrue(app.textFields["Amount received (VND)"].waitForExistence(timeout: 10))
+        let receivedAmount = app.textFields["Amount received (VND)"]
+        XCTAssertTrue(receivedAmount.waitForExistence(timeout: 10))
+        tapVisible(receivedAmount, app: app)
+        receivedAmount.typeText("30000")
         tapVisible(app.buttons["Save"], app: app)
         XCTAssertTrue(app.textFields["Amount received (VND)"].waitForNonExistence(timeout: 15))
         app.swipeUp()
         app.swipeUp()
-        XCTAssertTrue(app.staticTexts["Cash"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH %@", " · Cash")).firstMatch.waitForExistence(timeout: 15))
         let paymentShot = XCTAttachment(screenshot: app.screenshot())
         paymentShot.name = "Native English payment history"
         paymentShot.lifetime = .keepAlways
@@ -178,17 +185,18 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(dashboard.waitForExistence(timeout: 20))
 
         app.buttons["Account settings"].tap()
-        let profile = app.staticTexts["Teacher profile"]
+        let profile = app.textFields["Teacher / class name"]
         XCTAssertTrue(profile.waitForExistence(timeout: 10))
         XCTAssertEqual(app.staticTexts.matching(identifier: "Account settings").count, 1)
-        XCTAssertEqual(app.buttons.matching(identifier: "Back").count, 1)
+        XCTAssertFalse(app.buttons["Back"].exists)
+        XCTAssertTrue(app.buttons["workspace-brand"].exists)
         let exit = app.buttons["Exit demo"]
         for _ in 0..<6 where !exit.isHittable { app.swipeUp() }
         XCTAssertTrue(exit.isHittable)
         XCTAssertLessThanOrEqual(exit.frame.maxY, dashboard.frame.minY)
         let signIn = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Sign in", "workspace-demo-sign-in")).firstMatch
         XCTAssertEqual(exit.frame.midY, signIn.frame.midY, accuracy: 2)
-        app.buttons["Back"].tap()
+        app.buttons["workspace-brand"].tap()
 
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -299,9 +307,10 @@ final class WorkspaceUITests: XCTestCase {
         identity.tap()
         XCTAssertTrue(app.buttons["Edit class"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Record lesson for class"].exists)
-        XCTAssertTrue(app.staticTexts["Weekly schedule"].exists)
-        XCTAssertTrue(app.staticTexts["Students in this class"].exists)
-        XCTAssertEqual(app.buttons.matching(identifier: "Back").count, 1)
+        XCTAssertTrue(app.staticTexts["Weekly class schedule"].exists)
+        XCTAssertTrue(app.staticTexts["Class students"].exists)
+        XCTAssertFalse(app.buttons["Back"].exists)
+        XCTAssertTrue(app.buttons["workspace-brand"].exists)
         capture("Class detail", app: app)
         let classLesson = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "class-lesson-")).firstMatch
         XCTAssertTrue(classLesson.waitForExistence(timeout: 10))
@@ -379,6 +388,85 @@ final class WorkspaceUITests: XCTestCase {
     }
 
     @MainActor
+    func testMobileWebHeaderAppearanceAndSettings() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-workspace.locale", "en"]
+        app.launch()
+        let demo = app.buttons["View demo"]
+        XCTAssertTrue(demo.waitForExistence(timeout: 20))
+        capture("native-login", app: app)
+        demo.tap()
+        let brand = app.buttons["workspace-brand"]
+        let language = app.buttons["Language"]
+        let appearance = app.buttons["Choose a theme"]
+        let signIn = app.buttons["workspace-demo-sign-in"]
+        let settings = app.buttons["Account settings"]
+        XCTAssertTrue(brand.waitForExistence(timeout: 20))
+        let controls = [brand, language, appearance, signIn, settings]
+        for (left, right) in zip(controls, controls.dropFirst()) {
+            XCTAssertTrue(right.exists)
+            XCTAssertLessThanOrEqual(left.frame.maxX, right.frame.minX)
+            XCTAssertEqual(left.frame.midY, right.frame.midY, accuracy: 2)
+        }
+        capture("native-dashboard", app: app)
+        for (tab, title) in [("students", "Your students"), ("classes", "Classes"),
+                             ("lessons", "Lesson ledger"), ("statements", "Tuition statements")] {
+            app.buttons["workspace-tab-" + tab].tap()
+            XCTAssertTrue(app.staticTexts[title].firstMatch.waitForExistence(timeout: 15))
+            XCTAssertTrue(brand.exists)
+            XCTAssertFalse(app.buttons["Back"].exists)
+            capture("native-" + tab, app: app)
+        }
+
+        app.buttons["workspace-tab-students"].tap()
+        appearance.tap()
+        let panel = app.scrollViews["workspace-appearance"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Your appearance"].exists)
+        XCTAssertTrue(panel.buttons["theme-option-playful-retro"].isSelected)
+        XCTAssertLessThan(brand.frame.maxY, panel.frame.minY)
+        XCTAssertLessThanOrEqual(panel.frame.maxY, app.buttons["workspace-tab-students"].frame.minY)
+        capture("native-appearance", app: app)
+        panel.buttons["theme-option-mono-os"].tap()
+        XCTAssertTrue(panel.buttons["theme-option-mono-os"].isSelected)
+        appearance.tap()
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 10))
+        appearance.tap()
+        XCTAssertTrue(panel.buttons["theme-option-playful-retro"].isSelected)
+        appearance.tap()
+        language.tap()
+        XCTAssertTrue(app.buttons["English"].isSelected)
+        app.buttons["Tiếng Việt"].tap()
+        XCTAssertTrue(app.buttons["Cài đặt tài khoản"].waitForExistence(timeout: 10))
+        app.buttons["Ngôn ngữ"].tap()
+        XCTAssertTrue(app.buttons["Tiếng Việt"].isSelected)
+        app.buttons["English"].tap()
+
+        settings.tap()
+        XCTAssertTrue(app.textFields["Teacher / class name"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["View getting started guide"].exists)
+        XCTAssertTrue(app.staticTexts["Bank transfer details"].exists)
+        XCTAssertEqual(app.staticTexts.matching(identifier: "Account settings").count, 1)
+        XCTAssertTrue(brand.isHittable)
+        XCTAssertFalse(app.buttons["Back"].exists)
+        XCTAssertEqual(app.webViews.count, 0)
+        capture("native-settings", app: app)
+        app.buttons["View getting started guide"].tap()
+        XCTAssertTrue(app.staticTexts["Your ledger is ready"].waitForExistence(timeout: 15))
+        capture("native-guide", app: app)
+        app.buttons["View dashboard"].tap()
+        XCTAssertTrue(app.staticTexts["Have a good teaching day."].waitForExistence(timeout: 10))
+        app.buttons["workspace-tab-statements"].tap()
+        app.buttons["Create statement"].tap()
+        XCTAssertTrue(app.staticTexts["Create tuition statement"].waitForExistence(timeout: 10))
+        capture("native-new-statement", app: app)
+        app.buttons["Statement list"].tap()
+        XCTAssertTrue(app.buttons["Create statement"].waitForExistence(timeout: 10))
+        brand.tap()
+        XCTAssertTrue(app.staticTexts["Have a good teaching day."].waitForExistence(timeout: 10))
+    }
+
+    @MainActor
     func testAllThemesAndVietnameseUseNativeScreens() {
         let app = XCUIApplication()
         app.launchArguments = ["-workspace.locale", "vi"]
@@ -391,15 +479,22 @@ final class WorkspaceUITests: XCTestCase {
             XCTAssertTrue(palette.waitForExistence(timeout: 10))
             palette.tap()
             let choice = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", theme)).firstMatch
-            if !choice.isHittable { app.swipeUp() }
-            XCTAssertTrue(choice.waitForExistence(timeout: 10))
+            let panel = app.scrollViews["workspace-appearance"]
+            XCTAssertTrue(panel.waitForExistence(timeout: 10))
+            for _ in 0..<4 where !choice.isHittable { panel.swipeUp() }
+            XCTAssertTrue(choice.isHittable)
             choice.tap()
-            app.swipeUp()
-            let save = app.buttons["Lưu giao diện"]
-            XCTAssertTrue(save.waitForExistence(timeout: 10))
+            let save = panel.buttons["Lưu giao diện"]
+            for _ in 0..<4 where !save.isHittable { panel.swipeUp() }
+            XCTAssertTrue(save.isHittable)
             save.tap()
-            XCTAssertTrue(save.waitForNonExistence(timeout: 15))
-            XCTAssertTrue(palette.waitForExistence(timeout: 10))
+            let saved = panel.staticTexts["theme-preview-status"]
+            let confirmed = NSPredicate(format: "label BEGINSWITH %@", "Đã lưu giao diện")
+            let confirmation = XCTNSPredicateExpectation(predicate: confirmed, object: saved)
+            wait(for: [confirmation], timeout: 15)
+            XCTAssertTrue(palette.isHittable)
+            palette.tap()
+            XCTAssertTrue(panel.waitForNonExistence(timeout: 10))
             app.buttons["workspace-tab-students"].tap()
             let status = app.buttons["Trạng thái"]
             XCTAssertTrue(status.waitForExistence(timeout: 10))
