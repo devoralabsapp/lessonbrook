@@ -1396,6 +1396,11 @@ dialog::backdrop {
   background: var(--primary);
   color: var(--primary-foreground);
 }
+[data-android-workspace][data-theme="playful-retro"]
+  .android-workspace-header-actions > a > span {
+  background: var(--retro-yellow);
+  color: var(--retro-ink);
+}
 [data-android-workspace]
   .android-workspace-header-actions
   :is([data-slot="button"], [data-compact]) {

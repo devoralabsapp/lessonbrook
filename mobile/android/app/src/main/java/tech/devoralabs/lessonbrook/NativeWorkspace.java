@@ -10,6 +10,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -281,19 +282,24 @@ final class NativeWorkspace {
             boolean active = tab == selected;
             LinearLayout item = column();
             item.setGravity(Gravity.CENTER);
-            item.setMinimumHeight(dp(46));
+            item.setMinimumHeight(dp(49));
             item.setPadding(dp(2), dp(3), dp(2), dp(3));
             item.setSelected(active);
             action(item, text(tab.title), () -> select.accept(tab));
             int ink = active ? palette.onAccent() : palette.foreground();
-            if (active) item.setBackground(panel(palette.accent()));
+            if (active) {
+                GradientDrawable fill = shape(palette.accent(), Math.min(palette.radius(), 16));
+                fill.setStroke(dp(palette.outline()), palette.border());
+                item.setBackground(fill);
+            }
             ImageView icon = icon(tab.icon, ink);
-            item.addView(icon, new LinearLayout.LayoutParams(dp(18), dp(18)));
-            TextView title = label(text(tab.title), 11, ink);
-            if (active) title.setTypeface(palette.font(), Typeface.BOLD);
+            item.addView(icon, new LinearLayout.LayoutParams(dp(20), dp(20)));
+            TextView title = bold(text(tab.title), 13, ink);
+            title.setMaxLines(1);
+            title.setAutoSizeTextTypeUniformWithConfiguration(9, 13, 1, TypedValue.COMPLEX_UNIT_SP);
             title.setGravity(Gravity.CENTER);
             title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            add(item, title, 2);
+            add(item, title, 3);
             row.addView(item, new LinearLayout.LayoutParams(0, -1, 1));
         }
         LinearLayout bar = column();
