@@ -238,8 +238,9 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertLessThanOrEqual(status.frame.maxX, payment.frame.minX)
         XCTAssertLessThan(edit.frame.maxY, actions.frame.minY)
         XCTAssertGreaterThanOrEqual(edit.frame.height, 44)
-        XCTAssertLessThanOrEqual(edit.frame.maxX, actions.frame.maxX)
         XCTAssertTrue(note.exists)
+        XCTAssertLessThanOrEqual(edit.frame.maxX, note.frame.maxX - 4)
+        XCTAssertGreaterThan(edit.frame.midX, note.frame.midX)
         capture("Compact lesson note actions", app: app)
 
         app.buttons["Language"].tap()
