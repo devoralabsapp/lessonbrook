@@ -6,6 +6,8 @@ Start with [AGENTS.md](AGENTS.md) for repository rules, [README.md](README.md) f
 
 The authorized release workflow is `main` in [`devoralabsapp/lessonbrook`](https://github.com/devoralabsapp/lessonbrook) to the existing Vercel project. Verify the production alias against the exact pushed commit when handing off a release. Use the current task and branch to decide what to work on next.
 
+- **Mobile 0.5.19, build 37**. The combined GitHub release pairs an upgrade-compatible signed Android APK with an unsigned iOS device IPA and a universal iOS Simulator ZIP. Generate all public assets from the release commit without local iOS signing or Firebase configuration, and verify their SHA-256 checksums after upload.
+
 - **Android header and iOS 0.5.19, build 37**. The Android header keeps the logo and full wordmark on the same row as its controls at 320 px. Older Android embedded ledger pages also show the wordmark. iOS Student and Class cards give the name frame a stronger tint and the surrounding note or list row a softer tint.
 
 - **Android theme picker**. The Android header sizes its icon controls explicitly so theme form actions keep their usual text-button dimensions. The installed Android app receives this fix from the web deployment.
