@@ -2,6 +2,7 @@ import type { Viewport } from "next";
 import { headers } from "next/headers";
 import {
   hasAndroidWorkspace,
+  hasLegacyAndroidChrome,
   hasNativeChrome,
   hasNativeWorkspace,
 } from "@/domain/mobile-sign-in";
@@ -28,6 +29,7 @@ export default async function DemoLayout({
       embedded={hasNativeWorkspace(agent)}
       nativeChrome={hasNativeChrome(agent)}
       androidWorkspace={hasAndroidWorkspace(agent)}
+      legacyAndroidChrome={hasLegacyAndroidChrome(agent)}
     >
       {children}
     </AppShell>

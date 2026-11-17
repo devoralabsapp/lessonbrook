@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { getAppearance } from "@/lib/server/appearance";
 import {
   hasAndroidWorkspace,
+  hasLegacyAndroidChrome,
   hasNativeChrome,
   hasNativeWorkspace,
 } from "@/domain/mobile-sign-in";
@@ -49,6 +50,9 @@ export default async function PrivateLayout({
       embedded={hasNativeWorkspace(requestHeaders.get("user-agent"))}
       nativeChrome={hasNativeChrome(requestHeaders.get("user-agent"))}
       androidWorkspace={hasAndroidWorkspace(requestHeaders.get("user-agent"))}
+      legacyAndroidChrome={hasLegacyAndroidChrome(
+        requestHeaders.get("user-agent"),
+      )}
     >
       {children}
     </AppShell>

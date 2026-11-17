@@ -16,8 +16,23 @@ test("Android theme picker keeps readable actions on a narrow screen", async ({
   try {
     const page = await context.newPage();
     await page.goto("/demo/settings");
+    const header = page.locator('[data-slot="workspace-header"]');
+    const brand = header.getByRole("link", { name: /LessonBrook/ });
     const picker = page.locator('[data-slot="appearance-picker"]');
     const trigger = picker.getByRole("button", { name: "Choose a theme" });
+    const avatar = header.getByRole("link", { name: "Account settings" });
+    await expect(brand).toHaveText("LessonBrook.");
+    await expect(brand.locator("svg")).toBeVisible();
+    const [brandBox, avatarBox, headerBox] = await Promise.all([
+      brand.boundingBox(),
+      avatar.boundingBox(),
+      header.boundingBox(),
+    ]);
+    expect(brandBox!.x + brandBox!.width).toBeLessThan(avatarBox!.x);
+    expect(avatarBox!.x + avatarBox!.width).toBeLessThanOrEqual(
+      headerBox!.width,
+    );
+    expect(Math.abs(brandBox!.y - avatarBox!.y)).toBeLessThan(2);
     await trigger.click();
     await expect(trigger).toHaveCSS("width", "40px");
     const save = picker.getByRole("button", { name: "Save appearance" });
@@ -195,6 +210,13 @@ for (const platform of ["iOS", "Android"]) {
       await expect(page.locator('[data-slot="workspace-header"]')).toHaveCount(
         0,
       );
+      const brand = page.getByRole("link", { name: /LessonBrook — Dashboard/ });
+      if (platform === "Android") {
+        await expect(brand).toHaveText("LessonBrook.");
+        await expect(brand.locator("svg")).toBeVisible();
+      } else {
+        await expect(brand).toHaveCount(0);
+      }
       await expect(page.locator('nav[data-position="bottom"]')).toHaveCount(0);
       await expect(page.locator('[data-slot="demo-toolbar"]')).toBeVisible();
       await expect(

@@ -557,8 +557,7 @@ struct LedgerRow: View {
     private var paper: Color { workspacePaperColor(item.id) }
     private var paperIntensity: Double {
         switch kind {
-        case .students: return p.dark ? 0.30 : 0.56
-        case .classes: return p.dark ? 0.30 : 0.56
+        case .students, .classes: return p.dark ? 0.15 : 0.28
         case .statements: return p.dark ? 0.37 : 0.94
         case .sessions, .lessons: return p.dark ? 0.25 : 0.70
         }
@@ -577,7 +576,7 @@ struct LedgerRow: View {
                     .accessibilityIdentifier("ledger-note-\(item.id)")
             } else {
                 content.padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                    .modifier(WorkspaceListTone(palette: p, color: listColor))
+                    .modifier(WorkspaceListTone(palette: p, color: listColor, tintOpacity: people ? 0.15 : 0.30))
                     .overlay(alignment: .bottom) { Rectangle().fill(p.border).frame(height: 1) }
             }
         }.foregroundStyle(p.foreground).font(p.font(14))
@@ -645,7 +644,10 @@ struct LedgerRow: View {
         }.font(p.font(note ? 13 : 14)).underline().buttonStyle(.plain)
     }
     private var identity: some View {
-        HStack(alignment: .top, spacing: note ? 5 : 8) {
+        let shape = RoundedRectangle(cornerRadius: min(12, p.radius))
+        let fill = note ? paper : p.recordAccent
+        let tintOpacity = p.dark ? (note ? 0.40 : 0.60) : 0.92
+        return HStack(alignment: .top, spacing: note ? 5 : 8) {
             Text(String(item.name.prefix(1)).uppercased()).font(p.font(note ? 15 : 19, .bold))
                 .frame(width: note ? 24 : 36, height: note ? 24 : 36)
                 .background(p.retroRows ? p.yellow : p.recordAccent, in: RoundedRectangle(cornerRadius: 4))
@@ -658,10 +660,9 @@ struct LedgerRow: View {
             }.frame(maxWidth: .infinity, alignment: .leading)
         }.padding(note ? 5 : 8).frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: min(12, p.radius)).fill(p.surface)
-                    .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).fill((note ? paper : p.recordAccent).opacity(p.dark ? 0.35 : 0.7)))
+                shape.fill(p.surface).overlay(shape.fill(fill.opacity(tintOpacity)))
             }
-            .overlay(RoundedRectangle(cornerRadius: min(12, p.radius)).stroke(p.controlTint, lineWidth: 2))
+            .overlay(shape.stroke(p.controlTint, lineWidth: 2))
     }
     @ViewBuilder private var lesson: some View {
         if compactLessonNote {

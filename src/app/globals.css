@@ -1372,6 +1372,7 @@ dialog::backdrop {
   z-index: 25;
   display: flex;
   min-height: 64px;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
@@ -1384,6 +1385,32 @@ dialog::backdrop {
   flex: none;
   align-items: center;
   gap: 6px;
+}
+[data-android-workspace] .android-workspace-header [data-slot="brand"] {
+  white-space: nowrap;
+}
+@media (width < 360px) {
+  [data-android-workspace] .android-workspace-header [data-slot="brand"] {
+    gap: 4px;
+  }
+  [data-android-workspace]
+    .android-workspace-header
+    [data-slot="brand"]
+    > :first-child {
+    flex: none;
+    width: 28px;
+    height: 28px;
+  }
+  [data-android-workspace]
+    .android-workspace-header
+    [data-slot="brand"]
+    > span
+    > span {
+    font-size: 13px;
+  }
+  [data-android-workspace] .android-workspace-header-actions {
+    gap: 4px;
+  }
 }
 [data-android-workspace]
   .android-workspace-header-actions

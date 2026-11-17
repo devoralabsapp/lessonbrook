@@ -37,3 +37,11 @@ export function hasAndroidWorkspace(userAgent: string | null) {
     /\bLessonBrookApp\/Android\b.*\bWorkspaceHeader\/1\b/.test(userAgent ?? "")
   );
 }
+
+export function hasLegacyAndroidChrome(userAgent: string | null) {
+  return (
+    hasNativeChrome(userAgent) &&
+    /\bLessonBrookApp\/Android\b/.test(userAgent ?? "") &&
+    !hasAndroidWorkspace(userAgent)
+  );
+}

@@ -20,6 +20,7 @@ export function AppShell({
   embedded = false,
   nativeChrome = false,
   androidWorkspace = false,
+  legacyAndroidChrome = false,
   children,
 }: {
   name: string;
@@ -27,6 +28,7 @@ export function AppShell({
   embedded?: boolean;
   nativeChrome?: boolean;
   androidWorkspace?: boolean;
+  legacyAndroidChrome?: boolean;
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
@@ -240,8 +242,18 @@ export function AppShell({
         )}
         <div className={embedded ? undefined : "lg:ml-[242px]"}>
           {embedded && !androidWorkspace ? (
-            (!nativeChrome || path === "/app/settings") && (
-              <header className="relative flex justify-end gap-3 px-5 pt-3 sm:px-9">
+            (legacyAndroidChrome ||
+              !nativeChrome ||
+              path === "/app/settings") && (
+              <header
+                className={cn(
+                  "relative flex items-center gap-3",
+                  legacyAndroidChrome
+                    ? "justify-between border-b border-border bg-surface px-3"
+                    : "justify-end px-5 pt-3 sm:px-9",
+                )}
+              >
+                {legacyAndroidChrome && <Brand compact />}
                 {path === "/app/settings" && <LanguageSwitcher />}
                 {!nativeChrome && <AppearancePicker key={path} />}
               </header>

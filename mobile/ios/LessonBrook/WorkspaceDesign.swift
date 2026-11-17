@@ -505,11 +505,12 @@ struct WorkspaceListCard<Content: View>: View {
 struct WorkspaceListTone: ViewModifier {
     let palette: WorkspacePalette
     let color: Color
+    var tintOpacity = 0.30
 
     func body(content: Content) -> some View {
         content.background {
             palette.surface
-            if palette.retroRows { color.opacity(0.3) }
+            if palette.retroRows { color.opacity(tintOpacity) }
         }
         .overlay(alignment: .leading) {
             if palette.retroRows { color.frame(width: 5).allowsHitTesting(false) }
